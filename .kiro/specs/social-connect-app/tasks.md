@@ -21,7 +21,12 @@
   - إعداد ملفات الثيم الأساسية مع دعم RTL و Dark Mode
   - _Requirements: 7.1, 7.2, 7.3_
 
-- [ ] 2. بناء نماذج البيانات الأساسية
+- [x] 2. بناء نماذج البيانات الأساسية
+
+
+
+
+
   - إنشاء UserProfile model مع toJson/fromJson
   - إنشاء Message model مع toJson/fromJson
   - إنشاء Story model مع toJson/fromJson
@@ -35,9 +40,17 @@
   - اختبار الحالات الحدية (null values, missing fields)
   - _Requirements: 2.1, 3.1, 5.1, 6.2_
 
-- [ ] 3. تنفيذ وحدة التوثيق (Auth Feature)
+- [x] 3. تنفيذ وحدة التوثيق (Auth Feature)
 
-- [ ] 3.1 إنشاء AuthRepository و Firebase implementation
+
+
+
+
+
+
+
+- [x] 3.1 إنشاء AuthRepository و Firebase implementation
+
   - تنفيذ sendOtp() للتحقق من رقم الهاتف
   - تنفيذ verifyOtp() للتحقق من رمز OTP
   - تنفيذ signOut() لتسجيل الخروج
@@ -56,9 +69,13 @@
 
 - [ ]* 3.4 كتابة اختبار خاصية: OTP resend cooldown
   - **Property 3: OTP resend cooldown**
+
+
   - **Validates: Requirements 1.4**
 
-- [ ] 3.5 بناء واجهة المستخدم للتوثيق
+- [x] 3.5 بناء واجهة المستخدم للتوثيق
+
+
   - إنشاء PhoneInputScreen مع validation
   - إنشاء OtpVerificationScreen مع countdown timer
   - إنشاء AuthProvider باستخدام Riverpod
@@ -66,19 +83,32 @@
   - إضافة معالجة الأخطاء وعرض الرسائل بالعربية
   - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-- [ ] 4. Checkpoint - التأكد من نجاح جميع الاختبارات
+- [x] 4. Checkpoint - التأكد من نجاح جميع الاختبارات
+
+
+
+
   - التأكد من نجاح جميع الاختبارات، استشر المستخدم إذا ظهرت أسئلة.
 
-- [ ] 5. تنفيذ وحدة الملف الشخصي (Profile Feature)
+- [x] 5. تنفيذ وحدة الملف الشخصي (Profile Feature)
 
-- [ ] 5.1 إنشاء ProfileRepository و Firestore implementation
+
+
+
+
+
+- [x] 5.1 إنشاء ProfileRepository و Firestore implementation
+
+
   - تنفيذ getProfile() لجلب بيانات المستخدم
   - تنفيذ updateProfile() لتحديث البيانات
   - تنفيذ uploadProfileImage() لرفع الصور إلى Storage
   - تنفيذ generateAnonymousLink() لتوليد رابط فريد
   - _Requirements: 2.1, 2.3, 2.4, 2.5_
 
-- [ ] 5.2 إنشاء ImageBlurService
+- [x] 5.2 إنشاء ImageBlurService
+
+
   - تنفيذ applyBlur() لتطبيق تأثير blur على الصور
   - دعم مستويات blur مختلفة
   - _Requirements: 2.2_
@@ -99,7 +129,9 @@
   - **Property 7: Profile update round trip**
   - **Validates: Requirements 2.5**
 
-- [ ] 5.7 بناء واجهة المستخدم للملف الشخصي
+
+- [x] 5.7 بناء واجهة المستخدم للملف الشخصي
+
   - إنشاء ProfileScreen لعرض وتعديل البيانات
   - إضافة image picker لاختيار الصورة
   - إضافة toggle للتمويه
@@ -107,12 +139,23 @@
   - إنشاء ProfileProvider باستخدام Riverpod
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 6. Checkpoint - التأكد من نجاح جميع الاختبارات
+- [x] 6. Checkpoint - التأكد من نجاح جميع الاختبارات
+
+
+
+
   - التأكد من نجاح جميع الاختبارات، استشر المستخدم إذا ظهرت أسئلة.
 
-- [ ] 7. تنفيذ وحدة الدردشة (Chat Feature)
+- [x] 7. تنفيذ وحدة الدردشة (Chat Feature)
 
-- [ ] 7.1 إنشاء ChatRepository و Firestore implementation
+
+
+
+
+
+
+- [x] 7.1 إنشاء ChatRepository و Firestore implementation
+
   - تنفيذ getMessages() stream للرسائل في الوقت الفعلي
   - تنفيذ sendTextMessage() لإرسال رسائل نصية
   - تنفيذ sendVoiceMessage() لإرسال رسائل صوتية
@@ -120,13 +163,17 @@
   - تنفيذ getChatList() لجلب قائمة المحادثات
   - _Requirements: 3.1, 3.2, 3.3, 3.5_
 
-- [ ] 7.2 إنشاء VoiceRecorderService
+
+- [x] 7.2 إنشاء VoiceRecorderService
+
   - تنفيذ startRecording() لبدء التسجيل
   - تنفيذ stopRecording() لإيقاف التسجيل وحفظ الملف
   - تنفيذ playAudio() لتشغيل الرسائل الصوتية
   - _Requirements: 3.2_
 
-- [ ] 7.3 إنشاء NotificationService
+
+- [x] 7.3 إنشاء NotificationService
+
   - إعداد Firebase Cloud Messaging
   - تنفيذ sendNotification() لإرسال إشعارات
   - معالجة الإشعارات في الخلفية والمقدمة
@@ -148,7 +195,9 @@
   - **Property 11: Message chronological ordering**
   - **Validates: Requirements 3.5**
 
-- [ ] 7.8 بناء واجهة المستخدم للدردشة
+- [x] 7.8 بناء واجهة المستخدم للدردشة
+
+
   - إنشاء ChatListScreen لعرض قائمة المحادثات
   - إنشاء ChatScreen لعرض المحادثة الفردية
   - إضافة MessageBubble widget للرسائل

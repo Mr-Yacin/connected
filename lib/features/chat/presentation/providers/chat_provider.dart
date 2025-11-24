@@ -1,0 +1,134 @@
+import 'dart:io';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/models/message.dart';
+import '../../data/repositories/firestore_chat_repository.dart';
+import '../../data/services/voice_recorder_service.dart';
+import '../../domain/repositories/chat_repository.dart';
+
+/// Provider for ChatRepository
+final chatRepositoryProvider = Provider<ChatRepository>((ref) {
+  return FirestoreChatRepository();
+});
+
+/// Provider for VoiceRecorderService
+final voiceRecorderServiceProvider = Provider<VoiceRecorderService>((ref) {
+  return VoiceRecorderService();
+});
+
+/// Provider for messages stream
+final messagesStreamProvider = StreamProvider.family<List<Message>, String>(
+  (ref, chatId) {
+    final repository = ref.watch(chatRepositoryProvider);
+    return repository.getMessages(chatId);
+  },
+);
+
+/// Provider for chat list
+final chatListProvider = FutureProvider.family<List<ChatPreview>, String>(
+  (ref, userId) async {
+    final repository = ref.watch(chatRepositoryProvider);
+    return repository.getChatList(userId);
+  },
+);
+
+/// State notifier for chat operations
+class ChatNotifier extends StateNotifier<AsyncValue<void>> {
+  final ChatRepository _repository;
+  final VoiceRecorderService _voiceRecorder;
+
+  ChatNotifier(this._repository, this._voiceRecorder)
+      : super(const AsyncValue.data(null));
+
+  /// Send text message
+  Future<void> sendTextMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String text,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await _repository.sendTextMessage(
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        text: text,
+      );
+    });
+  }
+
+  /// Send voice message
+  Future<void> sendVoiceMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required File audioFile,
+  }) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await _repository.sendVoiceMessage(
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        audioFile: audioFile,
+      );
+    });
+  }
+
+  /// Mark message as read
+  Future<void> markAsRead(String chatId, String messageId) async {
+    await _repository.markAsRead(chatId, messageId);
+  }
+
+  /// Start recording voice message
+  Future<void> startRecording() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      await _voiceRecorder.startRecording();
+    });
+  }
+
+  /// Stop recording and return audio file
+  Future<File?> stopRecording() async {
+    try {
+      final file = await _voiceRecorder.stopRecording();
+      state = const AsyncValue.data(null);
+      return file;
+    } catch (e) {
+      state = AsyncValue.error(e, StackTrace.current);
+      return null;
+    }
+  }
+
+  /// Cancel recording
+  Future<void> cancelRecording() async {
+    await _voiceRecorder.cancelRecording();
+    state = const AsyncValue.data(null);
+  }
+
+  /// Play audio
+  Future<void> playAudio(String audioUrl) async {
+    await _voiceRecorder.playAudio(audioUrl);
+  }
+
+  /// Pause audio
+  Future<void> pauseAudio() async {
+    await _voiceRecorder.pauseAudio();
+  }
+
+  /// Stop audio
+  Future<void> stopAudio() async {
+    await _voiceRecorder.stopAudio();
+  }
+
+  /// Check if recording
+  bool get isRecording => _voiceRecorder.isRecording;
+}
+
+/// Provider for ChatNotifier
+final chatNotifierProvider =
+    StateNotifierProvider<ChatNotifier, AsyncValue<void>>((ref) {
+  final repository = ref.watch(chatRepositoryProvider);
+  final voiceRecorder = ref.watch(voiceRecorderServiceProvider);
+  return ChatNotifier(repository, voiceRecorder);
+});

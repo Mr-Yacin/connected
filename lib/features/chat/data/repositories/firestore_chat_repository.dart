@@ -1,0 +1,237 @@
+import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:uuid/uuid.dart';
+import '../../../../core/models/message.dart';
+import '../../../../core/models/enums.dart';
+import '../../../../core/exceptions/app_exceptions.dart';
+import '../../domain/repositories/chat_repository.dart';
+
+/// Firestore implementation of ChatRepository
+class FirestoreChatRepository implements ChatRepository {
+  final FirebaseFirestore _firestore;
+  final FirebaseStorage _storage;
+  final Uuid _uuid;
+
+  FirestoreChatRepository({
+    FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
+    Uuid? uuid,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance,
+        _uuid = uuid ?? const Uuid();
+
+  @override
+  Stream<List<Message>> getMessages(String chatId) {
+    try {
+      return _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: false)
+          .snapshots()
+          .map((snapshot) {
+        return snapshot.docs
+            .map((doc) => Message.fromJson(doc.data()))
+            .toList();
+      });
+    } catch (e) {
+      throw AppException('فشل في جلب الرسائل: $e');
+    }
+  }
+
+  @override
+  Future<void> sendTextMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String text,
+  }) async {
+    try {
+      final messageId = _uuid.v4();
+      final message = Message(
+        id: messageId,
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        type: MessageType.text,
+        content: text,
+        timestamp: DateTime.now(),
+        isRead: false,
+      );
+
+      // Save message to Firestore
+      await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .set(message.toJson());
+
+      // Update chat metadata
+      await _updateChatMetadata(
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        lastMessage: text,
+        lastMessageTime: message.timestamp,
+      );
+    } on FirebaseException catch (e) {
+      throw AppException('فشل في إرسال الرسالة: ${e.message}');
+    } catch (e) {
+      throw AppException('حدث خطأ غير متوقع: $e');
+    }
+  }
+
+  @override
+  Future<void> sendVoiceMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required File audioFile,
+  }) async {
+    try {
+      // Upload audio file to Firebase Storage
+      final audioUrl = await _uploadVoiceMessage(chatId, audioFile);
+
+      final messageId = _uuid.v4();
+      final message = Message(
+        id: messageId,
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        type: MessageType.voice,
+        content: audioUrl,
+        timestamp: DateTime.now(),
+        isRead: false,
+      );
+
+      // Save message to Firestore
+      await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .set(message.toJson());
+
+      // Update chat metadata
+      await _updateChatMetadata(
+        chatId: chatId,
+        senderId: senderId,
+        receiverId: receiverId,
+        lastMessage: '🎤 رسالة صوتية',
+        lastMessageTime: message.timestamp,
+      );
+    } on FirebaseException catch (e) {
+      throw AppException('فشل في إرسال الرسالة الصوتية: ${e.message}');
+    } catch (e) {
+      throw AppException('حدث خطأ غير متوقع: $e');
+    }
+  }
+
+  @override
+  Future<void> markAsRead(String chatId, String messageId) async {
+    try {
+      await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .doc(messageId)
+          .update({'isRead': true});
+    } on FirebaseException catch (e) {
+      throw AppException('فشل في تحديث حالة الرسالة: ${e.message}');
+    } catch (e) {
+      throw AppException('حدث خطأ غير متوقع: $e');
+    }
+  }
+
+  @override
+  Future<List<ChatPreview>> getChatList(String userId) async {
+    try {
+      // Get all chats where user is a participant
+      final chatsSnapshot = await _firestore
+          .collection('chats')
+          .where('participants', arrayContains: userId)
+          .orderBy('lastMessageTime', descending: true)
+          .get();
+
+      final chatPreviews = <ChatPreview>[];
+
+      for (final doc in chatsSnapshot.docs) {
+        final data = doc.data();
+        final participants = List<String>.from(data['participants'] as List);
+        final otherUserId =
+            participants.firstWhere((id) => id != userId, orElse: () => '');
+
+        if (otherUserId.isEmpty) continue;
+
+        // Get other user's profile
+        final userDoc =
+            await _firestore.collection('users').doc(otherUserId).get();
+        final userData = userDoc.data();
+
+        // Count unread messages
+        final unreadSnapshot = await _firestore
+            .collection('chats')
+            .doc(doc.id)
+            .collection('messages')
+            .where('receiverId', isEqualTo: userId)
+            .where('isRead', isEqualTo: false)
+            .get();
+
+        chatPreviews.add(ChatPreview(
+          chatId: doc.id,
+          otherUserId: otherUserId,
+          otherUserName: userData?['name'] as String?,
+          otherUserImageUrl: userData?['profileImageUrl'] as String?,
+          lastMessage: data['lastMessage'] as String?,
+          lastMessageTime: data['lastMessageTime'] != null
+              ? (data['lastMessageTime'] as Timestamp).toDate()
+              : null,
+          unreadCount: unreadSnapshot.docs.length,
+        ));
+      }
+
+      return chatPreviews;
+    } on FirebaseException catch (e) {
+      throw AppException('فشل في جلب قائمة المحادثات: ${e.message}');
+    } catch (e) {
+      throw AppException('حدث خطأ غير متوقع: $e');
+    }
+  }
+
+  /// Upload voice message to Firebase Storage
+  Future<String> _uploadVoiceMessage(String chatId, File audioFile) async {
+    try {
+      final fileName = '${_uuid.v4()}.m4a';
+      final ref = _storage.ref().child('voice_messages/$chatId/$fileName');
+
+      final uploadTask = await ref.putFile(audioFile);
+      final downloadUrl = await uploadTask.ref.getDownloadURL();
+
+      return downloadUrl;
+    } on FirebaseException catch (e) {
+      throw AppException('فشل في رفع الرسالة الصوتية: ${e.message}');
+    }
+  }
+
+  /// Update chat metadata (last message, timestamp, participants)
+  Future<void> _updateChatMetadata({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String lastMessage,
+    required DateTime lastMessageTime,
+  }) async {
+    try {
+      await _firestore.collection('chats').doc(chatId).set({
+        'participants': [senderId, receiverId],
+        'lastMessage': lastMessage,
+        'lastMessageTime': Timestamp.fromDate(lastMessageTime),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } on FirebaseException catch (e) {
+      throw AppException('فشل في تحديث بيانات المحادثة: ${e.message}');
+    }
+  }
+}
