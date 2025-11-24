@@ -360,4 +360,7 @@ class CountryCodes {
   ];
 
   static CountryCode get defaultCountry => all.first; // Saudi Arabia
+  
+  // Get only Arab countries (first 22 countries in the list)
+  static List<CountryCode> get arabCountries => all.take(22).toList();
 }

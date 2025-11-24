@@ -206,18 +206,32 @@
   - إنشاء ChatProvider باستخدام Riverpod
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 8. Checkpoint - التأكد من نجاح جميع الاختبارات
+- [x] 8. Checkpoint - التأكد من نجاح جميع الاختبارات
+
+
+
+
+
   - التأكد من نجاح جميع الاختبارات، استشر المستخدم إذا ظهرت أسئلة.
 
-- [ ] 9. تنفيذ وحدة الاستكشاف (Discovery Feature)
+- [x] 9. تنفيذ وحدة الاستكشاف (Discovery Feature)
 
-- [ ] 9.1 إنشاء DiscoveryRepository و Firestore implementation
+
+
+
+
+
+- [x] 9.1 إنشاء DiscoveryRepository و Firestore implementation
+
+
   - تنفيذ getRandomUser() لجلب مستخدم عشوائي
   - تنفيذ getFilteredUsers() مع دعم الفلاتر المتعددة
   - تنفيذ منطق استثناء المستخدمين المحظورين
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 9.2 إنشاء FilterService
+- [x] 9.2 إنشاء FilterService
+
+
   - تنفيذ applyCountryFilter()
   - تنفيذ applyDialectFilter()
   - تنفيذ applyMultipleFilters() مع AND logic
@@ -239,7 +253,9 @@
   - **Property 15: Blocked users exclusion**
   - **Validates: Requirements 4.5**
 
-- [ ] 9.7 بناء واجهة المستخدم للاستكشاف
+- [x] 9.7 بناء واجهة المستخدم للاستكشاف
+
+
   - إنشاء ShuffleScreen لعرض المستخدمين العشوائيين
   - إضافة FilterBottomSheet للفلاتر
   - إضافة UserCard widget لعرض بطاقة المستخدم
@@ -247,19 +263,31 @@
   - إنشاء DiscoveryProvider باستخدام Riverpod
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 10. Checkpoint - التأكد من نجاح جميع الاختبارات
+- [x] 10. Checkpoint - التأكد من نجاح جميع الاختبارات
+
+
+
+
   - التأكد من نجاح جميع الاختبارات، استشر المستخدم إذا ظهرت أسئلة.
 
-- [ ] 11. تنفيذ وحدة القصص (Stories Feature)
+- [x] 11. تنفيذ وحدة القصص (Stories Feature)
 
-- [ ] 11.1 إنشاء StoryRepository و Firestore implementation
+
+
+
+
+- [x] 11.1 إنشاء StoryRepository و Firestore implementation
+
+
   - تنفيذ createStory() لإنشاء قصة جديدة
   - تنفيذ getActiveStories() stream للقصص النشطة
   - تنفيذ deleteExpiredStories() لحذف القصص المنتهية
   - تنفيذ recordView() لتسجيل المشاهدات
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 11.2 إنشاء StoryExpirationService
+- [x] 11.2 إنشاء StoryExpirationService
+
+
   - تنفيذ scheduled job لحذف القصص المنتهية كل ساعة
   - تنفيذ isExpired() للتحقق من انتهاء القصة
   - _Requirements: 5.2_
@@ -280,7 +308,9 @@
   - **Property 19: Stories chronological ordering**
   - **Validates: Requirements 5.4**
 
-- [ ] 11.7 بناء واجهة المستخدم للقصص
+- [x] 11.7 بناء واجهة المستخدم للقصص
+
+
   - إنشاء StoryBarWidget للشريط الأفقي في الشاشة الرئيسية
   - إنشاء StoryViewScreen لعرض القصة بملء الشاشة
   - إضافة StoryCreationScreen لإنشاء قصة جديدة
@@ -289,12 +319,24 @@
   - إنشاء StoryProvider باستخدام Riverpod
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 12. Checkpoint - التأكد من نجاح جميع الاختبارات
+- [x] 12. Checkpoint - التأكد من نجاح جميع الاختبارات
+
+
+
+
+
   - التأكد من نجاح جميع الاختبارات، استشر المستخدم إذا ظهرت أسئلة.
 
 - [ ] 13. تنفيذ وحدة الأمان (Moderation Feature)
 
-- [ ] 13.1 إنشاء ModerationRepository و Firestore implementation
+
+
+
+
+
+- [x] 13.1 إنشاء ModerationRepository و Firestore implementation
+
+
   - تنفيذ blockUser() لحظر مستخدم
   - تنفيذ unblockUser() لإلغاء الحظر
   - تنفيذ getBlockedUsers() لجلب قائمة المحظورين
@@ -303,7 +345,9 @@
   - تنفيذ takeAction() لاتخاذ إجراء على بلاغ
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 13.2 إنشاء BlockService
+- [x] 13.2 إنشاء BlockService
+
+
   - تنفيذ isBlocked() للتحقق من الحظر
   - تنفيذ preventAccess() لمنع الوصول للمحتوى
   - دمج منطق الحظر مع Chat و Profile
@@ -321,7 +365,9 @@
   - **Property 22: Report action updates status**
   - **Validates: Requirements 6.4**
 
-- [ ] 13.6 بناء واجهة المستخدم للأمان
+- [x] 13.6 بناء واجهة المستخدم للأمان
+
+
   - إضافة Block/Report buttons في ProfileScreen و ChatScreen
   - إنشاء ReportBottomSheet لاختيار سبب البلاغ
   - إنشاء BlockedUsersScreen لإدارة المحظورين
@@ -329,18 +375,29 @@
   - إنشاء ModerationProvider باستخدام Riverpod
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 14. Checkpoint - التأكد من نجاح جميع الاختبارات
+- [x] 14. Checkpoint - التأكد من نجاح جميع الاختبارات
+
+
+
+
+
   - التأكد من نجاح جميع الاختبارات، استشر المستخدم إذا ظهرت أسئلة.
 
-- [ ] 15. تنفيذ إدارة البيانات والإعدادات
+- [-] 15. تنفيذ إدارة البيانات والإعدادات
 
-- [ ] 15.1 إنشاء UserDataService
+
+
+- [x] 15.1 إنشاء UserDataService
+
+
   - تنفيذ deleteUserAccount() لحذف الحساب
   - تنفيذ deleteUserData() لحذف جميع البيانات المرتبطة
   - تنفيذ exportUserData() لتصدير البيانات (GDPR compliance)
   - _Requirements: 8.3_
 
-- [ ] 15.2 إنشاء PreferencesService
+- [x] 15.2 إنشاء PreferencesService
+
+
   - تنفيذ savePreferences() لحفظ الإعدادات
   - تنفيذ getPreferences() لجلب الإعدادات
   - دعم إعدادات اللغة والوضع المظلم
@@ -355,6 +412,8 @@
   - **Validates: Requirements 7.4**
 
 - [ ] 15.5 بناء واجهة المستخدم للإعدادات
+
+
   - إنشاء SettingsScreen
   - إضافة Language toggle
   - إضافة Dark Mode toggle

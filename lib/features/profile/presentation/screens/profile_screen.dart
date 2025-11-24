@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/models/enums.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../moderation/presentation/providers/moderation_provider.dart';
+import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
+import '../../../moderation/presentation/screens/blocked_users_screen.dart';
 import '../providers/profile_provider.dart';
 
 /// Helper to get current user from auth state
@@ -15,7 +19,9 @@ extension CurrentUserExtension on WidgetRef {
 }
 
 class ProfileScreen extends ConsumerStatefulWidget {
-  const ProfileScreen({super.key});
+  final String? viewedUserId; // If viewing another user's profile
+  
+  const ProfileScreen({super.key, this.viewedUserId});
 
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
@@ -39,10 +45,75 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   void _loadProfile() {
-    final userId = ref.currentUserId;
+    final userId = widget.viewedUserId ?? ref.currentUserId;
     if (userId != null) {
       ref.read(profileProvider.notifier).loadProfile(userId);
     }
+  }
+
+  bool get _isViewingOwnProfile {
+    final currentUserId = ref.currentUserId;
+    final viewedUserId = widget.viewedUserId;
+    return viewedUserId == null || viewedUserId == currentUserId;
+  }
+
+  Future<void> _blockUser() async {
+    final currentUserId = ref.currentUserId;
+    final viewedUserId = widget.viewedUserId;
+    
+    if (currentUserId == null || viewedUserId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حظر المستخدم'),
+        content: const Text('هل تريد حظر هذا المستخدم؟ لن يتمكن من التواصل معك أو رؤية ملفك الشخصي.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('حظر'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(moderationProvider.notifier).blockUser(currentUserId, viewedUserId);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حظر المستخدم')),
+        );
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
+  void _reportUser() {
+    final currentUserId = ref.currentUserId;
+    final viewedUserId = widget.viewedUserId;
+    
+    if (currentUserId == null || viewedUserId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: ReportBottomSheet(
+          reporterId: currentUserId,
+          reportedUserId: viewedUserId,
+          reportType: ReportType.user,
+        ),
+      ),
+    );
   }
 
   @override
@@ -196,11 +267,56 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       appBar: AppBar(
         title: const Text('الملف الشخصي'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.link),
-            onPressed: _generateAnonymousLink,
-            tooltip: 'توليد رابط مجهول',
-          ),
+          if (_isViewingOwnProfile) ...[
+            IconButton(
+              icon: const Icon(Icons.link),
+              onPressed: _generateAnonymousLink,
+              tooltip: 'توليد رابط مجهول',
+            ),
+            IconButton(
+              icon: const Icon(Icons.block),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => const BlockedUsersScreen(),
+                  ),
+                );
+              },
+              tooltip: 'المستخدمون المحظورون',
+            ),
+          ] else ...[
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'block') {
+                  _blockUser();
+                } else if (value == 'report') {
+                  _reportUser();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'block',
+                  child: Row(
+                    children: [
+                      Icon(Icons.block, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('حظر المستخدم'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'report',
+                  child: Row(
+                    children: [
+                      Icon(Icons.flag, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Text('الإبلاغ عن المستخدم'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
       body: profileState.isLoading && profile == null

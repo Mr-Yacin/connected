@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/models/enums.dart';
+import '../../../moderation/presentation/providers/moderation_provider.dart';
+import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input_bar.dart';
@@ -20,6 +23,55 @@ class ChatScreen extends ConsumerWidget {
     this.otherUserName,
     this.otherUserImageUrl,
   });
+
+  Future<void> _blockUser(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حظر المستخدم'),
+        content: const Text('هل تريد حظر هذا المستخدم؟ لن يتمكن من التواصل معك.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('حظر'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(moderationProvider.notifier).blockUser(currentUserId, otherUserId);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم حظر المستخدم')),
+        );
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
+  void _reportUser(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: ReportBottomSheet(
+          reporterId: currentUserId,
+          reportedUserId: otherUserId,
+          reportType: ReportType.user,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -50,11 +102,36 @@ class ChatScreen extends ConsumerWidget {
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // Show options menu
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'block') {
+                _blockUser(context, ref);
+              } else if (value == 'report') {
+                _reportUser(context);
+              }
             },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'block',
+                child: Row(
+                  children: [
+                    Icon(Icons.block, color: Colors.red),
+                    SizedBox(width: 8),
+                    Text('حظر المستخدم'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'report',
+                child: Row(
+                  children: [
+                    Icon(Icons.flag, color: Colors.orange),
+                    SizedBox(width: 8),
+                    Text('الإبلاغ عن المستخدم'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
