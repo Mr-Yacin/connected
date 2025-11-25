@@ -6,6 +6,7 @@ import '../../../../core/models/message.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/chat_repository.dart';
+import '../../../../services/error_logging_service.dart';
 
 /// Firestore implementation of ChatRepository
 class FirestoreChatRepository implements ChatRepository {
@@ -35,7 +36,54 @@ class FirestoreChatRepository implements ChatRepository {
             .map((doc) => Message.fromJson(doc.data()))
             .toList();
       });
-    } catch (e) {
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get messages stream',
+        screen: 'ChatScreen',
+        operation: 'getMessages',
+        collection: 'chats/$chatId/messages',
+      );
+      throw AppException('فشل في جلب الرسائل: $e');
+    }
+  }
+
+  @override
+  Stream<List<Message>> getMessagesPaginated({
+    required String chatId,
+    int limit = 50,
+    DateTime? lastMessageTimestamp,
+  }) {
+    try {
+      var query = _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('timestamp', descending: true)
+          .limit(limit);
+
+      // If we have a last message timestamp, start after it
+      if (lastMessageTimestamp != null) {
+        query = query.startAfter([Timestamp.fromDate(lastMessageTimestamp)]);
+      }
+
+      return query.snapshots().map((snapshot) {
+        final messages = snapshot.docs
+            .map((doc) => Message.fromJson(doc.data()))
+            .toList();
+        // Reverse to show oldest first
+        return messages.reversed.toList();
+      });
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get paginated messages',
+        screen: 'ChatScreen',
+        operation: 'getMessagesPaginated',
+        collection: 'chats/$chatId/messages',
+      );
       throw AppException('فشل في جلب الرسائل: $e');
     }
   }
@@ -76,9 +124,24 @@ class FirestoreChatRepository implements ChatRepository {
         lastMessage: text,
         lastMessageTime: message.timestamp,
       );
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to send text message',
+        screen: 'ChatScreen',
+        operation: 'sendTextMessage',
+        collection: 'chats/$chatId/messages',
+      );
       throw AppException('فشل في إرسال الرسالة: ${e.message}');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error sending text message',
+        screen: 'ChatScreen',
+        operation: 'sendTextMessage',
+      );
       throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
@@ -122,9 +185,23 @@ class FirestoreChatRepository implements ChatRepository {
         lastMessage: '🎤 رسالة صوتية',
         lastMessageTime: message.timestamp,
       );
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logStorageError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to send voice message',
+        screen: 'ChatScreen',
+        operation: 'sendVoiceMessage',
+      );
       throw AppException('فشل في إرسال الرسالة الصوتية: ${e.message}');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error sending voice message',
+        screen: 'ChatScreen',
+        operation: 'sendVoiceMessage',
+      );
       throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
@@ -138,9 +215,25 @@ class FirestoreChatRepository implements ChatRepository {
           .collection('messages')
           .doc(messageId)
           .update({'isRead': true});
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to mark message as read',
+        screen: 'ChatScreen',
+        operation: 'markAsRead',
+        collection: 'chats/$chatId/messages',
+        documentId: messageId,
+      );
       throw AppException('فشل في تحديث حالة الرسالة: ${e.message}');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error marking message as read',
+        screen: 'ChatScreen',
+        operation: 'markAsRead',
+      );
       throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
@@ -193,9 +286,24 @@ class FirestoreChatRepository implements ChatRepository {
       }
 
       return chatPreviews;
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get chat list',
+        screen: 'ChatListScreen',
+        operation: 'getChatList',
+        collection: 'chats',
+      );
       throw AppException('فشل في جلب قائمة المحادثات: ${e.message}');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error getting chat list',
+        screen: 'ChatListScreen',
+        operation: 'getChatList',
+      );
       throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
@@ -210,7 +318,15 @@ class FirestoreChatRepository implements ChatRepository {
       final downloadUrl = await uploadTask.ref.getDownloadURL();
 
       return downloadUrl;
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logStorageError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to upload voice message',
+        screen: 'ChatScreen',
+        operation: '_uploadVoiceMessage',
+        filePath: 'voice_messages/$chatId',
+      );
       throw AppException('فشل في رفع الرسالة الصوتية: ${e.message}');
     }
   }
@@ -230,7 +346,16 @@ class FirestoreChatRepository implements ChatRepository {
         'lastMessageTime': Timestamp.fromDate(lastMessageTime),
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-    } on FirebaseException catch (e) {
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to update chat metadata',
+        screen: 'ChatScreen',
+        operation: '_updateChatMetadata',
+        collection: 'chats',
+        documentId: chatId,
+      );
       throw AppException('فشل في تحديث بيانات المحادثة: ${e.message}');
     }
   }

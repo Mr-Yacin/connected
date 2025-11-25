@@ -383,7 +383,7 @@
 
   - التأكد من نجاح جميع الاختبارات، استشر المستخدم إذا ظهرت أسئلة.
 
-- [-] 15. تنفيذ إدارة البيانات والإعدادات
+- [x] 15. تنفيذ إدارة البيانات والإعدادات
 
 
 
@@ -411,7 +411,7 @@
   - **Property 24: User preferences persistence**
   - **Validates: Requirements 7.4**
 
-- [ ] 15.5 بناء واجهة المستخدم للإعدادات
+- [x] 15.5 بناء واجهة المستخدم للإعدادات
 
 
   - إنشاء SettingsScreen
@@ -421,31 +421,31 @@
   - إضافة Delete Account button مع تأكيد
   - _Requirements: 7.4, 8.3_
 
-- [ ] 16. إعداد قواعد الأمان في Firebase
+- [x] 16. إعداد قواعد الأمان في Firebase
 
-- [ ] 16.1 كتابة Firestore Security Rules
+- [x] 16.1 كتابة Firestore Security Rules
   - قواعد users collection
   - قواعد chats و messages collections
   - قواعد stories collection
   - قواعد reports و blocks collections
   - _Requirements: 8.4_
 
-- [ ] 16.2 كتابة Storage Security Rules
+- [x] 16.2 كتابة Storage Security Rules
   - قواعد profile_images
   - قواعد voice_messages
   - قواعد stories media
   - تحديد أحجام الملفات المسموحة
   - _Requirements: 8.2, 8.4_
 
-- [ ] 17. بناء الشاشة الرئيسية والتنقل
+- [x] 17. بناء الشاشة الرئيسية والتنقل
 
-- [ ] 17.1 إنشاء HomeScreen
+- [x] 17.1 إنشاء HomeScreen
   - إضافة StoryBarWidget في الأعلى
   - إضافة navigation bar في الأسفل
   - دمج جميع الوحدات (Chat, Discovery, Profile)
   - _Requirements: 5.4_
 
-- [ ] 17.2 إعداد Navigation
+- [x] 17.2 إعداد Navigation
   - إنشاء AppRouter باستخدام go_router
   - إعداد deep linking للروابط المجهولة
   - إعداد auth guards للشاشات المحمية

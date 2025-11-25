@@ -12,11 +12,11 @@ class StoryViewScreen extends ConsumerStatefulWidget {
   final String currentUserId;
 
   const StoryViewScreen({
-    Key? key,
+    super.key,
     required this.stories,
     required this.initialIndex,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<StoryViewScreen> createState() => _StoryViewScreenState();

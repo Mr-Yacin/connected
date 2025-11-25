@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/models/enums.dart';
@@ -27,6 +28,58 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
+class _DebugStatus extends StatelessWidget {
+  final ProfileState profileState;
+  final String? currentUserId;
+  final String? viewedUserId;
+  final bool? hasLoadedProfile;
+  final bool? fetchInProgress;
+
+  const _DebugStatus({
+    required this.profileState,
+    required this.currentUserId,
+    required this.viewedUserId,
+    this.hasLoadedProfile,
+    this.fetchInProgress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final profileSummary = profileState.profile != null
+        ? profileState.profile!.toJson().toString()
+        : 'No profile loaded';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          'معلومات التصحيح',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        Text('isLoading: ${profileState.isLoading}'),
+        Text('isUploading: ${profileState.isUploading}'),
+        Text('hasLoadedProfile: $hasLoadedProfile'),
+        Text('fetchInProgress: $fetchInProgress'),
+        Text('profile == null: ${profileState.profile == null}'),
+        Text('currentUserId: $currentUserId'),
+        Text('viewedUserId: $viewedUserId'),
+        if (profileState.error != null)
+          Text(
+            'error: ${profileState.error}',
+            style: const TextStyle(color: Colors.red),
+          ),
+        const SizedBox(height: 8),
+        Text(
+          profileSummary,
+          style: const TextStyle(fontSize: 12, color: Colors.black54),
+        ),
+      ],
+    );
+  }
+}
+
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -37,19 +90,60 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final ImagePicker _imagePicker = ImagePicker();
   File? _selectedImage;
   bool _isImageBlurred = false;
+  bool _hasLoadedProfile = false;
+  bool _profileFetchInProgress = false;
+  bool _showDebugPanel = false;
+  bool _profileLoadScheduled = false;
 
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    // Listen for user changes to load profile once user is available
+    // We do this in a post-frame callback to avoid state errors during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_hasLoadedProfile) {
+        _checkAndLoadProfile();
+      }
+    });
   }
 
-  void _loadProfile() {
-    final userId = widget.viewedUserId ?? ref.currentUserId;
-    if (userId != null) {
-      ref.read(profileProvider.notifier).loadProfile(userId);
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_hasLoadedProfile && !_profileFetchInProgress && !_profileLoadScheduled) {
+      _profileLoadScheduled = true;
+      Future.microtask(() async {
+        _profileLoadScheduled = false;
+        await _checkAndLoadProfile();
+      });
     }
   }
+
+  Future<void> _checkAndLoadProfile({String? userId}) async {
+    if (_profileFetchInProgress) return;
+
+    final resolvedUserId = userId ??
+        widget.viewedUserId ??
+        ref.read(currentUserProvider).value?.uid ??
+        FirebaseAuth.instance.currentUser?.uid;
+
+    debugPrint("DEBUG: _checkAndLoadProfile called. userId: $resolvedUserId");
+
+    if (resolvedUserId == null) {
+      debugPrint("DEBUG: userId is null, cannot load profile");
+      return;
+    }
+
+    _profileFetchInProgress = true;
+    try {
+      await ref.read(profileProvider.notifier).loadProfile(resolvedUserId);
+      _hasLoadedProfile = true;
+    } finally {
+      _profileFetchInProgress = false;
+    }
+  }
+
+
 
   bool get _isViewingOwnProfile {
     final currentUserId = ref.currentUserId;
@@ -169,6 +263,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
 
       if (mounted) {
+        // Clear the selected image after successful upload
+        setState(() {
+          _selectedImage = null;
+        });
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('تم رفع الصورة بنجاح')),
         );
@@ -201,6 +300,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
 
       await ref.read(profileProvider.notifier).updateProfile(updatedProfile);
+      
+      // Reload the profile from Firestore to ensure we have the latest data
+      await ref.read(profileProvider.notifier).loadProfile(userId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -251,6 +353,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for user changes
+    ref.listen<AsyncValue<User?>>(currentUserProvider, (previous, next) {
+      next.whenData((user) {
+        if (user != null && !_hasLoadedProfile) {
+          _checkAndLoadProfile(userId: user.uid);
+        }
+      });
+    });
+
     final profileState = ref.watch(profileProvider);
     final profile = profileState.profile;
 
@@ -320,7 +431,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
       body: profileState.isLoading && profile == null
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+              child: _DebugStatus(
+                profileState: profileState,
+                currentUserId: ref.currentUserId,
+                viewedUserId: widget.viewedUserId,
+                hasLoadedProfile: _hasLoadedProfile,
+                fetchInProgress: _profileFetchInProgress,
+              ),
+            )
           : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
               child: Form(
@@ -328,6 +447,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _showDebugPanel = !_showDebugPanel;
+                          });
+                        },
+                        icon: const Icon(Icons.bug_report),
+                        label: Text(_showDebugPanel ? 'إخفاء معلومات التصحيح' : 'عرض معلومات التصحيح'),
+                      ),
+                    ),
+                    if (_showDebugPanel)
+                      Card(
+                        color: Colors.grey.shade100,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: _DebugStatus(
+                            profileState: profileState,
+                            currentUserId: ref.currentUserId,
+                            viewedUserId: widget.viewedUserId,
+                            hasLoadedProfile: _hasLoadedProfile,
+                            fetchInProgress: _profileFetchInProgress,
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 12),
                     // Profile Image Section
                     Center(
                       child: Stack(

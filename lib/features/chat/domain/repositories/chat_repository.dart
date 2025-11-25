@@ -6,6 +6,15 @@ abstract class ChatRepository {
   /// Get messages stream for real-time updates
   Stream<List<Message>> getMessages(String chatId);
   
+  /// Get paginated messages for a chat
+  /// Returns a stream of messages limited by [limit]
+  /// Use [lastMessageTimestamp] to load older messages
+  Stream<List<Message>> getMessagesPaginated({
+    required String chatId,
+    int limit = 50,
+    DateTime? lastMessageTimestamp,
+  });
+  
   /// Send a text message
   Future<void> sendTextMessage({
     required String chatId,

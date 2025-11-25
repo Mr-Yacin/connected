@@ -60,9 +60,22 @@ dependencies:
   
   # Preferences
   shared_preferences: ^2.2.2
+  
+  # Navigation
+  go_router: ^14.6.2
+  
+  # Performance
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  
+  # Connectivity
+  connectivity_plus: ^6.0.3
+  faker: ^2.0.0
 
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to

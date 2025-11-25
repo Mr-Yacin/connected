@@ -1,1 +1,31 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"social-connect-app-57fc0","appId":"1:824351762320:android:b89980f6dccf58ceeef515","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"social-connect-app-57fc0","configurations":{"android":"1:824351762320:android:b89980f6dccf58ceeef515","ios":"1:824351762320:ios:0c22062a8c40ec59eef515","macos":"1:824351762320:ios:0c22062a8c40ec59eef515","web":"1:824351762320:web:3801db80024e71caeef515","windows":"1:824351762320:web:de9477599bf24550eef515"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "social-connect-app-57fc0",
+          "appId": "1:824351762320:android:b89980f6dccf58ceeef515",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "social-connect-app-57fc0",
+          "configurations": {
+            "android": "1:824351762320:android:b89980f6dccf58ceeef515",
+            "ios": "1:824351762320:ios:0c22062a8c40ec59eef515",
+            "macos": "1:824351762320:ios:0c22062a8c40ec59eef515",
+            "web": "1:824351762320:web:3801db80024e71caeef515",
+            "windows": "1:824351762320:web:de9477599bf24550eef515"
+          }
+        }
+      }
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

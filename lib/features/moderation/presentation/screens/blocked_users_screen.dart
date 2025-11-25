@@ -6,7 +6,7 @@ import '../providers/moderation_provider.dart';
 
 /// Screen for managing blocked users
 class BlockedUsersScreen extends ConsumerWidget {
-  const BlockedUsersScreen({Key? key}) : super(key: key);
+  const BlockedUsersScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

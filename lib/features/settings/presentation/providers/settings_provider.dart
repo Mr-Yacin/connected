@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../services/preferences_service.dart';
 import '../../../../services/user_data_service.dart';
-import '../../../../core/exceptions/app_exceptions.dart';
 
 /// Provider for PreferencesService
 final preferencesServiceProvider = Provider<PreferencesService>((ref) {

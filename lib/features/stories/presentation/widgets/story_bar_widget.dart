@@ -10,9 +10,9 @@ class StoryBarWidget extends ConsumerWidget {
   final String currentUserId;
 
   const StoryBarWidget({
-    Key? key,
+    super.key,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

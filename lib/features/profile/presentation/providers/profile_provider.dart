@@ -100,26 +100,45 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
   /// Generate anonymous link
   Future<String> generateAnonymousLink(String userId) async {
-    state = state.copyWith(isLoading: true, error: null);
-    
     try {
+      // If we already have the profile in memory and it contains a link,
+      // reuse it instead of generating a new one.
+      if (state.profile?.anonymousLink != null) {
+        return state.profile!.anonymousLink!;
+      }
+
+      // Ensure we have the latest profile from Firestore before generating
+      // a new link. This avoids creating duplicates when the provider
+      // hasn't finished loading yet.
+      if (state.profile == null) {
+        try {
+          final latestProfile = await _repository.getProfile(userId);
+          state = state.copyWith(profile: latestProfile);
+
+          if (latestProfile.anonymousLink != null) {
+            return latestProfile.anonymousLink!;
+          }
+        } catch (_) {
+          // If fetching the profile fails (e.g., poor connectivity),
+          // we still allow the user to generate a link so the main action succeeds.
+        }
+      }
+
       final link = await _repository.generateAnonymousLink(userId);
       
       // Update profile with the new link
       if (state.profile != null) {
         final updatedProfile = state.profile!.copyWith(anonymousLink: link);
         await _repository.updateProfile(updatedProfile);
-        state = state.copyWith(profile: updatedProfile, isLoading: false);
-      } else {
-        state = state.copyWith(isLoading: false);
+        state = state.copyWith(profile: updatedProfile);
       }
       
       return link;
     } on AppException catch (e) {
-      state = state.copyWith(error: e.message, isLoading: false);
+      state = state.copyWith(error: e.message);
       rethrow;
     } catch (e) {
-      state = state.copyWith(error: 'حدث خطأ غير متوقع', isLoading: false);
+      state = state.copyWith(error: 'حدث خطأ غير متوقع');
       rethrow;
     }
   }

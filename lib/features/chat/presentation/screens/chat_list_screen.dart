@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/widgets/loading_state_widget.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../providers/chat_provider.dart';
 import 'chat_screen.dart';
@@ -79,8 +80,9 @@ class ChatListScreen extends ConsumerWidget {
             ),
           );
         },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
+        loading: () => ListView.builder(
+          itemCount: 10,
+          itemBuilder: (context, index) => const ShimmerListItem(),
         ),
         error: (error, stack) => Center(
           child: Column(

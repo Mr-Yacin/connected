@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../../../services/error_logging_service.dart';
 
 class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _firebaseAuth;
@@ -63,9 +64,12 @@ class FirebaseAuthRepository implements AuthRepository {
           }
         },
         verificationFailed: (FirebaseAuthException e) {
-          if (kDebugMode) {
-            print('Verification failed: ${e.code} - ${e.message}');
-          }
+          ErrorLoggingService.logAuthError(
+            e,
+            context: 'Phone verification failed',
+            screen: 'PhoneInputScreen',
+            operation: 'verifyPhoneNumber',
+          );
           if (!completer.isCompleted) {
             completer.completeError(
               AuthException(
@@ -108,10 +112,14 @@ class FirebaseAuthRepository implements AuthRepository {
       rethrow;
     } on AuthException {
       rethrow;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error sending OTP: $e');
-      }
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logAuthError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to send OTP',
+        screen: 'PhoneInputScreen',
+        operation: 'sendOtp',
+      );
       throw AuthException('حدث خطأ أثناء إرسال رمز التحقق');
     }
   }
@@ -144,10 +152,14 @@ class FirebaseAuthRepository implements AuthRepository {
       }
 
       return userCredential;
-    } on FirebaseAuthException catch (e) {
-      if (kDebugMode) {
-        print('Verification error: ${e.code} - ${e.message}');
-      }
+    } on FirebaseAuthException catch (e, stackTrace) {
+      ErrorLoggingService.logAuthError(
+        e,
+        stackTrace: stackTrace,
+        context: 'OTP verification failed',
+        screen: 'OtpVerificationScreen',
+        operation: 'verifyOtp',
+      );
 
       // Record failed attempt
       if (e.code == 'invalid-verification-code') {
@@ -161,10 +173,14 @@ class FirebaseAuthRepository implements AuthRepository {
       );
     } on ValidationException {
       rethrow;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error verifying OTP: $e');
-      }
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logAuthError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error during OTP verification',
+        screen: 'OtpVerificationScreen',
+        operation: 'verifyOtp',
+      );
       throw AuthException('حدث خطأ أثناء التحقق من الرمز');
     }
   }
@@ -173,10 +189,14 @@ class FirebaseAuthRepository implements AuthRepository {
   Future<void> signOut() async {
     try {
       await _firebaseAuth.signOut();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error signing out: $e');
-      }
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logAuthError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to sign out',
+        screen: 'SettingsScreen',
+        operation: 'signOut',
+      );
       throw AuthException('حدث خطأ أثناء تسجيل الخروج');
     }
   }

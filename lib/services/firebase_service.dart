@@ -1,6 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import '../firebase_options.dart';
+import 'error_logging_service.dart';
 
 class FirebaseService {
   static Future<void> initialize() async {
@@ -8,13 +8,14 @@ class FirebaseService {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
-      if (kDebugMode) {
-        print('Firebase initialized successfully');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error initializing Firebase: $e');
-      }
+      ErrorLoggingService.logInitializationSuccess();
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logConnectionError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Firebase initialization failed',
+        screen: 'App Startup',
+      );
       rethrow;
     }
   }

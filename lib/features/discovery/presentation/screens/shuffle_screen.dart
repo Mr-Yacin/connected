@@ -8,7 +8,7 @@ import '../widgets/filter_bottom_sheet.dart';
 
 /// Screen for discovering random users (Shuffle feature)
 class ShuffleScreen extends ConsumerStatefulWidget {
-  const ShuffleScreen({Key? key}) : super(key: key);
+  const ShuffleScreen({super.key});
 
   @override
   ConsumerState<ShuffleScreen> createState() => _ShuffleScreenState();

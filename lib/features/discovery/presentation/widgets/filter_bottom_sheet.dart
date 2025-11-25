@@ -9,10 +9,10 @@ class FilterBottomSheet extends StatefulWidget {
   final Function(DiscoveryFilters) onApply;
 
   const FilterBottomSheet({
-    Key? key,
+    super.key,
     required this.initialFilters,
     required this.onApply,
-  }) : super(key: key);
+  });
 
   @override
   State<FilterBottomSheet> createState() => _FilterBottomSheetState();

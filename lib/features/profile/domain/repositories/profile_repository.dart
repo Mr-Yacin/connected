@@ -14,4 +14,13 @@ abstract class ProfileRepository {
   
   /// Generate a unique anonymous link for the user
   Future<String> generateAnonymousLink(String userId);
+  
+  /// Create a new user profile
+  Future<void> createProfile(UserProfile profile);
+
+  /// Check if a profile exists
+  Future<bool> profileExists(String userId);
+
+  /// Get user profile by anonymous link
+  Future<UserProfile> getProfileByAnonymousLink(String anonymousLink);
 }

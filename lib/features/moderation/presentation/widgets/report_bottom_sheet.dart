@@ -12,12 +12,12 @@ class ReportBottomSheet extends ConsumerStatefulWidget {
   final String? reportedContentId;
 
   const ReportBottomSheet({
-    Key? key,
+    super.key,
     required this.reporterId,
     required this.reportedUserId,
     required this.reportType,
     this.reportedContentId,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<ReportBottomSheet> createState() => _ReportBottomSheetState();

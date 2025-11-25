@@ -10,12 +10,12 @@ class UserCard extends StatelessWidget {
   final VoidCallback? onChat;
 
   const UserCard({
-    Key? key,
+    super.key,
     required this.user,
     this.onLike,
     this.onSkip,
     this.onChat,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -144,11 +144,11 @@ class _ActionButton extends StatelessWidget {
   final VoidCallback? onPressed;
 
   const _ActionButton({
-    Key? key,
+    super.key,
     required this.icon,
     required this.color,
     this.onPressed,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

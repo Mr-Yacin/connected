@@ -10,6 +10,14 @@ abstract class StoryRepository {
   /// Stories are ordered by createdAt descending (newest first)
   Stream<List<Story>> getActiveStories();
 
+  /// Get paginated active stories
+  /// Returns a stream of stories limited by [limit]
+  /// Use [lastStoryCreatedAt] to load older stories
+  Stream<List<Story>> getActiveStoriesPaginated({
+    int limit = 20,
+    DateTime? lastStoryCreatedAt,
+  });
+
   /// Delete expired stories (stories older than 24 hours)
   /// Returns the number of stories deleted
   Future<int> deleteExpiredStories();

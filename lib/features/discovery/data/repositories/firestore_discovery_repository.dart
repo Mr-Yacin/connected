@@ -1,9 +1,10 @@
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../core/models/discovery_filters.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/discovery_repository.dart';
+import '../../../../services/error_logging_service.dart';
+import 'dart:math';
 
 /// Firestore implementation of DiscoveryRepository
 class FirestoreDiscoveryRepository implements DiscoveryRepository {
@@ -22,19 +23,28 @@ class FirestoreDiscoveryRepository implements DiscoveryRepository {
     DiscoveryFilters filters,
   ) async {
     try {
-      // Get filtered users
       final users = await getFilteredUsers(currentUserId, filters);
+      if (users.isEmpty) return null;
       
-      if (users.isEmpty) {
-        return null;
-      }
-      
-      // Return a random user from the filtered list
-      final randomIndex = _random.nextInt(users.length);
-      return users[randomIndex];
-    } on FirebaseException catch (e) {
+      return users[_random.nextInt(users.length)];
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get random user',
+        screen: 'ShuffleScreen',
+        operation: 'getRandomUser',
+        collection: 'users',
+      );
       throw AppException('فشل في جلب مستخدم عشوائي: ${e.message}');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error getting random user',
+        screen: 'ShuffleScreen',
+        operation: 'getRandomUser',
+      );
       throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
@@ -45,67 +55,65 @@ class FirestoreDiscoveryRepository implements DiscoveryRepository {
     DiscoveryFilters filters,
   ) async {
     try {
-      // Get blocked users for the current user
-      final blockedUserIds = await _getBlockedUserIds(currentUserId);
-      
-      // Start with base query
-      Query<Map<String, dynamic>> query = _firestore.collection('users');
-      
+      Query query = _firestore
+          .collection('users')
+          .where('id', isNotEqualTo: currentUserId)
+          .where('isActive', isEqualTo: true);
+
       // Apply country filter
-      if (filters.country != null) {
+      if (filters.country != null && filters.country!.isNotEmpty) {
         query = query.where('country', isEqualTo: filters.country);
       }
-      
+
       // Apply dialect filter
-      if (filters.dialect != null) {
+      if (filters.dialect != null && filters.dialect!.isNotEmpty) {
         query = query.where('dialect', isEqualTo: filters.dialect);
       }
-      
-      // Apply age filters
-      if (filters.minAge != null) {
-        query = query.where('age', isGreaterThanOrEqualTo: filters.minAge);
-      }
-      if (filters.maxAge != null) {
-        query = query.where('age', isLessThanOrEqualTo: filters.maxAge);
-      }
-      
-      // Execute query
-      final snapshot = await query.get();
-      
-      // Convert to UserProfile and apply exclusion filters
-      final allExcludedIds = {
-        currentUserId, // Exclude current user
-        ...blockedUserIds, // Exclude blocked users
-        ...filters.excludedUserIds, // Exclude specified users
-      };
-      
-      final users = snapshot.docs
-          .map((doc) => UserProfile.fromJson(doc.data()))
-          .where((user) => !allExcludedIds.contains(user.id))
-          .toList();
-      
-      return users;
-    } on FirebaseException catch (e) {
-      throw AppException('فشل في جلب المستخدمين: ${e.message}');
-    } catch (e) {
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
-  }
 
-  /// Get list of user IDs that the current user has blocked
-  Future<Set<String>> _getBlockedUserIds(String currentUserId) async {
-    try {
-      final snapshot = await _firestore
-          .collection('blocks')
-          .where('blockerId', isEqualTo: currentUserId)
-          .get();
-      
-      return snapshot.docs
-          .map((doc) => doc.data()['blockedUserId'] as String)
-          .toSet();
-    } catch (e) {
-      // If blocks collection doesn't exist or error occurs, return empty set
-      return {};
+      query = query.limit(100); // Get a reasonable batch
+
+      final snapshot = await query.get();
+      var profiles = snapshot.docs
+          .map((doc) => UserProfile.fromJson(doc.data() as Map<String, dynamic>))
+          .toList();
+
+      // Apply age filter (client-side since Firestore doesn't support range queries well)
+      if (filters.minAge != null || filters.maxAge != null) {
+        profiles = profiles.where((profile) {
+          if (profile.age == null) return false;
+          if (filters.minAge != null && profile.age! < filters.minAge!) return false;
+          if (filters.maxAge != null && profile.age! > filters.maxAge!) return false;
+          return true;
+        }).toList();
+      }
+
+      // Exclude specified user IDs
+      if (filters.excludedUserIds.isNotEmpty) {
+        profiles = profiles.where((profile) {
+          return !filters.excludedUserIds.contains(profile.id);
+        }).toList();
+      }
+
+      return profiles;
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get filtered users',
+        screen: 'ShuffleScreen',
+        operation: 'getFilteredUsers',
+        collection: 'users',
+      );
+      throw AppException('فشل في جلب المستخدمين: ${e.message}');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error getting filtered users',
+        screen: 'ShuffleScreen',
+        operation: 'getFilteredUsers',
+      );
+      throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
 }

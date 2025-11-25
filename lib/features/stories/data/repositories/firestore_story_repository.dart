@@ -1,41 +1,57 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:uuid/uuid.dart';
 import '../../../../core/models/story.dart';
+import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/story_repository.dart';
+import '../../../../services/error_logging_service.dart';
 
 /// Firestore implementation of StoryRepository
 class FirestoreStoryRepository implements StoryRepository {
   final FirebaseFirestore _firestore;
-  static const String _storiesCollection = 'stories';
+  final FirebaseStorage _storage;
+  final Uuid _uuid;
 
-  FirestoreStoryRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+  FirestoreStoryRepository({
+    FirebaseFirestore? firestore,
+    FirebaseStorage? storage,
+    Uuid? uuid,
+  })  : _firestore = firestore ?? FirebaseFirestore.instance,
+        _storage = storage ?? FirebaseStorage.instance,
+        _uuid = uuid ?? const Uuid();
 
   @override
   Future<Story> createStory(Story story) async {
     try {
-      // Generate ID if not provided
-      final docRef = story.id.isEmpty
-          ? _firestore.collection(_storiesCollection).doc()
-          : _firestore.collection(_storiesCollection).doc(story.id);
+      final storyId = story.id.isEmpty ? _uuid.v4() : story.id;
+      final storyPayload = story.copyWith(id: storyId);
 
-      // Create story with generated ID and 24-hour expiration
-      final now = DateTime.now();
-      final expiresAt = now.add(const Duration(hours: 24));
-
-      final newStory = Story(
-        id: docRef.id,
-        userId: story.userId,
-        mediaUrl: story.mediaUrl,
-        type: story.type,
-        createdAt: now,
-        expiresAt: expiresAt,
-        viewerIds: [],
+      // Save story to Firestore
+      await _firestore
+          .collection('stories')
+          .doc(storyId)
+          .set(storyPayload.toJson());
+      
+      return storyPayload;
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to create story',
+        screen: 'StoryCreationScreen',
+        operation: 'createStory',
+        collection: 'stories',
       );
-
-      await docRef.set(newStory.toJson());
-      return newStory;
-    } catch (e) {
-      throw Exception('Failed to create story: $e');
+      throw AppException('فشل في إنشاء القصة: ${e.message}');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error creating story',
+        screen: 'StoryCreationScreen',
+        operation: 'createStory',
+      );
+      throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
 
@@ -43,21 +59,65 @@ class FirestoreStoryRepository implements StoryRepository {
   Stream<List<Story>> getActiveStories() {
     try {
       final now = DateTime.now();
+      final twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
 
       return _firestore
-          .collection(_storiesCollection)
-          .where('expiresAt', isGreaterThan: now.toIso8601String())
-          .orderBy('expiresAt')
+          .collection('stories')
+          .where('createdAt', isGreaterThan: twentyFourHoursAgo.toIso8601String())
           .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
         return snapshot.docs
             .map((doc) => Story.fromJson(doc.data()))
-            .where((story) => !story.isExpired) // Additional client-side filter
             .toList();
       });
-    } catch (e) {
-      throw Exception('Failed to get active stories: $e');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get active stories stream',
+        screen: 'HomeScreen',
+        operation: 'getActiveStories',
+        collection: 'stories',
+      );
+      throw AppException('فشل في جلب القصص: $e');
+    }
+  }
+
+  @override
+  Stream<List<Story>> getActiveStoriesPaginated({
+    int limit = 20,
+    DateTime? lastStoryCreatedAt,
+  }) {
+    try {
+      final now = DateTime.now();
+      final twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
+
+      var query = _firestore
+          .collection('stories')
+          .where('createdAt', isGreaterThan: twentyFourHoursAgo.toIso8601String())
+          .orderBy('createdAt', descending: true)
+          .limit(limit);
+
+      if (lastStoryCreatedAt != null) {
+        query = query.startAfter([lastStoryCreatedAt.toIso8601String()]);
+      }
+
+      return query.snapshots().map((snapshot) {
+        return snapshot.docs
+            .map((doc) => Story.fromJson(doc.data()))
+            .toList();
+      });
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get paginated active stories',
+        screen: 'HomeScreen',
+        operation: 'getActiveStoriesPaginated',
+        collection: 'stories',
+      );
+      throw AppException('فشل في جلب القصص: $e');
     }
   }
 
@@ -65,40 +125,79 @@ class FirestoreStoryRepository implements StoryRepository {
   Future<int> deleteExpiredStories() async {
     try {
       final now = DateTime.now();
-      final querySnapshot = await _firestore
-          .collection(_storiesCollection)
-          .where('expiresAt', isLessThanOrEqualTo: now.toIso8601String())
+      final twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
+
+      final snapshot = await _firestore
+          .collection('stories')
+          .where('createdAt', isLessThan: twentyFourHoursAgo.toIso8601String())
           .get();
 
       int deletedCount = 0;
-      final batch = _firestore.batch();
-
-      for (var doc in querySnapshot.docs) {
-        batch.delete(doc.reference);
+      for (final doc in snapshot.docs) {
+        final story = Story.fromJson(doc.data());
+        
+        // Delete media from storage
+        try {
+          final ref = _storage.refFromURL(story.mediaUrl);
+          await ref.delete();
+        } catch (e) {
+          // Media might already be deleted, continue
+        }
+        
+        // Delete story document
+        await doc.reference.delete();
         deletedCount++;
       }
 
-      if (deletedCount > 0) {
-        await batch.commit();
-      }
-
       return deletedCount;
-    } catch (e) {
-      throw Exception('Failed to delete expired stories: $e');
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to delete expired stories',
+        screen: 'Background Service',
+        operation: 'deleteExpiredStories',
+        collection: 'stories',
+      );
+      throw AppException('فشل في حذف القصص المنتهية: ${e.message}');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error deleting expired stories',
+        screen: 'Background Service',
+        operation: 'deleteExpiredStories',
+      );
+      throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
 
   @override
   Future<void> recordView(String storyId, String viewerId) async {
     try {
-      final docRef = _firestore.collection(_storiesCollection).doc(storyId);
-
-      // Use arrayUnion to add viewerId only if it doesn't exist
-      await docRef.update({
+      await _firestore.collection('stories').doc(storyId).update({
         'viewerIds': FieldValue.arrayUnion([viewerId]),
       });
-    } catch (e) {
-      throw Exception('Failed to record view: $e');
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to record story view',
+        screen: 'StoryViewScreen',
+        operation: 'recordView',
+        collection: 'stories',
+        documentId: storyId,
+      );
+      throw AppException('فشل في تسجيل المشاهدة: ${e.message}');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error recording story view',
+        screen: 'StoryViewScreen',
+        operation: 'recordView',
+      );
+      throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
 
@@ -106,31 +205,78 @@ class FirestoreStoryRepository implements StoryRepository {
   Stream<List<Story>> getUserStories(String userId) {
     try {
       final now = DateTime.now();
+      final twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
 
       return _firestore
-          .collection(_storiesCollection)
+          .collection('stories')
           .where('userId', isEqualTo: userId)
-          .where('expiresAt', isGreaterThan: now.toIso8601String())
-          .orderBy('expiresAt')
+          .where('createdAt', isGreaterThan: twentyFourHoursAgo.toIso8601String())
           .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
         return snapshot.docs
             .map((doc) => Story.fromJson(doc.data()))
-            .where((story) => !story.isExpired)
             .toList();
       });
-    } catch (e) {
-      throw Exception('Failed to get user stories: $e');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get user stories',
+        screen: 'ProfileScreen',
+        operation: 'getUserStories',
+        collection: 'stories',
+      );
+      throw AppException('فشل في جلب قصص المستخدم: $e');
     }
   }
 
   @override
   Future<void> deleteStory(String storyId) async {
     try {
-      await _firestore.collection(_storiesCollection).doc(storyId).delete();
-    } catch (e) {
-      throw Exception('Failed to delete story: $e');
+      // Get story to find media URL
+      final storyDoc = await _firestore.collection('stories').doc(storyId).get();
+      if (storyDoc.exists) {
+        final story = Story.fromJson(storyDoc.data()!);
+        
+        // Delete media from storage
+        try {
+          final ref = _storage.refFromURL(story.mediaUrl);
+          await ref.delete();
+        } catch (e) {
+          // Media might already be deleted, continue with story deletion
+          ErrorLoggingService.logStorageError(
+            e,
+            context: 'Failed to delete story media (continuing with story deletion)',
+            screen: 'StoryViewScreen',
+            operation: 'deleteStory',
+            filePath: story.mediaUrl,
+          );
+        }
+      }
+
+      // Delete story document
+      await _firestore.collection('stories').doc(storyId).delete();
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to delete story',
+        screen: 'StoryViewScreen',
+        operation: 'deleteStory',
+        collection: 'stories',
+        documentId: storyId,
+      );
+      throw AppException('فشل في حذف القصة: ${e.message}');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error deleting story',
+        screen: 'StoryViewScreen',
+        operation: 'deleteStory',
+      );
+      throw AppException('حدث خطأ غير متوقع: $e');
     }
   }
 }

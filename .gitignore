@@ -95,3 +95,6 @@ web/flutter_service_worker.js.map
 
 # macOS
 **/macos/Flutter/ephemeral/
+
+# Tool folder (contains sensitive service account keys)
+tool/

@@ -1,0 +1,48 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is a participant in a chat
+    function isChatParticipant(chatId) {
+      return request.auth.uid in firestore.get(/databases/(default)/documents/chats/$(chatId)).data.participants;
+    }
+    
+    // Profile images storage
+    match /profile_images/{userId}/{fileName} {
+      // Anyone authenticated can read profile images
+      allow read: if request.auth != null;
+      // Only the user can upload to their own folder
+      allow write: if request.auth != null && 
+                      request.auth.uid == userId &&
+                      // File size limit: 5MB
+                      request.resource.size < 5 * 1024 * 1024 &&
+                      // Only allow image types
+                      request.resource.contentType.matches('image/.*');
+    }
+    
+    // Voice messages storage
+    match /voice_messages/{chatId}/{fileName} {
+      // Only chat participants can read voice messages
+      allow read: if request.auth != null && isChatParticipant(chatId);
+      // Only chat participants can upload voice messages
+      allow write: if request.auth != null && 
+                      isChatParticipant(chatId) &&
+                      // File size limit: 10MB
+                      request.resource.size < 10 * 1024 * 1024 &&
+                      // Only allow audio types
+                      request.resource.contentType.matches('audio/.*');
+    }
+    
+    // Story media storage
+    match /stories/{userId}/{fileName} {
+      // Anyone authenticated can read story media
+      allow read: if request.auth != null;
+      // Only the user can upload to their own stories folder
+      allow write: if request.auth != null && 
+                      request.auth.uid == userId &&
+                      // File size limit: 20MB (as per design.md)
+                      request.resource.size < 20 * 1024 * 1024;
+                      // Allow both images and videos for stories
+    }
+  }
+}

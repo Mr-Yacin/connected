@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/models/user_profile.dart';
 import '../../data/repositories/firebase_auth_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../../profile/domain/repositories/profile_repository.dart';
+import '../../../profile/presentation/providers/profile_provider.dart';
 
 // Provider for AuthRepository
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -43,10 +46,18 @@ class AuthState {
   }
 }
 
+// Provider for AuthNotifier
+final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+  final authRepository = ref.watch(authRepositoryProvider);
+  final profileRepository = ref.watch(profileRepositoryProvider);
+  return AuthNotifier(authRepository, profileRepository);
+});
+
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
+  final ProfileRepository _profileRepository;
 
-  AuthNotifier(this._authRepository) : super(AuthState());
+  AuthNotifier(this._authRepository, this._profileRepository) : super(AuthState());
 
   Future<void> sendOtp(String phoneNumber) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -79,6 +90,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state.verificationId!,
         otp,
       );
+
+      // Create user profile if it doesn't exist
+      if (userCredential.user != null) {
+        final user = userCredential.user!;
+        final exists = await _profileRepository.profileExists(user.uid);
+        
+        if (!exists) {
+          final newProfile = UserProfile(
+            id: user.uid,
+            phoneNumber: user.phoneNumber ?? state.phoneNumber ?? '',
+            createdAt: DateTime.now(),
+            lastActive: DateTime.now(),
+          );
+          await _profileRepository.createProfile(newProfile);
+        }
+      }
+
       state = state.copyWith(isLoading: false);
       return userCredential;
     } catch (e) {
@@ -114,9 +142,3 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(error: null);
   }
 }
-
-// Provider for AuthNotifier
-final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  final authRepository = ref.watch(authRepositoryProvider);
-  return AuthNotifier(authRepository);
-});

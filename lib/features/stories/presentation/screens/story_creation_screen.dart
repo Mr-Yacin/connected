@@ -10,9 +10,9 @@ class StoryCreationScreen extends ConsumerStatefulWidget {
   final String userId;
 
   const StoryCreationScreen({
-    Key? key,
+    super.key,
     required this.userId,
-  }) : super(key: key);
+  });
 
   @override
   ConsumerState<StoryCreationScreen> createState() =>
