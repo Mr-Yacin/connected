@@ -239,6 +239,36 @@ class FirestoreChatRepository implements ChatRepository {
   }
 
   @override
+  Future<void> markChatAsRead(String chatId, String userId) async {
+    try {
+      // OPTIMIZED: Reset unread count for user when opening chat
+      await _firestore.collection('chats').doc(chatId).set({
+        'unreadCount.$userId': 0,
+      }, SetOptions(merge: true));
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to mark chat as read',
+        screen: 'ChatScreen',
+        operation: 'markChatAsRead',
+        collection: 'chats',
+        documentId: chatId,
+      );
+      throw AppException('فشل في تحديث حالة المحادثة: ${e.message}');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error marking chat as read',
+        screen: 'ChatScreen',
+        operation: 'markChatAsRead',
+      );
+      throw AppException('حدث خطأ غير متوقع: $e');
+    }
+  }
+
+  @override
   Future<List<ChatPreview>> getChatList(String userId) async {
     try {
       // Get all chats where user is a participant
@@ -263,14 +293,9 @@ class FirestoreChatRepository implements ChatRepository {
             await _firestore.collection('users').doc(otherUserId).get();
         final userData = userDoc.data();
 
-        // Count unread messages
-        final unreadSnapshot = await _firestore
-            .collection('chats')
-            .doc(doc.id)
-            .collection('messages')
-            .where('receiverId', isEqualTo: userId)
-            .where('isRead', isEqualTo: false)
-            .get();
+        // OPTIMIZED: Read unread count directly from denormalized field
+        final unreadCountMap = data['unreadCount'] as Map<String, dynamic>?;
+        final unreadCount = unreadCountMap?[userId] as int? ?? 0;
 
         chatPreviews.add(ChatPreview(
           chatId: doc.id,
@@ -281,7 +306,7 @@ class FirestoreChatRepository implements ChatRepository {
           lastMessageTime: data['lastMessageTime'] != null
               ? (data['lastMessageTime'] as Timestamp).toDate()
               : null,
-          unreadCount: unreadSnapshot.docs.length,
+          unreadCount: unreadCount,
         ));
       }
 
@@ -305,6 +330,62 @@ class FirestoreChatRepository implements ChatRepository {
         operation: 'getChatList',
       );
       throw AppException('حدث خطأ غير متوقع: $e');
+    }
+  }
+
+  @override
+  Stream<List<ChatPreview>> getChatListStream(String userId) {
+    try {
+      return _firestore
+          .collection('chats')
+          .where('participants', arrayContains: userId)
+          .orderBy('lastMessageTime', descending: true)
+          .snapshots()
+          .asyncMap((chatsSnapshot) async {
+        final chatPreviews = <ChatPreview>[];
+
+        for (final doc in chatsSnapshot.docs) {
+          final data = doc.data();
+          final participants = List<String>.from(data['participants'] as List);
+          final otherUserId =
+              participants.firstWhere((id) => id != userId, orElse: () => '');
+
+          if (otherUserId.isEmpty) continue;
+
+          // Get other user's profile
+          final userDoc =
+              await _firestore.collection('users').doc(otherUserId).get();
+          final userData = userDoc.data();
+
+          // OPTIMIZED: Read unread count directly from denormalized field
+          final unreadCountMap = data['unreadCount'] as Map<String, dynamic>?;
+          final unreadCount = unreadCountMap?[userId] as int? ?? 0;
+
+          chatPreviews.add(ChatPreview(
+            chatId: doc.id,
+            otherUserId: otherUserId,
+            otherUserName: userData?['name'] as String?,
+            otherUserImageUrl: userData?['profileImageUrl'] as String?,
+            lastMessage: data['lastMessage'] as String?,
+            lastMessageTime: data['lastMessageTime'] != null
+                ? (data['lastMessageTime'] as Timestamp).toDate()
+                : null,
+            unreadCount: unreadCount,
+          ));
+        }
+
+        return chatPreviews;
+      });
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get chat list stream',
+        screen: 'ChatListScreen',
+        operation: 'getChatListStream',
+        collection: 'chats',
+      );
+      throw AppException('فشل في جلب قائمة المحادثات: $e');
     }
   }
 
@@ -345,6 +426,8 @@ class FirestoreChatRepository implements ChatRepository {
         'lastMessage': lastMessage,
         'lastMessageTime': Timestamp.fromDate(lastMessageTime),
         'updatedAt': FieldValue.serverTimestamp(),
+        // OPTIMIZED: Increment unread count for receiver
+        'unreadCount.$receiverId': FieldValue.increment(1),
       }, SetOptions(merge: true));
     } on FirebaseException catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(

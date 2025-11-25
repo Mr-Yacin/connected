@@ -34,8 +34,14 @@ abstract class ChatRepository {
   /// Mark a message as read
   Future<void> markAsRead(String chatId, String messageId);
   
+  /// Mark entire chat as read for a user (resets unread count)
+  Future<void> markChatAsRead(String chatId, String userId);
+  
   /// Get list of chats for a user
   Future<List<ChatPreview>> getChatList(String userId);
+  
+  /// Get chat list stream for real-time updates
+  Stream<List<ChatPreview>> getChatListStream(String userId);
 }
 
 /// Chat preview model for chat list

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -8,7 +9,7 @@ import '../../../../core/models/enums.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
-import '../../../moderation/presentation/screens/blocked_users_screen.dart';
+
 import '../providers/profile_provider.dart';
 
 /// Helper to get current user from auth state
@@ -21,7 +22,7 @@ extension CurrentUserExtension on WidgetRef {
 
 class ProfileScreen extends ConsumerStatefulWidget {
   final String? viewedUserId; // If viewing another user's profile
-  
+
   const ProfileScreen({super.key, this.viewedUserId});
 
   @override
@@ -86,7 +87,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _ageController = TextEditingController();
   final _countryController = TextEditingController();
   final _dialectController = TextEditingController();
-  
+
   final ImagePicker _imagePicker = ImagePicker();
   File? _selectedImage;
   bool _isImageBlurred = false;
@@ -110,7 +111,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_hasLoadedProfile && !_profileFetchInProgress && !_profileLoadScheduled) {
+    if (!_hasLoadedProfile &&
+        !_profileFetchInProgress &&
+        !_profileLoadScheduled) {
       _profileLoadScheduled = true;
       Future.microtask(() async {
         _profileLoadScheduled = false;
@@ -122,7 +125,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _checkAndLoadProfile({String? userId}) async {
     if (_profileFetchInProgress) return;
 
-    final resolvedUserId = userId ??
+    final resolvedUserId =
+        userId ??
         widget.viewedUserId ??
         ref.read(currentUserProvider).value?.uid ??
         FirebaseAuth.instance.currentUser?.uid;
@@ -143,8 +147,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-
-
   bool get _isViewingOwnProfile {
     final currentUserId = ref.currentUserId;
     final viewedUserId = widget.viewedUserId;
@@ -154,14 +156,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Future<void> _blockUser() async {
     final currentUserId = ref.currentUserId;
     final viewedUserId = widget.viewedUserId;
-    
+
     if (currentUserId == null || viewedUserId == null) return;
 
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('حظر المستخدم'),
-        content: const Text('هل تريد حظر هذا المستخدم؟ لن يتمكن من التواصل معك أو رؤية ملفك الشخصي.'),
+        content: const Text(
+          'هل تريد حظر هذا المستخدم؟ لن يتمكن من التواصل معك أو رؤية ملفك الشخصي.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -177,12 +181,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
 
     if (confirmed == true) {
-      await ref.read(moderationProvider.notifier).blockUser(currentUserId, viewedUserId);
-      
+      await ref
+          .read(moderationProvider.notifier)
+          .blockUser(currentUserId, viewedUserId);
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حظر المستخدم')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم حظر المستخدم')));
         Navigator.of(context).pop();
       }
     }
@@ -191,7 +197,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void _reportUser() {
     final currentUserId = ref.currentUserId;
     final viewedUserId = widget.viewedUserId;
-    
+
     if (currentUserId == null || viewedUserId == null) return;
 
     showModalBottomSheet(
@@ -235,9 +241,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في اختيار الصورة: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('فشل في اختيار الصورة: $e')));
       }
     }
   }
@@ -267,16 +273,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         setState(() {
           _selectedImage = null;
         });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم رفع الصورة بنجاح')),
-        );
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم رفع الصورة بنجاح')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في رفع الصورة: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('فشل في رفع الصورة: $e')));
       }
     }
   }
@@ -300,20 +306,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       );
 
       await ref.read(profileProvider.notifier).updateProfile(updatedProfile);
-      
+
       // Reload the profile from Firestore to ensure we have the latest data
       await ref.read(profileProvider.notifier).loadProfile(userId);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ البيانات بنجاح')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم حفظ البيانات بنجاح')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في حفظ البيانات: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('فشل في حفظ البيانات: $e')));
       }
     }
   }
@@ -344,9 +350,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في توليد الرابط: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('فشل في توليد الرابط: $e')));
       }
     }
   }
@@ -385,15 +391,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               tooltip: 'توليد رابط مجهول',
             ),
             IconButton(
-              icon: const Icon(Icons.block),
+              icon: const Icon(Icons.settings),
               onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => const BlockedUsersScreen(),
-                  ),
-                );
+                context.push('/settings');
               },
-              tooltip: 'المستخدمون المحظورون',
+              tooltip: 'الإعدادات',
             ),
           ] else ...[
             PopupMenuButton<String>(
@@ -456,7 +458,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           });
                         },
                         icon: const Icon(Icons.bug_report),
-                        label: Text(_showDebugPanel ? 'إخفاء معلومات التصحيح' : 'عرض معلومات التصحيح'),
+                        label: Text(
+                          _showDebugPanel
+                              ? 'إخفاء معلومات التصحيح'
+                              : 'عرض معلومات التصحيح',
+                        ),
                       ),
                     ),
                     if (_showDebugPanel)
@@ -480,13 +486,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         children: [
                           CircleAvatar(
                             radius: 60,
-                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                            backgroundColor: AppColors.primary.withValues(
+                              alpha: 0.1,
+                            ),
                             backgroundImage: _selectedImage != null
                                 ? FileImage(_selectedImage!)
                                 : (profile?.profileImageUrl != null
-                                    ? NetworkImage(profile!.profileImageUrl!)
-                                    : null) as ImageProvider?,
-                            child: _selectedImage == null &&
+                                          ? NetworkImage(
+                                              profile!.profileImageUrl!,
+                                            )
+                                          : null)
+                                      as ImageProvider?,
+                            child:
+                                _selectedImage == null &&
                                     profile?.profileImageUrl == null
                                 ? const Icon(Icons.person, size: 60)
                                 : null,
@@ -497,8 +509,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             child: CircleAvatar(
                               backgroundColor: AppColors.primary,
                               child: IconButton(
-                                icon: const Icon(Icons.camera_alt,
-                                    color: Colors.white, size: 20),
+                                icon: const Icon(
+                                  Icons.camera_alt,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
                                 onPressed: _pickImage,
                               ),
                             ),
@@ -506,16 +521,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         ],
                       ),
                     ),
-                    
+
                     if (_selectedImage != null) ...[
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: profileState.isUploading ? null : _uploadImage,
+                        onPressed: profileState.isUploading
+                            ? null
+                            : _uploadImage,
                         child: profileState.isUploading
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('رفع الصورة'),
                       ),

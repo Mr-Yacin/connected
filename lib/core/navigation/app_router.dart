@@ -20,26 +20,28 @@ class AppRouter {
       navigatorKey: _rootNavigatorKey,
       initialLocation: '/',
       debugLogDiagnostics: true,
-      refreshListenable: GoRouterRefreshStream(FirebaseAuth.instance.authStateChanges()),
-      
+      refreshListenable: GoRouterRefreshStream(
+        FirebaseAuth.instance.authStateChanges(),
+      ),
+
       // Auth guard - redirect to login if not authenticated
       redirect: (context, state) {
         final user = FirebaseAuth.instance.currentUser;
         final isAuthRoute = state.matchedLocation.startsWith('/auth');
-        
+
         // If user is not logged in and trying to access protected route
         if (user == null && !isAuthRoute) {
           return '/auth/phone';
         }
-        
+
         // If user is logged in and trying to access auth routes
         if (user != null && isAuthRoute) {
           return '/';
         }
-        
+
         return null; // No redirect needed
       },
-      
+
       routes: [
         // Auth routes
         GoRoute(
@@ -50,7 +52,7 @@ class AppRouter {
           path: '/auth/otp',
           builder: (context, state) => const OtpVerificationScreen(),
         ),
-        
+
         // Main app routes
         GoRoute(
           path: '/',
@@ -61,11 +63,17 @@ class AppRouter {
               path: 'chat/:chatId',
               builder: (context, state) {
                 final chatId = state.pathParameters['chatId']!;
-                final currentUserId = state.uri.queryParameters['currentUserId'] ?? '';
-                final otherUserId = state.uri.queryParameters['otherUserId'] ?? '';
-                final otherUserName = state.uri.queryParameters['otherUserName'];
-                final otherUserImageUrl = state.uri.queryParameters['otherUserImageUrl'];
-                
+                final currentUserId =
+                    state.uri.queryParameters['currentUserId'] ??
+                    FirebaseAuth.instance.currentUser?.uid ??
+                    '';
+                final otherUserId =
+                    state.uri.queryParameters['otherUserId'] ?? '';
+                final otherUserName =
+                    state.uri.queryParameters['otherUserName'];
+                final otherUserImageUrl =
+                    state.uri.queryParameters['otherUserImageUrl'];
+
                 return ChatScreen(
                   chatId: chatId,
                   currentUserId: currentUserId,
@@ -75,7 +83,7 @@ class AppRouter {
                 );
               },
             ),
-            
+
             // Profile routes
             GoRoute(
               path: 'profile/:userId',
@@ -84,7 +92,7 @@ class AppRouter {
                 return ProfileScreen(viewedUserId: userId);
               },
             ),
-            
+
             // Anonymous profile deep link
             GoRoute(
               path: 'profile/link/:anonymousLink',
@@ -94,7 +102,7 @@ class AppRouter {
                 return ProfileScreen(viewedUserId: anonymousLink);
               },
             ),
-            
+
             // Story routes
             GoRoute(
               path: 'story/create',
@@ -103,13 +111,13 @@ class AppRouter {
                 return StoryCreationScreen(userId: userId);
               },
             ),
-            
+
             // Settings routes
             GoRoute(
               path: 'settings',
               builder: (context, state) => const SettingsScreen(),
             ),
-            
+
             // Moderation routes
             GoRoute(
               path: 'blocked-users',
@@ -118,7 +126,7 @@ class AppRouter {
           ],
         ),
       ],
-      
+
       // Error handling
       errorBuilder: (context, state) => Scaffold(
         body: Center(

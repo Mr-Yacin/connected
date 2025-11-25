@@ -23,11 +23,11 @@ final messagesStreamProvider = StreamProvider.family<List<Message>, String>(
   },
 );
 
-/// Provider for chat list
-final chatListProvider = FutureProvider.family<List<ChatPreview>, String>(
-  (ref, userId) async {
+/// Provider for chat list stream (real-time updates)
+final chatListProvider = StreamProvider.family<List<ChatPreview>, String>(
+  (ref, userId) {
     final repository = ref.watch(chatRepositoryProvider);
-    return repository.getChatList(userId);
+    return repository.getChatListStream(userId);
   },
 );
 
@@ -78,6 +78,11 @@ class ChatNotifier extends StateNotifier<AsyncValue<void>> {
   /// Mark message as read
   Future<void> markAsRead(String chatId, String messageId) async {
     await _repository.markAsRead(chatId, messageId);
+  }
+
+  /// Mark entire chat as read (resets unread count)
+  Future<void> markChatAsRead(String chatId, String userId) async {
+    await _repository.markChatAsRead(chatId, userId);
   }
 
   /// Start recording voice message

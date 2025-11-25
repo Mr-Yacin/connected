@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/discovery_provider.dart';
@@ -30,7 +31,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
 
   void _showFilterBottomSheet() {
     final currentFilters = ref.read(discoveryProvider).filters;
-    
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -47,9 +48,9 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
 
   void _handleLike() {
     // TODO: Implement like functionality (could save to favorites)
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('تم الإعجاب!')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('تم الإعجاب!')));
     _loadNextUser();
   }
 
@@ -60,10 +61,16 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
 
   void _handleChat() {
     final currentUser = ref.read(discoveryProvider).currentUser;
-    if (currentUser != null) {
-      // TODO: Navigate to chat screen with this user
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('بدء محادثة مع ${currentUser.name ?? "المستخدم"}')),
+    final loggedInUser = ref.read(currentUserProvider).value;
+
+    if (currentUser != null && loggedInUser != null) {
+      // Navigate to chat screen with this user
+      final otherUserId = currentUser.id;
+      final currentUserId = loggedInUser.uid;
+      final chatId = 'new_$otherUserId'; // Convention for new/potential chat
+
+      context.push(
+        '/chat/$chatId?currentUserId=$currentUserId&otherUserId=$otherUserId&otherUserName=${Uri.encodeComponent(currentUser.name ?? "")}&otherUserImageUrl=${Uri.encodeComponent(currentUser.profileImageUrl ?? "")}',
       );
     }
   }
@@ -137,17 +144,15 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
                   ),
                 ),
               const SizedBox(height: 16),
-              
+
               // Main content
-              Expanded(
-                child: _buildContent(discoveryState, isDark),
-              ),
+              Expanded(child: _buildContent(discoveryState, isDark)),
             ],
           ),
         ),
       ),
-      floatingActionButton: discoveryState.currentUser != null &&
-              !discoveryState.isLoading
+      floatingActionButton:
+          discoveryState.currentUser != null && !discoveryState.isLoading
           ? FloatingActionButton.extended(
               onPressed: _loadNextUser,
               backgroundColor: AppColors.primary,
@@ -160,9 +165,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
 
   Widget _buildContent(DiscoveryState state, bool isDark) {
     if (state.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (state.error != null) {
@@ -170,11 +173,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: AppColors.error,
-            ),
+            Icon(Icons.error_outline, size: 64, color: AppColors.error),
             const SizedBox(height: 16),
             Text(
               state.error!,

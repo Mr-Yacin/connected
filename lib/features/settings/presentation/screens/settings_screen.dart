@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/settings_provider.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -16,10 +17,7 @@ class SettingsScreen extends ConsumerWidget {
     final currentUser = FirebaseAuth.instance.currentUser;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الإعدادات'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('الإعدادات'), centerTitle: true),
       body: settingsState.isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -35,7 +33,10 @@ class SettingsScreen extends ConsumerWidget {
                         padding: const EdgeInsets.all(12),
                         child: Row(
                           children: [
-                            Icon(Icons.error_outline, color: Colors.red.shade700),
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red.shade700,
+                            ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
@@ -112,7 +113,18 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       const Divider(height: 1),
                       ListTile(
-                        leading: const Icon(Icons.delete_forever, color: Colors.red),
+                        leading: const Icon(Icons.block, color: Colors.orange),
+                        title: const Text('المستخدمين المحظورين'),
+                        subtitle: const Text('إدارة قائمة الحظر'),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        onTap: () => context.push('/blocked-users'),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(
+                          Icons.delete_forever,
+                          color: Colors.red,
+                        ),
                         title: const Text(
                           'حذف الحساب',
                           style: TextStyle(color: Colors.red),
@@ -137,14 +149,19 @@ class SettingsScreen extends ConsumerWidget {
                   child: Column(
                     children: [
                       ListTile(
-                        leading: Icon(Icons.info_outline, color: AppColors.primary),
+                        leading: Icon(
+                          Icons.info_outline,
+                          color: AppColors.primary,
+                        ),
                         title: const Text('الإصدار'),
                         subtitle: const Text('1.0.0'),
                       ),
                       const Divider(height: 1),
                       ListTile(
-                        leading: Icon(Icons.privacy_tip_outlined,
-                            color: AppColors.primary),
+                        leading: Icon(
+                          Icons.privacy_tip_outlined,
+                          color: AppColors.primary,
+                        ),
                         title: const Text('سياسة الخصوصية'),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                         onTap: () {
@@ -153,8 +170,10 @@ class SettingsScreen extends ConsumerWidget {
                       ),
                       const Divider(height: 1),
                       ListTile(
-                        leading: Icon(Icons.description_outlined,
-                            color: AppColors.primary),
+                        leading: Icon(
+                          Icons.description_outlined,
+                          color: AppColors.primary,
+                        ),
                         title: const Text('شروط الاستخدام'),
                         trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                         onTap: () {

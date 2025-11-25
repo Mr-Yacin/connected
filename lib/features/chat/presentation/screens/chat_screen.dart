@@ -8,7 +8,7 @@ import '../widgets/message_bubble.dart';
 import '../widgets/message_input_bar.dart';
 
 /// Screen for individual chat conversation
-class ChatScreen extends ConsumerWidget {
+class ChatScreen extends ConsumerStatefulWidget {
   final String chatId;
   final String currentUserId;
   final String otherUserId;
@@ -23,6 +23,22 @@ class ChatScreen extends ConsumerWidget {
     this.otherUserName,
     this.otherUserImageUrl,
   });
+
+  @override
+  ConsumerState<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends ConsumerState<ChatScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // OPTIMIZED: Mark chat as read when opening to reset unread count
+    Future.microtask(() {
+      ref
+          .read(chatNotifierProvider.notifier)
+          .markChatAsRead(widget.chatId, widget.currentUserId);
+    });
+  }
 
   Future<void> _blockUser(BuildContext context, WidgetRef ref) async {
     final confirmed = await showDialog<bool>(
@@ -45,7 +61,7 @@ class ChatScreen extends ConsumerWidget {
     );
 
     if (confirmed == true) {
-      await ref.read(moderationProvider.notifier).blockUser(currentUserId, otherUserId);
+      await ref.read(moderationProvider.notifier).blockUser(widget.currentUserId, widget.otherUserId);
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -65,8 +81,8 @@ class ChatScreen extends ConsumerWidget {
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
         child: ReportBottomSheet(
-          reporterId: currentUserId,
-          reportedUserId: otherUserId,
+          reporterId: widget.currentUserId,
+          reportedUserId: widget.otherUserId,
           reportType: ReportType.user,
         ),
       ),
@@ -74,8 +90,8 @@ class ChatScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final messagesAsync = ref.watch(messagesStreamProvider(chatId));
+  Widget build(BuildContext context) {
+    final messagesAsync = ref.watch(messagesStreamProvider(widget.chatId));
 
     return Scaffold(
       appBar: AppBar(
@@ -84,10 +100,10 @@ class ChatScreen extends ConsumerWidget {
             // Profile image
             CircleAvatar(
               radius: 20,
-              backgroundImage: otherUserImageUrl != null
-                  ? NetworkImage(otherUserImageUrl!)
+              backgroundImage: widget.otherUserImageUrl != null
+                  ? NetworkImage(widget.otherUserImageUrl!)
                   : null,
-              child: otherUserImageUrl == null
+              child: widget.otherUserImageUrl == null
                   ? const Icon(Icons.person)
                   : null,
             ),
@@ -95,7 +111,7 @@ class ChatScreen extends ConsumerWidget {
             // User name
             Expanded(
               child: Text(
-                otherUserName ?? 'مستخدم',
+                widget.otherUserName ?? 'مستخدم',
                 style: const TextStyle(fontSize: 18),
               ),
             ),
@@ -160,14 +176,14 @@ class ChatScreen extends ConsumerWidget {
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final message = messages[index];
-                    final isMe = message.senderId == currentUserId;
+                    final isMe = message.senderId == widget.currentUserId;
 
                     // Mark message as read if it's from the other user
                     if (!isMe && !message.isRead) {
                       Future.microtask(() {
                         ref
                             .read(chatNotifierProvider.notifier)
-                            .markAsRead(chatId, message.id);
+                            .markAsRead(widget.chatId, message.id);
                       });
                     }
 
@@ -201,7 +217,7 @@ class ChatScreen extends ConsumerWidget {
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () {
-                        ref.invalidate(messagesStreamProvider(chatId));
+                        ref.invalidate(messagesStreamProvider(widget.chatId));
                       },
                       child: const Text('إعادة المحاولة'),
                     ),
@@ -213,9 +229,9 @@ class ChatScreen extends ConsumerWidget {
 
           // Message input bar
           MessageInputBar(
-            chatId: chatId,
-            senderId: currentUserId,
-            receiverId: otherUserId,
+            chatId: widget.chatId,
+            senderId: widget.currentUserId,
+            receiverId: widget.otherUserId,
           ),
         ],
       ),
