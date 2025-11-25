@@ -1,16 +1,224 @@
-# social_connect_app
+# Social Connect App
 
-A new Flutter project.
+A modern social networking Flutter application with real-time chat, story sharing, and profile discovery features. Built with Firebase backend and clean architecture principles.
 
-## Getting Started
+## 🌟 Features
 
-This project is a starting point for a Flutter application.
+- **Phone Authentication**: Secure OTP-based authentication
+- **User Profiles**: Rich user profiles with images, personal info, and anonymous sharing links
+- **Real-time Chat**: One-on-one messaging with text and voice notes
+- **Stories**: Share temporary stories (24-hour expiration) with your connections
+- **Discovery**: Find and connect with users based on filters (country, age, gender)
+- **Shuffle Mode**: Random profile discovery with swipe interactions
+- **Moderation**: Report and block users, content moderation system
+- **Multi-language**: Arabic (RTL) and English support
+- **Dark Mode**: Beautiful dark theme enabled by default
 
-A few resources to get you started if this is your first Flutter project:
+## 🏗️ Architecture
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+This project follows **Feature-First Architecture** with **Clean Architecture** principles:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```
+lib/
+├── core/                    # Shared components
+│   ├── constants/          # App constants
+│   ├── theme/              # Themes and colors
+│   ├── utils/              # Utility functions
+│   └── widgets/            # Shared widgets
+├── features/                # Feature modules
+│   ├── auth/               # Authentication
+│   ├── profile/            # User profiles
+│   ├── chat/               # Messaging
+│   ├── discovery/          # User discovery
+│   ├── stories/            # Story sharing
+│   ├── settings/           # App settings
+│   └── moderation/         # Content moderation
+└── services/                # Shared services
+```
+
+Each feature follows Clean Architecture layers:
+- **Data**: Models, repositories, data sources
+- **Domain**: Entities, use cases, business logic
+- **Presentation**: Screens, widgets, state management (Riverpod)
+
+## 📋 Prerequisites
+
+- Flutter SDK (^3.8.1)
+- Dart SDK (^3.8.1)
+- Firebase account
+- Android Studio / Xcode (for mobile development)
+- Node.js (for development tools)
+
+## 🚀 Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd connected
+```
+
+### 2. Install Flutter Dependencies
+
+```bash
+flutter pub get
+```
+
+### 3. Firebase Setup
+
+Follow the detailed instructions in [FIREBASE_SETUP.md](FIREBASE_SETUP.md):
+
+1. Create a Firebase project
+2. Enable Authentication (Phone), Firestore, and Storage
+3. Run FlutterFire CLI configuration:
+   ```bash
+   dart pub global activate flutterfire_cli
+   flutterfire configure
+   ```
+4. Deploy security rules:
+   ```bash
+   firebase deploy --only firestore:rules
+   firebase deploy --only storage:rules
+   ```
+
+### 4. Run the App
+
+```bash
+flutter run
+```
+
+## 🛠️ Development Tools
+
+### Mock Data Uploader
+
+Upload test user profiles to Firestore for development. See [tool/README.md](tool/README.md) for details.
+
+```bash
+cd tool
+npm install
+npm run upload
+```
+
+## 📦 Key Dependencies
+
+### Production
+- `firebase_core`: ^3.8.1 - Firebase initialization
+- `firebase_auth`: ^5.3.4 - Authentication
+- `cloud_firestore`: ^5.5.2 - Database
+- `firebase_storage`: ^12.3.8 - File storage
+- `flutter_riverpod`: ^2.6.1 - State management
+- `go_router`: ^14.6.2 - Navigation
+- `cached_network_image`: ^3.3.1 - Image caching
+- `image_picker`: ^1.0.7 - Image selection
+- `record`: ^5.1.2 - Audio recording
+- `audioplayers`: ^6.0.0 - Audio playback
+
+### Development
+- `faker`: ^2.2.0 - Mock data generation
+- `mockito`: ^5.4.4 - Testing mocks
+- `build_runner`: ^2.4.14 - Code generation
+- `riverpod_generator`: ^2.6.3 - Riverpod code generation
+
+## 🧪 Testing
+
+### Run Unit Tests
+```bash
+flutter test
+```
+
+### Run Integration Tests
+```bash
+flutter test integration_test/
+```
+
+### Code Analysis
+```bash
+flutter analyze
+```
+
+## 📱 Platform Support
+
+- ✅ Android
+- ✅ iOS
+- ✅ Web
+- ✅ Linux
+- ✅ macOS
+- ✅ Windows
+
+## 🔒 Security
+
+- Firebase Security Rules are enforced for Firestore and Storage
+- User data is protected with authentication-based access control
+- Anonymous profile links use UUID for secure sharing
+- Content moderation system for reporting inappropriate content
+
+## 🌍 Localization
+
+The app supports:
+- **Arabic** (ar) - RTL layout, default language
+- **English** (en) - LTR layout
+
+## 🎨 Theming
+
+- **Dark Mode**: Enabled by default
+- **Light Mode**: Available in settings
+- **RTL Support**: Full right-to-left layout for Arabic
+- **Material Design 3**: Modern UI components
+
+## 📚 Documentation
+
+- [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) - Detailed project structure
+- [FIREBASE_SETUP.md](FIREBASE_SETUP.md) - Firebase configuration guide
+- [SETUP_COMPLETE.md](SETUP_COMPLETE.md) - Initial setup checklist
+- [PHONE_AUTH_TROUBLESHOOTING.md](PHONE_AUTH_TROUBLESHOOTING.md) - Phone auth debugging
+- [tool/README.md](tool/README.md) - Development tools documentation
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is private and not licensed for public use.
+
+## 🐛 Troubleshooting
+
+### Phone Authentication Issues
+See [PHONE_AUTH_TROUBLESHOOTING.md](PHONE_AUTH_TROUBLESHOOTING.md)
+
+### Firebase Permission Errors
+1. Check Firestore security rules in `firestore.rules`
+2. Verify user is authenticated
+3. Ensure user document exists in `users` collection
+
+### Build Errors
+```bash
+flutter clean
+flutter pub get
+flutter run
+```
+
+## 📞 Support
+
+For issues and questions:
+1. Check existing documentation
+2. Review Firebase Console logs
+3. Check Flutter and Firebase SDK versions
+4. Create an issue with detailed error logs
+
+## 🗺️ Roadmap
+
+- [ ] Push notifications
+- [ ] Group chat support
+- [ ] Video calls
+- [ ] Advanced profile verification
+- [ ] AI-powered content moderation
+- [ ] Analytics dashboard
+
+---
+
+**Built with ❤️ using Flutter and Firebase**

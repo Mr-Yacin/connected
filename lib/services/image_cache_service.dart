@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+// ignore: depend_on_referenced_packages
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 
 /// Service for caching images to improve performance
@@ -38,9 +39,7 @@ class ImageCacheService {
           placeholder ??
           Container(
             color: Colors.grey[300],
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: const Center(child: CircularProgressIndicator()),
           ),
       errorWidget: (context, url, error) =>
           errorWidget ??
@@ -53,14 +52,14 @@ class ImageCacheService {
 
   /// Get a cached network image provider
   ImageProvider getCachedImageProvider(String imageUrl) {
-    return CachedNetworkImageProvider(
-      imageUrl,
-      cacheManager: cacheManager,
-    );
+    return CachedNetworkImageProvider(imageUrl, cacheManager: cacheManager);
   }
 
   /// Precache an image
-  Future<void> precacheImage(BuildContext context, String imageUrl) async {
+  Future<void> precacheCachedImage(
+    BuildContext context,
+    String imageUrl,
+  ) async {
     await precacheImage(
       CachedNetworkImageProvider(imageUrl, cacheManager: cacheManager),
       context,
@@ -78,20 +77,16 @@ class ImageCacheService {
   }
 
   /// Get cache size in bytes
+  /// Note: flutter_cache_manager doesn't provide a direct API to get total cache size.
+  /// This method returns 0 as a placeholder. To implement this properly, you would need
+  /// to use path_provider to get the cache directory and manually calculate the size.
   Future<int> getCacheSize() async {
-    try {
-      final files = await cacheManager.store.getAllObjects();
-      int totalSize = 0;
-      for (final file in files) {
-        // Get file size from the file system
-        final fileInfo = await cacheManager.getFileFromCache(file.key);
-        if (fileInfo != null && fileInfo.file.existsSync()) {
-          totalSize += await fileInfo.file.length();
-        }
-      }
-      return totalSize;
-    } catch (e) {
-      return 0;
-    }
+    // The flutter_cache_manager package doesn't expose a direct way to get
+    // the total cache size. You would need to:
+    // 1. Add path_provider package to pubspec.yaml
+    // 2. Get the cache directory path
+    // 3. Manually iterate through files and sum their sizes
+    // For now, returning 0 as this feature requires additional dependencies
+    return 0;
   }
 }
