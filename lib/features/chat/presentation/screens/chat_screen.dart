@@ -29,6 +29,9 @@ class ChatScreen extends ConsumerStatefulWidget {
 }
 
 class _ChatScreenState extends ConsumerState<ChatScreen> {
+  final ScrollController _scrollController = ScrollController();
+  bool _isLoadingMore = false;
+
   @override
   void initState() {
     super.initState();
@@ -38,6 +41,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           .read(chatNotifierProvider.notifier)
           .markChatAsRead(widget.chatId, widget.currentUserId);
     });
+
+    // Add scroll listener for pagination
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    // Clear messages cache when leaving chat
+    ref.read(chatNotifierProvider.notifier).clearMessagesCache(widget.chatId);
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // Load more when scrolling to top (older messages)
+    if (_scrollController.position.pixels <= 100 && !_isLoadingMore) {
+      _loadMoreMessages();
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    final notifier = ref.read(chatNotifierProvider.notifier);
+    
+    // Check if there are more messages to load
+    if (!notifier.hasMoreMessages(widget.chatId)) return;
+
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final messagesAsync = ref.read(paginatedMessagesStreamProvider(widget.chatId));
+      
+      await messagesAsync.when(
+        data: (messages) async {
+          if (messages.isNotEmpty) {
+            final oldestMessage = messages.first;
+            await notifier.loadMoreMessages(
+              widget.chatId,
+              oldestMessage.timestamp,
+            );
+          }
+        },
+        loading: () {},
+        error: (_, __) {},
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingMore = false);
+      }
+    }
   }
 
   Future<void> _blockUser(BuildContext context, WidgetRef ref) async {
@@ -91,7 +143,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final messagesAsync = ref.watch(messagesStreamProvider(widget.chatId));
+    // OPTIMIZED: Use paginated messages stream
+    final messagesAsync = ref.watch(paginatedMessagesStreamProvider(widget.chatId));
 
     return Scaffold(
       appBar: AppBar(
@@ -170,28 +223,62 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   );
                 }
 
-                return ListView.builder(
-                  reverse: false,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    final isMe = message.senderId == widget.currentUserId;
+                final notifier = ref.read(chatNotifierProvider.notifier);
+                final hasMore = notifier.hasMoreMessages(widget.chatId);
 
-                    // Mark message as read if it's from the other user
-                    if (!isMe && !message.isRead) {
-                      Future.microtask(() {
-                        ref
-                            .read(chatNotifierProvider.notifier)
-                            .markAsRead(widget.chatId, message.id);
-                      });
-                    }
+                return Column(
+                  children: [
+                    // Load more indicator at top
+                    if (_isLoadingMore)
+                      const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    else if (hasMore && messages.length >= 50)
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: TextButton.icon(
+                          onPressed: _loadMoreMessages,
+                          icon: const Icon(Icons.arrow_upward, size: 16),
+                          label: const Text('تحميل رسائل أقدم'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.grey[600],
+                          ),
+                        ),
+                      ),
+                    
+                    // Messages list
+                    Expanded(
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        reverse: false,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final message = messages[index];
+                          final isMe = message.senderId == widget.currentUserId;
 
-                    return MessageBubble(
-                      message: message,
-                      isMe: isMe,
-                    );
-                  },
+                          // Mark message as read if it's from the other user
+                          if (!isMe && !message.isRead) {
+                            Future.microtask(() {
+                              ref
+                                  .read(chatNotifierProvider.notifier)
+                                  .markAsRead(widget.chatId, message.id);
+                            });
+                          }
+
+                          return MessageBubble(
+                            message: message,
+                            isMe: isMe,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 );
               },
               loading: () => const Center(
@@ -217,7 +304,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () {
-                        ref.invalidate(messagesStreamProvider(widget.chatId));
+                        ref.invalidate(paginatedMessagesStreamProvider(widget.chatId));
                       },
                       child: const Text('إعادة المحاولة'),
                     ),

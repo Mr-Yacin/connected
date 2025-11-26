@@ -10,6 +10,7 @@ import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/stories/presentation/screens/story_creation_screen.dart';
 import '../../features/moderation/presentation/screens/blocked_users_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/discovery/presentation/screens/users_list_screen.dart';
 
 /// Application router using go_router
 class AppRouter {
@@ -122,6 +123,12 @@ class AppRouter {
             GoRoute(
               path: 'blocked-users',
               builder: (context, state) => const BlockedUsersScreen(),
+            ),
+
+            // Discovery routes
+            GoRoute(
+              path: 'users',
+              builder: (context, state) => const UsersListScreen(),
             ),
           ],
         ),

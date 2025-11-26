@@ -167,11 +167,35 @@ The app supports:
 
 ## 📚 Documentation
 
-- [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) - Detailed project structure
-- [FIREBASE_SETUP.md](FIREBASE_SETUP.md) - Firebase configuration guide
-- [SETUP_COMPLETE.md](SETUP_COMPLETE.md) - Initial setup checklist
-- [PHONE_AUTH_TROUBLESHOOTING.md](PHONE_AUTH_TROUBLESHOOTING.md) - Phone auth debugging
-- [tool/README.md](tool/README.md) - Development tools documentation
+### Guides
+- [Firebase Setup Guide](docs/guides/FIREBASE_SETUP.md) - Firebase configuration guide
+- [Setup Complete Guide](docs/guides/SETUP_COMPLETE.md) - Initial setup checklist
+- [Phone Auth Troubleshooting](docs/guides/PHONE_AUTH_TROUBLESHOOTING.md) - Phone auth debugging
+- [Migration Checklist](docs/guides/MIGRATION_CHECKLIST.md) - Migration guide
+- [Chat Optimization Guide](docs/guides/CHAT_OPTIMIZATION_GUIDE.md) - Chat performance optimization
+- [Composite Indexes Guide](docs/guides/COMPOSITE_INDEXES_GUIDE.md) - Firestore indexes setup
+
+### Deployment
+- [Deployment Instructions](docs/deployment/DEPLOYMENT_INSTRUCTIONS.md) - Production deployment guide
+- [Deployment Ready](docs/deployment/DEPLOYMENT_READY.md) - Deployment checklist
+- [Implementation Complete](docs/deployment/IMPLEMENTATION_COMPLETE.md) - Implementation summary
+- [Implementation Summary](docs/deployment/IMPLEMENTATION_SUMMARY.md) - Technical summary
+
+### Fix History
+- [Week 1 Fixes](docs/fixes/WEEK1_FIXES_COMPLETE.md) - Week 1 critical fixes
+- [Week 1 Implementation Plan](docs/fixes/Week-1-Critical-Fixes-Implementation-Plan.md) - Detailed plan
+- [Fix 2 Summary](docs/fixes/FIX2_IMPLEMENTATION_SUMMARY.md) - Fix 2 details
+- [Fix 3 Summary](docs/fixes/FIX3_IMPLEMENTATION_SUMMARY.md) - Fix 3 details
+- [Fix 4 Complete](docs/fixes/FIX4_COMPLETE.md) - Fix 4 pagination implementation
+
+### References
+- [API Documentation](docs/references/API.md) - API reference
+- [Project Structure](docs/references/PROJECT_STRUCTURE.md) - Detailed architecture
+- [App Analysis](docs/references/Analysis-o-%20Your-Social-Connect-App.md) - App analysis
+- [Performance Comparison](docs/references/PERFORMANCE_COMPARISON.md) - Performance metrics
+- [Security Rules Optimization](docs/references/SECURITY_RULES_OPTIMIZATION.md) - Security guidelines
+- [Index Verification](docs/references/INDEX_VERIFICATION.md) - Firestore index verification
+- [Pagination Features](docs/references/PAGINATION_FEATURES.md) - Pagination documentation
 
 ## 🤝 Contributing
 
@@ -188,7 +212,7 @@ This project is private and not licensed for public use.
 ## 🐛 Troubleshooting
 
 ### Phone Authentication Issues
-See [PHONE_AUTH_TROUBLESHOOTING.md](PHONE_AUTH_TROUBLESHOOTING.md)
+See [Phone Auth Troubleshooting Guide](docs/guides/PHONE_AUTH_TROUBLESHOOTING.md)
 
 ### Firebase Permission Errors
 1. Check Firestore security rules in `firestore.rules`

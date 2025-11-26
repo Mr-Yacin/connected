@@ -15,11 +15,22 @@ final voiceRecorderServiceProvider = Provider<VoiceRecorderService>((ref) {
   return VoiceRecorderService();
 });
 
-/// Provider for messages stream
+/// Provider for messages stream (non-paginated - for backward compatibility)
 final messagesStreamProvider = StreamProvider.family<List<Message>, String>(
   (ref, chatId) {
     final repository = ref.watch(chatRepositoryProvider);
     return repository.getMessages(chatId);
+  },
+);
+
+/// Provider for paginated messages stream
+final paginatedMessagesStreamProvider = StreamProvider.family<List<Message>, String>(
+  (ref, chatId) {
+    final repository = ref.watch(chatRepositoryProvider);
+    return repository.getMessagesPaginated(
+      chatId: chatId,
+      limit: 50,
+    );
   },
 );
 
@@ -35,6 +46,10 @@ final chatListProvider = StreamProvider.family<List<ChatPreview>, String>(
 class ChatNotifier extends StateNotifier<AsyncValue<void>> {
   final ChatRepository _repository;
   final VoiceRecorderService _voiceRecorder;
+  
+  // Track loaded messages for pagination
+  final Map<String, List<Message>> _loadedMessages = {};
+  final Map<String, bool> _hasMoreMessages = {};
 
   ChatNotifier(this._repository, this._voiceRecorder)
       : super(const AsyncValue.data(null));
@@ -128,6 +143,45 @@ class ChatNotifier extends StateNotifier<AsyncValue<void>> {
 
   /// Check if recording
   bool get isRecording => _voiceRecorder.isRecording;
+
+  /// Load more messages for pagination
+  Future<void> loadMoreMessages(String chatId, DateTime lastMessageTimestamp) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final olderMessages = await _repository
+          .getMessagesPaginated(
+            chatId: chatId,
+            limit: 50,
+            lastMessageTimestamp: lastMessageTimestamp,
+          )
+          .first;
+
+      // Track if there are more messages
+      _hasMoreMessages[chatId] = olderMessages.isNotEmpty && olderMessages.length >= 50;
+      
+      // Store loaded messages
+      _loadedMessages[chatId] = [
+        ...(_loadedMessages[chatId] ?? []),
+        ...olderMessages,
+      ];
+    });
+  }
+
+  /// Check if there are more messages to load
+  bool hasMoreMessages(String chatId) {
+    return _hasMoreMessages[chatId] ?? true;
+  }
+
+  /// Get loaded messages count
+  int getLoadedMessagesCount(String chatId) {
+    return _loadedMessages[chatId]?.length ?? 0;
+  }
+
+  /// Clear loaded messages cache
+  void clearMessagesCache(String chatId) {
+    _loadedMessages.remove(chatId);
+    _hasMoreMessages.remove(chatId);
+  }
 }
 
 /// Provider for ChatNotifier

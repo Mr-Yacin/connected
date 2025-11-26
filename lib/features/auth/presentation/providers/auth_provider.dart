@@ -5,6 +5,7 @@ import '../../data/repositories/firebase_auth_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../profile/domain/repositories/profile_repository.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
+import '../../../../services/notification_service.dart';
 
 // Provider for AuthRepository
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -50,14 +51,20 @@ class AuthState {
 final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
   final profileRepository = ref.watch(profileRepositoryProvider);
-  return AuthNotifier(authRepository, profileRepository);
+  final notificationService = ref.watch(notificationServiceProvider);
+  return AuthNotifier(authRepository, profileRepository, notificationService);
 });
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _authRepository;
   final ProfileRepository _profileRepository;
+  final NotificationService _notificationService;
 
-  AuthNotifier(this._authRepository, this._profileRepository) : super(AuthState());
+  AuthNotifier(
+    this._authRepository,
+    this._profileRepository,
+    this._notificationService,
+  ) : super(AuthState());
 
   Future<void> sendOtp(String phoneNumber) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -105,6 +112,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           );
           await _profileRepository.createProfile(newProfile);
         }
+        
+        // ✅ CRITICAL: Save FCM token after successful login
+        await _notificationService.refreshAndSaveToken();
       }
 
       state = state.copyWith(isLoading: false);
@@ -122,6 +132,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
+      // ✅ Delete FCM token before logout (so user won't get notifications)
+      await _notificationService.deleteToken();
+      
       await _authRepository.signOut();
       state = AuthState(); // Reset state
     } catch (e) {

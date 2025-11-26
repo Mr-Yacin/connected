@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Discovery filters model for filtering user search results
 class DiscoveryFilters {
   final String? country;
@@ -5,6 +7,8 @@ class DiscoveryFilters {
   final int? minAge;
   final int? maxAge;
   final List<String> excludedUserIds;
+  final int pageSize;
+  final DocumentSnapshot? lastDocument;
 
   DiscoveryFilters({
     this.country,
@@ -12,9 +16,12 @@ class DiscoveryFilters {
     this.minAge,
     this.maxAge,
     this.excludedUserIds = const [],
+    this.pageSize = 20,
+    this.lastDocument,
   });
 
   /// Convert DiscoveryFilters to JSON
+  /// Note: lastDocument is not serialized as it's runtime state
   Map<String, dynamic> toJson() {
     return {
       'country': country,
@@ -22,6 +29,7 @@ class DiscoveryFilters {
       'minAge': minAge,
       'maxAge': maxAge,
       'excludedUserIds': excludedUserIds,
+      'pageSize': pageSize,
     };
   }
 
@@ -36,6 +44,7 @@ class DiscoveryFilters {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      pageSize: json['pageSize'] as int? ?? 20,
     );
   }
 
@@ -46,6 +55,9 @@ class DiscoveryFilters {
     int? minAge,
     int? maxAge,
     List<String>? excludedUserIds,
+    int? pageSize,
+    DocumentSnapshot? lastDocument,
+    bool clearLastDocument = false,
   }) {
     return DiscoveryFilters(
       country: country ?? this.country,
@@ -53,6 +65,8 @@ class DiscoveryFilters {
       minAge: minAge ?? this.minAge,
       maxAge: maxAge ?? this.maxAge,
       excludedUserIds: excludedUserIds ?? this.excludedUserIds,
+      pageSize: pageSize ?? this.pageSize,
+      lastDocument: clearLastDocument ? null : (lastDocument ?? this.lastDocument),
     );
   }
 
@@ -73,6 +87,7 @@ class DiscoveryFilters {
         other.dialect == dialect &&
         other.minAge == minAge &&
         other.maxAge == maxAge &&
+        other.pageSize == pageSize &&
         _listEquals(other.excludedUserIds, excludedUserIds);
   }
 
@@ -83,6 +98,7 @@ class DiscoveryFilters {
       dialect,
       minAge,
       maxAge,
+      pageSize,
       Object.hashAll(excludedUserIds),
     );
   }

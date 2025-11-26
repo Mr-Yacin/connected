@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_performance/firebase_performance.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:social_connect_app/core/theme/app_theme.dart';
 import 'package:social_connect_app/core/navigation/app_router.dart';
 import 'package:social_connect_app/services/firebase_service.dart';
+import 'package:social_connect_app/services/performance_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,9 +14,21 @@ void main() async {
   // Initialize Firebase
   await FirebaseService.initialize();
   
+  // Initialize Firebase Performance Monitoring
+  final performance = FirebasePerformance.instance;
+  await performance.setPerformanceCollectionEnabled(true);
+  
+  // Initialize Firebase Analytics
+  final analytics = FirebaseAnalytics.instance;
+  await analytics.setAnalyticsCollectionEnabled(true);
+  
   runApp(
-    const ProviderScope(
-      child: MyApp(),
+    ProviderScope(
+      overrides: [
+        firebasePerformanceProvider.overrideWithValue(performance),
+        firebaseAnalyticsProvider.overrideWithValue(analytics),
+      ],
+      child: const MyApp(),
     ),
   );
 }

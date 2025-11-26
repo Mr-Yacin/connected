@@ -15,6 +15,8 @@ class DiscoveryState {
   final List<UserProfile> discoveredUsers;
   final DiscoveryFilters filters;
   final bool isLoading;
+  final bool isLoadingMore;
+  final bool hasMore;
   final String? error;
 
   DiscoveryState({
@@ -22,6 +24,8 @@ class DiscoveryState {
     this.discoveredUsers = const [],
     DiscoveryFilters? filters,
     this.isLoading = false,
+    this.isLoadingMore = false,
+    this.hasMore = true,
     this.error,
   }) : filters = filters ?? DiscoveryFilters();
 
@@ -30,6 +34,8 @@ class DiscoveryState {
     List<UserProfile>? discoveredUsers,
     DiscoveryFilters? filters,
     bool? isLoading,
+    bool? isLoadingMore,
+    bool? hasMore,
     String? error,
   }) {
     return DiscoveryState(
@@ -37,6 +43,8 @@ class DiscoveryState {
       discoveredUsers: discoveredUsers ?? this.discoveredUsers,
       filters: filters ?? this.filters,
       isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
       error: error,
     );
   }
@@ -85,7 +93,8 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
     }
   }
 
-  /// Get filtered users
+  /// Get filtered users (deprecated - use getFilteredUsersPaginated)
+  @Deprecated('Use loadUsers or loadMoreUsers for pagination support')
   Future<void> getFilteredUsers() async {
     if (_currentUserId == null) {
       state = state.copyWith(error: 'يجب تسجيل الدخول أولاً');
@@ -107,9 +116,77 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
     }
   }
 
+  /// Load initial users with pagination
+  Future<void> loadUsers() async {
+    if (_currentUserId == null) {
+      state = state.copyWith(error: 'يجب تسجيل الدخول أولاً');
+      return;
+    }
+
+    // Reset pagination
+    final resetFilters = state.filters.copyWith(clearLastDocument: true);
+    state = state.copyWith(
+      isLoading: true, 
+      error: null,
+      filters: resetFilters,
+      discoveredUsers: [],
+    );
+    
+    try {
+      final result = await _repository.getFilteredUsersPaginated(_currentUserId!, state.filters);
+      state = state.copyWith(
+        discoveredUsers: result.users,
+        filters: result.updatedFilters,
+        hasMore: result.hasMore,
+        isLoading: false,
+      );
+    } on AppException catch (e) {
+      state = state.copyWith(error: e.message, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(error: 'حدث خطأ غير متوقع', isLoading: false);
+    }
+  }
+
+  /// Load more users (pagination)
+  Future<void> loadMoreUsers() async {
+    if (_currentUserId == null) {
+      state = state.copyWith(error: 'يجب تسجيل الدخول أولاً');
+      return;
+    }
+
+    // Don't load if already loading or no more items
+    if (state.isLoadingMore || !state.hasMore) return;
+
+    state = state.copyWith(isLoadingMore: true, error: null);
+    
+    try {
+      final result = await _repository.getFilteredUsersPaginated(_currentUserId!, state.filters);
+      
+      // Append new users to existing list
+      final updatedUsers = [...state.discoveredUsers, ...result.users];
+      
+      state = state.copyWith(
+        discoveredUsers: updatedUsers,
+        filters: result.updatedFilters,
+        hasMore: result.hasMore,
+        isLoadingMore: false,
+      );
+    } on AppException catch (e) {
+      state = state.copyWith(error: e.message, isLoadingMore: false);
+    } catch (e) {
+      state = state.copyWith(error: 'حدث خطأ غير متوقع', isLoadingMore: false);
+    }
+  }
+
   /// Update filters
   void updateFilters(DiscoveryFilters filters) {
-    state = state.copyWith(filters: filters);
+    // Clear pagination when filters change
+    final resetFilters = filters.copyWith(clearLastDocument: true);
+    state = state.copyWith(
+      filters: resetFilters,
+      discoveredUsers: [],
+      hasMore: true,
+    );
   }
 
   /// Clear current user (skip)
@@ -121,6 +198,7 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
           ...state.filters.excludedUserIds,
           state.currentUser!.id,
         ],
+        clearLastDocument: true,
       );
       state = state.copyWith(
         currentUser: null,
@@ -131,7 +209,11 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
 
   /// Reset filters
   void resetFilters() {
-    state = state.copyWith(filters: DiscoveryFilters());
+    state = state.copyWith(
+      filters: DiscoveryFilters(),
+      discoveredUsers: [],
+      hasMore: true,
+    );
   }
 }
 
