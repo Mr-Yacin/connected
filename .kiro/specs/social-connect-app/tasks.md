@@ -451,9 +451,9 @@
   - إعداد auth guards للشاشات المحمية
   - _Requirements: 2.3_
 
-- [ ] 18. التحسينات النهائية
+- [ ] 18. التحسينات النهائية وتحسين التكلفة
 
-- [ ] 18.1 تحسين الأداء
+- [ ] 18.1 تحسين الأداء للوصول إلى 10K مستخدم
   - إضافة pagination للرسائل والقصص
   - إضافة image caching
   - تحسين Firestore queries مع indexes
@@ -474,5 +474,105 @@
   - اختبار تدفق الحظر والإبلاغ
   - _Requirements: جميع المتطلبات_
 
-- [ ] 19. Checkpoint النهائي - التأكد من نجاح جميع الاختبارات
-  - التأكد من نجاح جميع الاختبارات، استشر المستخدم إذا ظهرت أسئلة.
+- [ ] 19. تحسين التكلفة للوصول إلى 10K مستخدم (الهدف: <$100/شهر)
+
+- [ ] 19.1 تحسين تكلفة Firestore
+  - تطبيق استراتيجية الـ pagination في جميع القوائم (20 عنصر لكل صفحة)
+  - تقليل عدد Real-time listeners (فقط للدردشة النشطة)
+  - استخدام cache للبيانات التي لا تتغير كثيراً (ملفات المستخدمين)
+  - تحديد TTL للـ cache (1 ساعة للملفات، 5 دقائق للقوائم)
+  - _Target: تقليل Firestore reads من 10M إلى 3M شهرياً_
+
+- [ ] 19.2 تحسين تكلفة التخزين والباندويث
+  - ضغط الصور قبل الرفع (max 1MB لكل صورة)
+  - تحويل الصور إلى WebP format
+  - إنشاء thumbnails للصور (200x200 للأفاتار، 400x400 للقصص)
+  - استخدام lazy loading للصور
+  - تفعيل browser caching (7 أيام للصور)
+  - _Target: تقليل Storage من 100GB إلى 30GB_
+  - _Target: تقليل Bandwidth من 500GB إلى 100GB_
+
+- [ ] 19.3 تحسين Cloud Functions
+  - دمج Cloud Functions المتشابهة في function واحدة
+  - استخدام batching للعمليات (تحديث metadata كل 5 ثواني بدلاً من كل رسالة)
+  - تقليل cold starts بـ keep-alive pings
+  - تحسين memory allocation (256MB بدلاً من 512MB)
+  - _Target: تقليل invocations من 5M إلى 2M شهرياً_
+
+- [ ] 19.4 مراقبة التكاليف وإنشاء Alerts
+  - إنشاء Firebase Budget Alerts
+    - Alert عند $50/شهر
+    - Alert عند $75/شهر
+    - Alert عند $100/شهر
+  - إنشاء Dashboard لمراقبة التكاليف اليومية
+  - تتبع أكثر العمليات تكلفة
+  - إنشاء تقرير شهري بالتكاليف
+  - _Target: شفافية كاملة للتكاليف_
+
+- [ ] 19.5 اختبار الحمل والتكلفة
+  - إنشاء 1000 مستخدم تجريبي
+  - محاكاة نشاط واقعي (50 رسالة/يوم لكل مستخدم)
+  - قياس التكلفة الفعلية لـ 1000 مستخدم
+  - حساب التكلفة المتوقعة لـ 10,000 مستخدم
+  - التحقق من أن التكلفة < $100/شهر
+  - _Target: validation للتكاليف المتوقعة_
+
+- [ ] 20. اختبارات الخصائص (Property-Based Tests)
+
+- [ ]* 20.1 اختبارات نماذج البيانات
+  - اختبار toJson/fromJson لجميع النماذج (100 iteration)
+  - اختبار الحالات الحدية (null values, missing fields)
+  - استخدام faker package لبيانات عشوائية
+  - _Property: Data serialization round-trip preserves data_
+
+- [ ]* 20.2 اختبارات التوثيق
+  - Property 1: OTP verification success creates or authenticates user
+  - Property 2: Rate limiting after 3 failed attempts (5 minutes block)
+  - Property 3: OTP resend cooldown (60 seconds)
+  - _Requirements: 1.2, 1.3, 1.4_
+
+- [ ]* 20.3 اختبارات الملف الشخصي
+  - Property 4: Profile image upload updates URL
+  - Property 5: Blur effect application
+  - Property 6: Anonymous link uniqueness
+  - Property 7: Profile update round trip preserves data
+  - _Requirements: 2.1, 2.2, 2.3, 2.5_
+
+- [ ]* 20.4 اختبارات الدردشة
+  - Property 8: Message sending adds to chat
+  - Property 9: Voice message has valid URL
+  - Property 10: Real-time message streaming
+  - Property 11: Message chronological ordering
+  - _Requirements: 3.1, 3.2, 3.3, 3.5_
+
+- [ ]* 20.5 اختبارات الاستكشاف
+  - Property 12: Country filter matching
+  - Property 13: Dialect filter matching
+  - Property 14: Multiple filters conjunction (AND logic)
+  - Property 15: Blocked users exclusion from results
+  - _Requirements: 4.2, 4.3, 4.4, 4.5_
+
+- [ ]* 20.6 اختبارات القصص
+  - Property 16: Story expiration time (24 hours)
+  - Property 17: Expired stories exclusion from feed
+  - Property 18: Story view recording
+  - Property 19: Stories chronological ordering
+  - _Requirements: 5.1, 5.2, 5.3, 5.4_
+
+- [ ]* 20.7 اختبارات الأمان
+  - Property 20: Block prevents access to profile and chat
+  - Property 21: Report creation with pending status
+  - Property 22: Report action updates status correctly
+  - _Requirements: 6.1, 6.2, 6.4_
+
+- [ ]* 20.8 اختبارات إدارة البيانات
+  - Property 23: Account deletion removes all user data
+  - Property 24: User preferences persistence across sessions
+  - _Requirements: 8.3, 7.4_
+
+- [ ] 21. Checkpoint النهائي - التأكد من نجاح جميع الاختبارات
+  - التأكد من نجاح جميع الاختبارات
+  - التحقق من التكلفة الشهرية < $100
+  - قياس أداء التطبيق (response time, loading time)
+  - إعداد تقرير نهائي بالإحصائيات
+  - استشر المستخدم إذا ظهرت أسئلة

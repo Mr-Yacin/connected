@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'enums.dart';
 
 /// Message model representing a chat message
@@ -31,13 +32,26 @@ class Message {
       'receiverId': receiverId,
       'type': type.name,
       'content': content,
-      'timestamp': timestamp.toIso8601String(),
+      'timestamp': Timestamp.fromDate(timestamp),
       'isRead': isRead,
     };
   }
 
   /// Create Message from JSON (Firestore document)
   factory Message.fromJson(Map<String, dynamic> json) {
+    // Handle timestamp - can be String (ISO8601) or Timestamp object
+    DateTime timestamp;
+    final timestampValue = json['timestamp'];
+    if (timestampValue is String) {
+      timestamp = DateTime.parse(timestampValue);
+    } else if (timestampValue is Timestamp) {
+      // Handle Firestore Timestamp
+      timestamp = timestampValue.toDate();
+    } else {
+      // Fallback to current time if parsing fails
+      timestamp = DateTime.now();
+    }
+
     return Message(
       id: json['id'] as String,
       chatId: json['chatId'] as String,
@@ -48,7 +62,7 @@ class Message {
         orElse: () => MessageType.text,
       ),
       content: json['content'] as String,
-      timestamp: DateTime.parse(json['timestamp'] as String),
+      timestamp: timestamp,
       isRead: json['isRead'] as bool? ?? false,
     );
   }

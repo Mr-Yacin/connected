@@ -63,15 +63,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Future<void> _loadMoreMessages() async {
     final notifier = ref.read(chatNotifierProvider.notifier);
-    
+
     // Check if there are more messages to load
     if (!notifier.hasMoreMessages(widget.chatId)) return;
 
     setState(() => _isLoadingMore = true);
 
     try {
-      final messagesAsync = ref.read(paginatedMessagesStreamProvider(widget.chatId));
-      
+      final messagesAsync = ref.read(
+        paginatedMessagesStreamProvider(widget.chatId),
+      );
+
       await messagesAsync.when(
         data: (messages) async {
           if (messages.isNotEmpty) {
@@ -97,7 +99,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('حظر المستخدم'),
-        content: const Text('هل تريد حظر هذا المستخدم؟ لن يتمكن من التواصل معك.'),
+        content: const Text(
+          'هل تريد حظر هذا المستخدم؟ لن يتمكن من التواصل معك.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -113,12 +117,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
 
     if (confirmed == true) {
-      await ref.read(moderationProvider.notifier).blockUser(widget.currentUserId, widget.otherUserId);
-      
+      await ref
+          .read(moderationProvider.notifier)
+          .blockUser(widget.currentUserId, widget.otherUserId);
+
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حظر المستخدم')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('تم حظر المستخدم')));
         Navigator.of(context).pop();
       }
     }
@@ -144,7 +150,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     // OPTIMIZED: Use paginated messages stream
-    final messagesAsync = ref.watch(paginatedMessagesStreamProvider(widget.chatId));
+    final messagesAsync = ref.watch(
+      paginatedMessagesStreamProvider(widget.chatId),
+    );
+
+    // Listen for new messages to mark chat as read
+    ref.listen(paginatedMessagesStreamProvider(widget.chatId), (
+      previous,
+      next,
+    ) {
+      if (next.hasValue) {
+        ref
+            .read(chatNotifierProvider.notifier)
+            .markChatAsRead(widget.chatId, widget.currentUserId);
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -215,10 +235,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     child: Text(
                       'لا توجد رسائل بعد\nابدأ المحادثة!',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey,
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
                     ),
                   );
                 }
@@ -250,16 +267,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           ),
                         ),
                       ),
-                    
+
                     // Messages list
                     Expanded(
                       child: ListView.builder(
                         controller: _scrollController,
-                        reverse: false,
+                        reverse: true,
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
-                          final message = messages[index];
+                          // Reverse index for reversed list
+                          final reversedIndex = messages.length - 1 - index;
+                          final message = messages[reversedIndex];
                           final isMe = message.senderId == widget.currentUserId;
 
                           // Mark message as read if it's from the other user
@@ -271,19 +290,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             });
                           }
 
-                          return MessageBubble(
-                            message: message,
-                            isMe: isMe,
-                          );
+                          return MessageBubble(message: message, isMe: isMe);
                         },
                       ),
                     ),
                   ],
                 );
               },
-              loading: () => const Center(
-                child: CircularProgressIndicator(),
-              ),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -296,15 +310,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     const SizedBox(height: 16),
                     Text(
                       'حدث خطأ في تحميل الرسائل',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.grey[700],
-                      ),
+                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
                     ),
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () {
-                        ref.invalidate(paginatedMessagesStreamProvider(widget.chatId));
+                        ref.invalidate(
+                          paginatedMessagesStreamProvider(widget.chatId),
+                        );
                       },
                       child: const Text('إعادة المحاولة'),
                     ),

@@ -10,18 +10,18 @@ import 'package:social_connect_app/services/performance_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize Firebase
   await FirebaseService.initialize();
-  
+
   // Initialize Firebase Performance Monitoring
   final performance = FirebasePerformance.instance;
   await performance.setPerformanceCollectionEnabled(true);
-  
+
   // Initialize Firebase Analytics
   final analytics = FirebaseAnalytics.instance;
   await analytics.setAnalyticsCollectionEnabled(true);
-  
+
   runApp(
     ProviderScope(
       overrides: [
@@ -42,20 +42,16 @@ class MyApp extends ConsumerWidget {
 
     return MaterialApp.router(
       routerConfig: router,
-      title: 'تطبيق التواصل الاجتماعي',
+      title: 'نبض - Nabd',
       debugShowCheckedModeBanner: false,
-      
+
       // Theme Configuration
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.dark, // Default to dark mode as per requirements
-      
       // RTL Support
       locale: const Locale('ar', 'SA'),
-      supportedLocales: const [
-        Locale('ar', 'SA'),
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('ar', 'SA'), Locale('en', 'US')],
       localizationsDelegates: const [
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

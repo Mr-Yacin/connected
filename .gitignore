@@ -1,4 +1,6 @@
+# ===========================
 # Miscellaneous
+# ===========================
 *.class
 *.log
 *.pyc
@@ -11,19 +13,28 @@
 .svn/
 .swiftpm/
 migrate_working_dir/
+Thumbs.db
 
+# ===========================
 # IntelliJ related
+# ===========================
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+# ===========================
+# VS Code
+# ===========================
+# Uncomment if you want to ignore VS Code settings
 #.vscode/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
 
+# ===========================
 # Flutter/Dart/Pub related
+# ===========================
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
@@ -32,73 +43,168 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+.packages
+.metadata
 
+# ===========================
 # Symbolication related
+# ===========================
 app.*.symbols
 
+# ===========================
 # Obfuscation related
+# ===========================
 app.*.map.json
 
+# ===========================
 # Android Studio will place build artifacts here
+# ===========================
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/.gradle/
+/android/.kotlin/
+/android/captures/
+/android/local.properties
+/android/key.properties
 
+# ===========================
 # Firebase related
+# ===========================
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
 .firebaserc
+# Sensitive Firebase configuration files
 google-services.json
 GoogleService-Info.plist
+# Firebase emulator data
+firebase-export-*/
+firestore-debug.log
+ui-debug.log
 
+# ===========================
 # Environment variables
+# ===========================
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
 
+# ===========================
 # Generated files
+# ===========================
 *.g.dart
 *.freezed.dart
 *.mocks.dart
+*.config.dart
 
+# ===========================
 # Coverage
+# ===========================
 coverage/
 *.lcov
+test/.test_coverage.dart
 
+# ===========================
 # Local configuration
+# ===========================
 local.properties
 android/local.properties
 
+# ===========================
 # Gradle
+# ===========================
 .gradle/
 android/.gradle/
 android/.kotlin/
+gradle-wrapper.jar
 
+# ===========================
 # iOS/macOS
+# ===========================
 **/ios/Pods/
 **/ios/.symlinks/
 **/ios/Flutter/Flutter.framework
 **/ios/Flutter/Flutter.podspec
+**/ios/Flutter/App.framework
+**/ios/Flutter/ephemeral/
+**/ios/ServiceDefinitions.json
+**/ios/Runner/GeneratedPluginRegistrant.*
 **/macos/Pods/
 **/macos/.symlinks/
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/GeneratedPluginRegistrant.swift
 
+# ===========================
 # Windows
+# ===========================
 windows/flutter/ephemeral/
+windows/flutter/generated_plugin_registrant.cc
+windows/flutter/generated_plugin_registrant.h
+windows/flutter/generated_plugins.cmake
 
+# ===========================
 # Linux
+# ===========================
 linux/flutter/ephemeral/
+linux/flutter/generated_plugin_registrant.cc
+linux/flutter/generated_plugin_registrant.h
+linux/flutter/generated_plugins.cmake
 
+# ===========================
 # Web
+# ===========================
 web/flutter_service_worker.js
 web/flutter_service_worker.js.map
 
-# macOS
-**/macos/Flutter/ephemeral/
-
+# ===========================
 # Tool folder (contains sensitive service account keys)
+# ===========================
 tool/
+scripts/service-account-key.json
+scripts/**/node_modules/
+scripts/**/.env
 
+# ===========================
 # Build artifacts
+# ===========================
 build/
 .build/
+*.app
+*.dSYM.zip
+*.dSYM
+
+# ===========================
+# Temporary files
+# ===========================
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+
+# ===========================
+# Large or unnecessary files
+# ===========================
+project_structure.txt
+*.dump
+*.zip
+*.tar.gz
+
+# ===========================
+# Node.js (for Cloud Functions)
+# ===========================
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# ===========================
+# Logs
+# ===========================
+*.log
+logs/
+*.log.*

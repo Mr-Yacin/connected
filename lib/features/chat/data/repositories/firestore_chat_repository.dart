@@ -32,9 +32,35 @@ class FirestoreChatRepository implements ChatRepository {
           .orderBy('timestamp', descending: false)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs
-            .map((doc) => Message.fromJson(doc.data()))
-            .toList();
+        try {
+          return snapshot.docs
+              .map((doc) {
+                try {
+                  return Message.fromJson(doc.data());
+                } catch (e) {
+                  // Log individual message parsing errors
+                  ErrorLoggingService.logGeneralError(
+                    e,
+                    stackTrace: StackTrace.current,
+                    context: 'Failed to parse message: ${doc.id}',
+                    screen: 'ChatScreen',
+                    operation: 'getMessages',
+                  );
+                  return null;
+                }
+              })
+              .whereType<Message>() // Filter out null values
+              .toList();
+        } catch (e, stackTrace) {
+          ErrorLoggingService.logGeneralError(
+            e,
+            stackTrace: stackTrace,
+            context: 'Failed to map messages snapshot',
+            screen: 'ChatScreen',
+            operation: 'getMessages',
+          );
+          return <Message>[]; // Return empty list on error
+        }
       });
     } catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
@@ -69,11 +95,37 @@ class FirestoreChatRepository implements ChatRepository {
       }
 
       return query.snapshots().map((snapshot) {
-        final messages = snapshot.docs
-            .map((doc) => Message.fromJson(doc.data()))
-            .toList();
-        // Reverse to show oldest first
-        return messages.reversed.toList();
+        try {
+          final messages = snapshot.docs
+              .map((doc) {
+                try {
+                  return Message.fromJson(doc.data());
+                } catch (e) {
+                  // Log individual message parsing errors
+                  ErrorLoggingService.logGeneralError(
+                    e,
+                    stackTrace: StackTrace.current,
+                    context: 'Failed to parse message: ${doc.id}',
+                    screen: 'ChatScreen',
+                    operation: 'getMessagesPaginated',
+                  );
+                  return null;
+                }
+              })
+              .whereType<Message>() // Filter out null values
+              .toList();
+          // Reverse to show oldest first
+          return messages.reversed.toList();
+        } catch (e, stackTrace) {
+          ErrorLoggingService.logGeneralError(
+            e,
+            stackTrace: stackTrace,
+            context: 'Failed to map messages snapshot',
+            screen: 'ChatScreen',
+            operation: 'getMessagesPaginated',
+          );
+          return <Message>[]; // Return empty list on error
+        }
       });
     } catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(

@@ -1,0 +1,16 @@
+{
+    "name": "social-connect-scripts",
+    "version": "1.0.0",
+    "description": "Utility scripts for Social Connect app - icon generation and branding tools",
+    "private": true,
+    "scripts": {
+        "generate-icons": "node generate_icons.js",
+        "help": "echo 'Available commands: npm run generate-icons'"
+    },
+    "dependencies": {
+        "sharp": "^0.33.0"
+    },
+    "devDependencies": {},
+    "author": "Social Connect Team",
+    "license": "PRIVATE"
+}

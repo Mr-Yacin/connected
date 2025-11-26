@@ -89,15 +89,28 @@ flutter run
 
 ## 🛠️ Development Tools
 
-### Mock Data Uploader
-
-Upload test user profiles to Firestore for development. See [tool/README.md](tool/README.md) for details.
+### Build Scripts (`/scripts`)
+Build-time automation scripts for icon generation and asset processing.
 
 ```bash
-cd tool
+cd scripts
 npm install
-npm run upload
+npm run generate-icons  # Generate app icons for all platforms
 ```
+
+See [scripts/README.md](scripts/README.md) for details.
+
+### Admin Tools (`/tool`)
+⚠️ **Admin only** - Contains sensitive credentials (gitignored)
+
+Development and admin utilities for database operations:
+- Mock data uploaders
+- Database migration scripts
+- Deployment automation
+
+See [SCRIPTS_AND_TOOLS_GUIDE.md](SCRIPTS_AND_TOOLS_GUIDE.md) for detailed information.
+
+**Security Note**: The `/tool` folder is gitignored as it contains Firebase service account keys. Never commit these credentials.
 
 ## 📦 Key Dependencies
 
@@ -167,35 +180,50 @@ The app supports:
 
 ## 📚 Documentation
 
-### Guides
+### Core Documentation
+- [Project Summary](docs/project-management/PROJECT_SUMMARY.md) - High-level project overview
+- [Project Organization](docs/project-management/PROJECT_ORGANIZATION.md) - Project structure and workflow
+- [Brand Guide](docs/branding/BRAND_GUIDE.md) - Complete brand identity guidelines
+- [Changelog](docs/changelog/CHANGELOG.md) - Version history and release notes
+
+### Setup & Configuration
 - [Firebase Setup Guide](docs/guides/FIREBASE_SETUP.md) - Firebase configuration guide
 - [Setup Complete Guide](docs/guides/SETUP_COMPLETE.md) - Initial setup checklist
 - [Phone Auth Troubleshooting](docs/guides/PHONE_AUTH_TROUBLESHOOTING.md) - Phone auth debugging
 - [Migration Checklist](docs/guides/MIGRATION_CHECKLIST.md) - Migration guide
 - [Chat Optimization Guide](docs/guides/CHAT_OPTIMIZATION_GUIDE.md) - Chat performance optimization
 - [Composite Indexes Guide](docs/guides/COMPOSITE_INDEXES_GUIDE.md) - Firestore indexes setup
+- [FCM Complete Guide](docs/guides/FCM_COMPLETE_GUIDE.md) - Firebase Cloud Messaging guide
 
-### Deployment
+### Deployment & Operations
 - [Deployment Instructions](docs/deployment/DEPLOYMENT_INSTRUCTIONS.md) - Production deployment guide
 - [Deployment Ready](docs/deployment/DEPLOYMENT_READY.md) - Deployment checklist
+- [Week 3 Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE_WEEK3.md) - Week 3 deployment
 - [Implementation Complete](docs/deployment/IMPLEMENTATION_COMPLETE.md) - Implementation summary
-- [Implementation Summary](docs/deployment/IMPLEMENTATION_SUMMARY.md) - Technical summary
 
-### Fix History
+### Development History
 - [Week 1 Fixes](docs/fixes/WEEK1_FIXES_COMPLETE.md) - Week 1 critical fixes
-- [Week 1 Implementation Plan](docs/fixes/Week-1-Critical-Fixes-Implementation-Plan.md) - Detailed plan
-- [Fix 2 Summary](docs/fixes/FIX2_IMPLEMENTATION_SUMMARY.md) - Fix 2 details
-- [Fix 3 Summary](docs/fixes/FIX3_IMPLEMENTATION_SUMMARY.md) - Fix 3 details
 - [Fix 4 Complete](docs/fixes/FIX4_COMPLETE.md) - Fix 4 pagination implementation
+- [Week 3 Complete](docs/changelog/WEEK3_COMPLETE.md) - Week 3 milestone
 
-### References
+### Technical References
 - [API Documentation](docs/references/API.md) - API reference
 - [Project Structure](docs/references/PROJECT_STRUCTURE.md) - Detailed architecture
-- [App Analysis](docs/references/Analysis-o-%20Your-Social-Connect-App.md) - App analysis
 - [Performance Comparison](docs/references/PERFORMANCE_COMPARISON.md) - Performance metrics
 - [Security Rules Optimization](docs/references/SECURITY_RULES_OPTIMIZATION.md) - Security guidelines
-- [Index Verification](docs/references/INDEX_VERIFICATION.md) - Firestore index verification
 - [Pagination Features](docs/references/PAGINATION_FEATURES.md) - Pagination documentation
+
+### Branding & Design
+- [Brand Guide](docs/branding/BRAND_GUIDE.md) - Complete brand guidelines
+- [Icon Design Guide](docs/branding/ICON_DESIGN_GUIDE.md) - App icon specifications
+- [Brand Assets Reference](docs/branding/BRAND_ASSETS_REFERENCE.md) - Asset usage guide
+- [Arabic Brand Proposal](docs/branding/ARABIC_BRAND_PROPOSAL.md) - Arabic branding
+
+### Planning & Roadmap
+- [Scaling Roadmap](docs/project-management/SCALING_ROADMAP.md) - Future scaling and growth
+- [Implementation Checklist](docs/project-management/IMPLEMENTATION_CHECKLIST.md) - Task tracking
+
+**📖 [Full Documentation Index](docs/README.md)** - Browse all documentation organized by category
 
 ## 🤝 Contributing
 

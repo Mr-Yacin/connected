@@ -43,7 +43,7 @@ exports.onMessageSent = functions.firestore
 
       // Prepare update data
       const updateData = {
-        lastMessage: messageData.text || "[Media]",
+        lastMessage: messageData.content || "[Media]",
         lastMessageTime: messageData.timestamp ||
           admin.firestore.Timestamp.now(),
         updatedAt: admin.firestore.Timestamp.now(),
@@ -122,7 +122,7 @@ exports.sendPushNotification = functions.firestore
         "Someone";
 
       // Prepare notification payload
-      const messageText = messageData.text || "📷 Photo";
+      const messageText = messageData.content || "📷 Photo";
       const payload = {
         notification: {
           title: senderName,

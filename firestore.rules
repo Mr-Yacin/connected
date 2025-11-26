@@ -39,8 +39,10 @@ service cloud.firestore {
       // OPTIMIZED: Allow update if user is a participant (check both old and new data)
       allow update: if request.auth != null && 
                        request.auth.uid in resource.data.participants &&
-                       // Ensure participants list doesn't change
-                       request.resource.data.participants == resource.data.participants;
+                       // Allow updating unreadCount specifically
+                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadCount']) ||
+                        // Ensure participants list doesn't change for other updates
+                        request.resource.data.participants == resource.data.participants);
       
       // Only participants can delete chats
       allow delete: if request.auth != null && 
@@ -70,8 +72,13 @@ service cloud.firestore {
                          (exists(/databases/$(database)/documents/chats/$(chatId)) == false ||
                           request.auth.uid in getChatParticipants());
         
-        // Messages are immutable - no updates or deletes allowed
-        allow update, delete: if false;
+        // Allow updating isRead status
+        allow update: if request.auth != null && 
+                         request.auth.uid in getChatParticipants() &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+        
+        // Messages cannot be deleted
+        allow delete: if false;
       }
     }
     
