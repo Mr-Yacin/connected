@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/settings_provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/theme_provider.dart';
 
 /// Settings screen for managing user preferences and account
 class SettingsScreen extends ConsumerWidget {
@@ -100,18 +101,7 @@ class SettingsScreen extends ConsumerWidget {
                           _buildSectionHeader('المظهر', isDarkMode),
                           _buildSettingsCard(
                             children: [
-                              _buildSwitchTile(
-                                title: 'الوضع الداكن',
-                                subtitle: 'تفعيل الوضع الداكن للتطبيق',
-                                value: settingsState.preferences.isDarkMode,
-                                onChanged: (value) async {
-                                  await settingsNotifier.toggleDarkMode();
-                                },
-                                icon: settingsState.preferences.isDarkMode
-                                    ? Icons.dark_mode
-                                    : Icons.light_mode,
-                                isDarkMode: isDarkMode,
-                              ),
+                              _buildThemeSelector(context, ref, isDarkMode),
                             ],
                             isDarkMode: isDarkMode,
                           ),
@@ -218,6 +208,179 @@ class SettingsScreen extends ConsumerWidget {
               ),
       ),
     );
+  }
+
+  // Theme selector widget
+  Widget _buildThemeSelector(BuildContext context, WidgetRef ref, bool isDarkMode) {
+    final currentThemeOption = ref.watch(currentThemeOptionProvider);
+    final themeNotifier = ref.read(themeProvider.notifier);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: AppColors.primary.withOpacity(0.1),
+                ),
+                child: Icon(
+                  Icons.palette,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'وضع المظهر',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      'اختر شكل تطبيقك المفضل',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: ThemeOption.values.map((option) {
+              final isSelected = currentThemeOption == option;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () async {
+                    await themeNotifier.setThemeOption(option);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: EdgeInsets.only(
+                      right: option == ThemeOption.system ? 0 : 4,
+                      left: option == ThemeOption.dark ? 0 : 4,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      color: isSelected
+                          ? AppColors.primary
+                          : isDarkMode
+                              ? Colors.white.withOpacity(0.05)
+                              : Colors.grey.withOpacity(0.1),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primary
+                            : isDarkMode
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.grey.withOpacity(0.3),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          _getThemeIcon(option),
+                          color: isSelected
+                              ? Colors.white
+                              : isDarkMode
+                                  ? Colors.white70
+                                  : Colors.black54,
+                          size: 20,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getThemeLabel(option),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            color: isSelected
+                                ? Colors.white
+                                : isDarkMode
+                                    ? Colors.white70
+                                    : Colors.black54,
+                          ),
+                        ),
+                        if (isSelected)
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        if (currentThemeOption == ThemeOption.system)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 14,
+                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'سيتم تبديل المظهر تلقائياً حسب إعدادات جهازك',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  IconData _getThemeIcon(ThemeOption option) {
+    switch (option) {
+      case ThemeOption.system:
+        return Icons.settings_brightness;
+      case ThemeOption.light:
+        return Icons.light_mode;
+      case ThemeOption.dark:
+        return Icons.dark_mode;
+    }
+  }
+
+  String _getThemeLabel(ThemeOption option) {
+    switch (option) {
+      case ThemeOption.system:
+        return 'النظام';
+      case ThemeOption.light:
+        return 'فاتح';
+      case ThemeOption.dark:
+        return 'داكن';
+    }
   }
 
   // Helper methods for modern UI components

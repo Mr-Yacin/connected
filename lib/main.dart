@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:social_connect_app/core/theme/app_theme.dart';
+import 'package:social_connect_app/core/theme/theme_provider.dart';
 import 'package:social_connect_app/core/navigation/app_router.dart';
 import 'package:social_connect_app/services/firebase_service.dart';
 import 'package:social_connect_app/services/performance_service.dart';
@@ -48,7 +49,7 @@ class MyApp extends ConsumerWidget {
       // Theme Configuration
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.dark, // Default to dark mode as per requirements
+      themeMode: ref.watch(themeProvider), // Dynamic theme from provider
       // RTL Support
       locale: const Locale('ar', 'SA'),
       supportedLocales: const [Locale('ar', 'SA'), Locale('en', 'US')],

@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/exceptions/app_exceptions.dart';
+import '../core/theme/theme_provider.dart';
 
 /// User preferences model
 class UserPreferences {
@@ -52,6 +53,7 @@ class UserPreferences {
 class PreferencesService {
   static const String _languageKey = 'user_language';
   static const String _darkModeKey = 'user_dark_mode';
+  static const String _themeOptionKey = 'theme_option';
 
   final SharedPreferences? _prefs;
 
@@ -138,8 +140,40 @@ class PreferencesService {
       final prefs = await _preferences;
       await prefs.remove(_languageKey);
       await prefs.remove(_darkModeKey);
+      await prefs.remove(_themeOptionKey);
     } catch (e) {
       throw AppException('فشل مسح الإعدادات: $e');
+    }
+  }
+
+  /// Save theme option preference
+  Future<void> setThemeOption(ThemeOption option) async {
+    try {
+      final prefs = await _preferences;
+      await prefs.setInt(_themeOptionKey, option.value);
+    } catch (e) {
+      throw AppException('فشل حفظ خيار الثيم: $e');
+    }
+  }
+
+  /// Get theme option preference
+  Future<ThemeOption> getThemeOption() async {
+    try {
+      final prefs = await _preferences;
+      final value = prefs.getInt(_themeOptionKey) ?? ThemeOption.system.value;
+      return ThemeOption.fromValue(value);
+    } catch (e) {
+      return ThemeOption.system;
+    }
+  }
+
+  /// Get theme option preference (synchronous version)
+  ThemeOption getThemeOptionSync() {
+    try {
+      final value = _prefs?.getInt(_themeOptionKey) ?? ThemeOption.system.value;
+      return ThemeOption.fromValue(value);
+    } catch (e) {
+      return ThemeOption.system;
     }
   }
 }
