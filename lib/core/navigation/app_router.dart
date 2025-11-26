@@ -13,6 +13,8 @@ import '../../features/profile/data/repositories/user_repository.dart';
 import '../../features/stories/presentation/screens/story_creation_screen.dart';
 import '../../features/moderation/presentation/screens/blocked_users_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
+import '../../features/settings/presentation/screens/privacy_policy_screen.dart';
+import '../../features/settings/presentation/screens/terms_of_service_screen.dart';
 import '../../features/discovery/presentation/screens/users_list_screen.dart';
 
 /// Application router using go_router
@@ -153,6 +155,16 @@ class AppRouter {
             GoRoute(
               path: 'settings',
               builder: (context, state) => const SettingsScreen(),
+              routes: [
+                GoRoute(
+                  path: 'privacy',
+                  builder: (context, state) => const PrivacyPolicyScreen(),
+                ),
+                GoRoute(
+                  path: 'terms',
+                  builder: (context, state) => const TermsOfServiceScreen(),
+                ),
+              ],
             ),
 
             // Moderation routes

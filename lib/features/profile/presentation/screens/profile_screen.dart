@@ -163,7 +163,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await Clipboard.setData(ClipboardData(text: link));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم نسخ الرابط')),
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('تم نسخ الرابط'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
         );
       }
       debugPrint("DEBUG: Link copied to clipboard: $link");
@@ -244,67 +257,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     debugPrint("DEBUG: ProfileScreen build - isLoading: ${profileState.isLoading}, hasProfile: ${profile != null}");
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('الملف الشخصي'),
-        actions: [
-          if (_isViewingOwnProfile) ...[
-            if (profile?.anonymousLink != null)
-              IconButton(
-                icon: const Icon(Icons.link),
-                onPressed: () {
-                  final fullUrl = _buildFullAnonymousUrl(profile!.anonymousLink!);
-                  _shareAnonymousLink(fullUrl);
-                },
-                tooltip: 'مشاركة الرابط المجهول',
-              )
-            else
-              IconButton(
-                icon: const Icon(Icons.add_link),
-                onPressed: _generateAnonymousLink,
-                tooltip: 'توليد رابط مجهول',
-              ),
-            IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () {
-                context.push('/settings');
-              },
-              tooltip: 'الإعدادات',
-            ),
-          ] else ...[
-            PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'block') {
-                  _blockUser();
-                } else if (value == 'report') {
-                  _reportUser();
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'block',
-                  child: Row(
-                    children: [
-                      Icon(Icons.block, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('حظر المستخدم'),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'report',
-                  child: Row(
-                    children: [
-                      Icon(Icons.flag, color: Colors.orange),
-                      SizedBox(width: 8),
-                      Text('الإبلاغ عن المستخدم'),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
       body: profileState.isLoading && profile == null
           ? const Center(child: CircularProgressIndicator())
           : profile == null
@@ -328,205 +280,393 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ],
                   ),
                 )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Profile Image
-                      Center(
-                        child: CircleAvatar(
-                          radius: 60,
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.1,
-                          ),
-                          backgroundImage: profile.profileImageUrl != null
-                              ? NetworkImage(profile.profileImageUrl!)
-                              : null,
-                          child: profile.profileImageUrl == null
-                              ? const Icon(Icons.person, size: 60)
-                              : null,
-                        ),
+              : CustomScrollView(
+                  slivers: [
+                    // Gradient Header with Profile Image
+                    SliverAppBar(
+                      expandedHeight: 280,
+                      pinned: true,
+                      flexibleSpace: FlexibleSpaceBar(
+                        background: _buildProfileHeader(profile),
                       ),
-
-                      const SizedBox(height: 24),
-
-                      // Profile Information Cards
-                      _buildInfoCard(
-                        icon: Icons.person_outline,
-                        label: 'الاسم',
-                        value: profile.name ?? 'غير محدد',
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      _buildInfoCard(
-                        icon: Icons.cake_outlined,
-                        label: 'العمر',
-                        value: profile.age?.toString() ?? 'غير محدد',
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      _buildInfoCard(
-                        icon: Icons.flag_outlined,
-                        label: 'الدولة',
-                        value: profile.country ?? 'غير محدد',
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      _buildInfoCard(
-                        icon: Icons.blur_on,
-                        label: 'تمويه الصورة',
-                        value: profile.isImageBlurred ? 'مفعّل' : 'غير مفعّل',
-                      ),
-
-                      // Anonymous Link Section
-                      if (_isViewingOwnProfile && profile.anonymousLink != null) ...[
-                        const SizedBox(height: 24),
-                        const Divider(),
-                        const SizedBox(height: 16),
-                        
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'الرابط المجهول',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                      actions: [
+                        if (_isViewingOwnProfile)
+                          IconButton(
+                            icon: const Icon(Icons.settings_outlined),
+                            onPressed: () => context.push('/settings'),
+                            tooltip: 'الإعدادات',
+                          )
+                        else
+                          PopupMenuButton<String>(
+                            onSelected: (value) {
+                              if (value == 'block') {
+                                _blockUser();
+                              } else if (value == 'report') {
+                                _reportUser();
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'block',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.block, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    Text('حظر المستخدم'),
+                                  ],
+                                ),
                               ),
-                            ),
-                            Row(
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.copy, size: 20),
-                                  onPressed: () {
-                                    final fullUrl = _buildFullAnonymousUrl(
-                                      profile.anonymousLink!,
-                                    );
-                                    _copyAnonymousLink(fullUrl);
-                                  },
-                                  tooltip: 'نسخ الرابط',
+                              const PopupMenuItem(
+                                value: 'report',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.flag, color: Colors.orange),
+                                    SizedBox(width: 8),
+                                    Text('الإبلاغ عن المستخدم'),
+                                  ],
                                 ),
-                                IconButton(
-                                  icon: const Icon(Icons.share, size: 20),
-                                  onPressed: () {
-                                    final fullUrl = _buildFullAnonymousUrl(
-                                      profile.anonymousLink!,
-                                    );
-                                    _shareAnonymousLink(fullUrl);
-                                  },
-                                  tooltip: 'مشاركة الرابط',
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+
+                    // Content
+                    SliverToBoxAdapter(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 16),
+
+                          // Quick Actions (only for own profile)
+                          if (_isViewingOwnProfile)
+                            _buildQuickActions(profile),
+
+                          const SizedBox(height: 24),
+
+                          // Profile Information Grid
+                          _buildInformationGrid(profile),
+
+                          const SizedBox(height: 24),
+
+                          // Anonymous Link Card
+                          if (_isViewingOwnProfile && profile.anonymousLink != null)
+                            _buildAnonymousLinkCard(profile),
+
+                          if (profileState.error != null) ...[
+                            const SizedBox(height: 16),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                              ],
+                                child: Text(
+                                  profileState.error!,
+                                  style: const TextStyle(color: Colors.red),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
                             ),
                           ],
-                        ),
-                        
-                        const SizedBox(height: 8),
-                        
-                        InkWell(
-                          onTap: () {
-                            final fullUrl = _buildFullAnonymousUrl(
-                              profile.anonymousLink!,
-                            );
-                            _copyAnonymousLink(fullUrl);
-                          },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppColors.primary.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.link,
-                                  color: AppColors.primary,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _buildFullAnonymousUrl(profile.anonymousLink!),
-                                    style: TextStyle(
-                                      color: AppColors.primary,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
 
-                      // Edit Button (only for own profile)
-                      if (_isViewingOwnProfile) ...[
-                        const SizedBox(height: 32),
-                        ElevatedButton.icon(
-                          onPressed: () {
-                            debugPrint("DEBUG: Navigating to profile edit screen");
-                            context.push('/profile/edit');
-                          },
-                          icon: const Icon(Icons.edit),
-                          label: const Text('تعديل الملف الشخصي'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                          ),
-                        ),
-                      ],
-
-                      if (profileState.error != null) ...[
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            profileState.error!,
-                            style: const TextStyle(color: Colors.red),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
     );
   }
 
-  Widget _buildInfoCard({
+  Widget _buildProfileHeader(dynamic profile) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const SizedBox(height: 40),
+            // Profile Image with Gradient Border
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.8),
+                    Colors.white.withValues(alpha: 0.4),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 56,
+                    backgroundColor: Colors.white,
+                    backgroundImage: profile.profileImageUrl != null
+                        ? NetworkImage(profile.profileImageUrl!)
+                        : null,
+                    child: profile.profileImageUrl == null
+                        ? const Icon(Icons.person, size: 56, color: Colors.grey)
+                        : null,
+                  ),
+                  if (profile.isImageBlurred)
+                    Positioned.fill(
+                      child: ClipOval(
+                        child: Container(
+                          color: Colors.black54,
+                          child: const Icon(
+                            Icons.blur_on,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // Name
+            Text(
+              profile.name ?? 'غير محدد',
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                shadows: [
+                  Shadow(
+                    color: Colors.black26,
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Country and Age Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.flag, size: 16, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        profile.country ?? 'غير محدد',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.cake, size: 16, color: Colors.white),
+                      const SizedBox(width: 6),
+                      Text(
+                        profile.age != null ? '${profile.age} سنة' : 'غير محدد',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActions(dynamic profile) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildActionButton(
+              icon: Icons.edit_outlined,
+              label: 'تعديل الملف',
+              gradient: AppColors.primaryGradient,
+              onTap: () => context.push('/profile/edit'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildActionButton(
+              icon: profile.anonymousLink != null ? Icons.link : Icons.add_link,
+              label: profile.anonymousLink != null ? 'مشاركة الرابط' : 'توليد رابط',
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade400, Colors.blue.shade600],
+              ),
+              onTap: () {
+                if (profile.anonymousLink != null) {
+                  final fullUrl = _buildFullAnonymousUrl(profile.anonymousLink!);
+                  _shareAnonymousLink(fullUrl);
+                } else {
+                  _generateAnonymousLink();
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required Gradient gradient,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInformationGrid(dynamic profile) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'معلومات الملف الشخصي',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _buildCompactInfoItem(
+              icon: Icons.blur_on,
+              label: 'خصوصية الصورة',
+              value: profile.isImageBlurred ? 'مموهة' : 'ظاهرة',
+              color: profile.isImageBlurred ? Colors.orange : Colors.green,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactInfoItem({
     required IconData icon,
     required String label,
     required String value,
+    required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: AppColors.primary,
-            size: 24,
-          ),
-          const SizedBox(width: 16),
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -534,23 +674,152 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Text(
                   label,
                   style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey.shade600,
+                    fontSize: 11,
+                    color: Colors.grey[600],
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: color,
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAnonymousLinkCard(dynamic profile) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.secondary.withValues(alpha: 0.1),
+              AppColors.primary.withValues(alpha: 0.1),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.primaryGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.link,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'الرابط المجهول',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        'شارك ملفك الشخصي بشكل مجهول',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _buildFullAnonymousUrl(profile.anonymousLink!),
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      final fullUrl = _buildFullAnonymousUrl(profile.anonymousLink!);
+                      _copyAnonymousLink(fullUrl);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.copy,
+                        size: 18,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () {
+                      final fullUrl = _buildFullAnonymousUrl(profile.anonymousLink!);
+                      _shareAnonymousLink(fullUrl);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.secondary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.share,
+                        size: 18,
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

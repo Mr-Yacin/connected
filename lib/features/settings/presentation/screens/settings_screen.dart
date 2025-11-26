@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/settings_provider.dart';
 import '../../../../core/theme/app_colors.dart';
-import 'dart:convert';
 
 /// Settings screen for managing user preferences and account
 class SettingsScreen extends ConsumerWidget {
@@ -15,328 +15,415 @@ class SettingsScreen extends ConsumerWidget {
     final settingsState = ref.watch(settingsProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
     final currentUser = FirebaseAuth.instance.currentUser;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('الإعدادات'), centerTitle: true),
-      body: settingsState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                // Error message
-                if (settingsState.error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
-                    child: Card(
-                      color: Colors.red.shade50,
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.error_outline,
-                              color: Colors.red.shade700,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                settingsState.error!,
-                                style: TextStyle(color: Colors.red.shade700),
+      backgroundColor: isDarkMode ? AppColors.darkSurface : AppColors.lightSurface,
+      appBar: AppBar(
+        title: Text(
+          'الإعدادات',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: isDarkMode ? Colors.white : Colors.black87,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+        ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: isDarkMode
+                ? [AppColors.darkSurface, const Color(0xFF1a1a1a)]
+                : [AppColors.lightSurface, const Color(0xFFF8F9FA)],
+          ),
+        ),
+        child: settingsState.isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Error message
+                          if (settingsState.error != null)
+                            Container(
+                              margin: const EdgeInsets.only(bottom: 20),
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                color: Colors.red.withOpacity(0.1),
+                                border: Border.all(
+                                  color: Colors.red.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.error_outline,
+                                    color: Colors.red.shade400,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      settingsState.error!,
+                                      style: TextStyle(
+                                        color: Colors.red.shade400,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () => settingsNotifier.clearError(),
+                                    child: Icon(
+                                      Icons.close,
+                                      color: Colors.red.shade400,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.close),
-                              onPressed: () => settingsNotifier.clearError(),
-                            ),
-                          ],
-                        ),
+
+                          // Appearance Section
+                          _buildSectionHeader('المظهر', isDarkMode),
+                          _buildSettingsCard(
+                            children: [
+                              _buildSwitchTile(
+                                title: 'الوضع الداكن',
+                                subtitle: 'تفعيل الوضع الداكن للتطبيق',
+                                value: settingsState.preferences.isDarkMode,
+                                onChanged: (value) async {
+                                  await settingsNotifier.toggleDarkMode();
+                                },
+                                icon: settingsState.preferences.isDarkMode
+                                    ? Icons.dark_mode
+                                    : Icons.light_mode,
+                                isDarkMode: isDarkMode,
+                              ),
+                            ],
+                            isDarkMode: isDarkMode,
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Account Section
+                          _buildSectionHeader('الحساب', isDarkMode),
+                          _buildSettingsCard(
+                            children: [
+                              _buildNavigationTile(
+                                title: 'المستخدمين المحظورين',
+                                subtitle: 'إدارة قائمة الحظر',
+                                icon: Icons.block,
+                                iconColor: Colors.orange,
+                                onTap: () => context.push('/blocked-users'),
+                                isDarkMode: isDarkMode,
+                              ),
+                              _buildDivider(isDarkMode),
+                              _buildNavigationTile(
+                                title: 'حذف الحساب',
+                                subtitle: 'حذف حسابك وجميع بياناتك نهائياً',
+                                icon: Icons.delete_forever,
+                                iconColor: Colors.red,
+                                textColor: Colors.red,
+                                onTap: () => _showDeleteAccountDialog(
+                                  context,
+                                  currentUser?.uid ?? '',
+                                  settingsNotifier,
+                                ),
+                                isDarkMode: isDarkMode,
+                              ),
+                            ],
+                            isDarkMode: isDarkMode,
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // About Section
+                          _buildSectionHeader('حول التطبيق', isDarkMode),
+                          _buildSettingsCard(
+                            children: [
+                              ListTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    color: AppColors.primary.withOpacity(0.1),
+                                  ),
+                                  child: Icon(
+                                    Icons.info_outline,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text(
+                                  'الإصدار',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDarkMode ? Colors.white : Colors.black87,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '1.0.0',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                                  ),
+                                ),
+                              ),
+                              _buildDivider(isDarkMode),
+                              _buildNavigationTile(
+                                title: 'سياسة الخصوصية',
+                                subtitle: 'عرض سياسة الخصوصية',
+                                icon: Icons.privacy_tip_outlined,
+                                onTap: () => context.push('/settings/privacy'),
+                                isDarkMode: isDarkMode,
+                              ),
+                              _buildDivider(isDarkMode),
+                              _buildNavigationTile(
+                                title: 'شروط الاستخدام',
+                                subtitle: 'عرض شروط الخدمة',
+                                icon: Icons.description_outlined,
+                                onTap: () => context.push('/settings/terms'),
+                                isDarkMode: isDarkMode,
+                              ),
+                            ],
+                            isDarkMode: isDarkMode,
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Sign Out Button
+                          _buildSignOutButton(context, isDarkMode),
+                          
+                          // Bottom padding to avoid conflicts with mobile navigation
+                          const SizedBox(height: 100),
+                        ],
                       ),
                     ),
                   ),
-
-                // Appearance Section
-                _buildSectionTitle('المظهر'),
-                Card(
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        title: const Text('الوضع الداكن'),
-                        subtitle: const Text('تفعيل الوضع الداكن للتطبيق'),
-                        value: settingsState.preferences.isDarkMode,
-                        onChanged: (value) async {
-                          await settingsNotifier.toggleDarkMode();
-                        },
-                        secondary: Icon(
-                          settingsState.preferences.isDarkMode
-                              ? Icons.dark_mode
-                              : Icons.light_mode,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: Icon(Icons.language, color: AppColors.primary),
-                        title: const Text('اللغة'),
-                        subtitle: Text(
-                          settingsState.preferences.language == 'ar'
-                              ? 'العربية'
-                              : 'English',
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () => _showLanguageDialog(
-                          context,
-                          settingsState.preferences.language,
-                          settingsNotifier,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Account Management Section
-                _buildSectionTitle('إدارة الحساب'),
-                Card(
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: Icon(Icons.download, color: AppColors.primary),
-                        title: const Text('تصدير البيانات'),
-                        subtitle: const Text('تحميل نسخة من بياناتك'),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () => _exportUserData(
-                          context,
-                          currentUser?.uid ?? '',
-                          settingsNotifier,
-                        ),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.block, color: Colors.orange),
-                        title: const Text('المستخدمين المحظورين'),
-                        subtitle: const Text('إدارة قائمة الحظر'),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () => context.push('/blocked-users'),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(
-                          Icons.delete_forever,
-                          color: Colors.red,
-                        ),
-                        title: const Text(
-                          'حذف الحساب',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                        subtitle: const Text('حذف حسابك وجميع بياناتك نهائياً'),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () => _showDeleteAccountDialog(
-                          context,
-                          currentUser?.uid ?? '',
-                          settingsNotifier,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // About Section
-                _buildSectionTitle('حول التطبيق'),
-                Card(
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: Icon(
-                          Icons.info_outline,
-                          color: AppColors.primary,
-                        ),
-                        title: const Text('الإصدار'),
-                        subtitle: const Text('1.0.0'),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: Icon(
-                          Icons.privacy_tip_outlined,
-                          color: AppColors.primary,
-                        ),
-                        title: const Text('سياسة الخصوصية'),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () {
-                          // Navigate to privacy policy
-                        },
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: Icon(
-                          Icons.description_outlined,
-                          color: AppColors.primary,
-                        ),
-                        title: const Text('شروط الاستخدام'),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                        onTap: () {
-                          // Navigate to terms of service
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Sign Out Button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await FirebaseAuth.instance.signOut();
-                      if (context.mounted) {
-                        Navigator.of(context).pushReplacementNamed('/auth');
-                      }
-                    },
-                    icon: const Icon(Icons.logout),
-                    label: const Text('تسجيل الخروج'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
+      ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
+  // Helper methods for modern UI components
+  Widget _buildSectionHeader(String title, bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, right: 8),
+      padding: const EdgeInsets.only(bottom: 12, right: 4),
       child: Text(
         title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.grey,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: isDarkMode ? Colors.white70 : Colors.black54,
         ),
       ),
     );
   }
 
-  void _showLanguageDialog(
-    BuildContext context,
-    String currentLanguage,
-    SettingsNotifier notifier,
-  ) {
+  Widget _buildSettingsCard({
+    required List<Widget> children,
+    required bool isDarkMode,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: isDarkMode 
+            ? Colors.white.withOpacity(0.05) 
+            : Colors.white.withOpacity(0.8),
+        boxShadow: [
+          BoxShadow(
+            color: isDarkMode 
+                ? Colors.black.withOpacity(0.3) 
+                : Colors.black.withOpacity(0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(
+          color: isDarkMode 
+              ? Colors.white.withOpacity(0.1) 
+              : Colors.black.withOpacity(0.05),
+        ),
+      ),
+      child: Column(
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildSwitchTile({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required Function(bool) onChanged,
+    required IconData icon,
+    required bool isDarkMode,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+                                    color: AppColors.primary.withOpacity(0.1),
+                                  ),
+                                  child: Icon(
+                                    icon,
+                                    color: AppColors.primary,
+          size: 20,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: isDarkMode ? Colors.white : Colors.black87,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 14,
+          color: isDarkMode ? Colors.white70 : Colors.black54,
+        ),
+      ),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeColor: AppColors.primary,
+        activeTrackColor: AppColors.primary.withOpacity(0.3),
+        inactiveThumbColor: Colors.grey.shade400,
+        inactiveTrackColor: Colors.grey.shade300,
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    );
+  }
+
+  Widget _buildNavigationTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Function() onTap,
+    Color? iconColor,
+    Color? textColor,
+    required bool isDarkMode,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: (iconColor ?? AppColors.primary).withOpacity(0.1),
+        ),
+        child: Icon(
+          icon,
+          color: iconColor ?? AppColors.primary,
+          size: 20,
+        ),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: textColor ?? (isDarkMode ? Colors.white : Colors.black87),
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 14,
+          color: isDarkMode ? Colors.white70 : Colors.black54,
+        ),
+      ),
+      trailing: Icon(
+        Icons.arrow_back_ios,
+        size: 16,
+        color: isDarkMode ? Colors.white54 : Colors.black54,
+      ),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+    );
+  }
+
+  Widget _buildDivider(bool isDarkMode) {
+    return Divider(
+      height: 1,
+      indent: 16,
+      endIndent: 16,
+      color: isDarkMode 
+          ? Colors.white.withOpacity(0.1) 
+          : Colors.black.withOpacity(0.1),
+    );
+  }
+
+  Widget _buildSignOutButton(BuildContext context, bool isDarkMode) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      child: ElevatedButton.icon(
+        onPressed: () => _showSignOutDialog(context),
+        icon: Icon(Icons.logout, size: 20),
+        label: Text(
+          'تسجيل الخروج',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.grey.shade700,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          elevation: 0,
+        ),
+      ),
+    );
+  }
+
+  void _showSignOutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('اختر اللغة'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RadioListTile<String>(
-              title: const Text('العربية'),
-              value: 'ar',
-              groupValue: currentLanguage,
-              onChanged: (value) async {
-                if (value != null) {
-                  await notifier.changeLanguage(value);
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                }
-              },
-            ),
-            RadioListTile<String>(
-              title: const Text('English'),
-              value: 'en',
-              groupValue: currentLanguage,
-              onChanged: (value) async {
-                if (value != null) {
-                  await notifier.changeLanguage(value);
-                  if (context.mounted) {
-                    Navigator.of(context).pop();
-                  }
-                }
-              },
-            ),
-          ],
-        ),
+        title: const Text('تأكيد تسجيل الخروج'),
+        content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج؟'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('إلغاء'),
           ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                context.go('/auth/phone');
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.grey.shade700,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('تسجيل الخروج'),
+          ),
         ],
       ),
     );
-  }
-
-  Future<void> _exportUserData(
-    BuildContext context,
-    String userId,
-    SettingsNotifier notifier,
-  ) async {
-    try {
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: Card(
-            child: Padding(
-              padding: EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('جاري تصدير البيانات...'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-
-      final data = await notifier.exportUserData(userId);
-
-      if (context.mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-
-        // Show success dialog with data preview
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('تم تصدير البيانات'),
-            content: SingleChildScrollView(
-              child: Text(
-                const JsonEncoder.withIndent('  ').convert(data),
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('إغلاق'),
-              ),
-            ],
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.of(context).pop(); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('فشل تصدير البيانات: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
   }
 
   void _showDeleteAccountDialog(
@@ -370,16 +457,23 @@ class SettingsScreen extends ConsumerWidget {
               showDialog(
                 context: context,
                 barrierDismissible: false,
-                builder: (context) => const Center(
+                builder: (context) => Center(
                   child: Card(
                     child: Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: const EdgeInsets.all(24),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('جاري حذف الحساب...'),
+                          const CircularProgressIndicator(),
+                          const SizedBox(height: 16),
+                          Text(
+                            'جاري حذف الحساب...',
+                            style: TextStyle(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black87,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -392,7 +486,7 @@ class SettingsScreen extends ConsumerWidget {
 
                 if (context.mounted) {
                   Navigator.of(context).pop(); // Close loading dialog
-                  Navigator.of(context).pushReplacementNamed('/auth');
+                  context.go('/auth/phone');
                 }
               } catch (e) {
                 if (context.mounted) {
