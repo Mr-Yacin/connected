@@ -6,27 +6,40 @@ Welcome to the Social Connect App documentation! This directory contains all pro
 
 ```
 docs/
-├── guides/           # Setup, configuration, and how-to guides
-├── deployment/       # Deployment instructions and checklists
-├── fixes/            # Historical fix documentation and implementation plans
-└── references/       # API docs, architecture, and technical references
+├── branding/           # Brand guidelines, assets, and design documentation
+├── changelog/          # Version history and release notes
+├── deployment/         # Deployment instructions and checklists
+├── fixes/              # Historical fix documentation and implementation plans
+├── guides/             # Setup, configuration, and how-to guides
+├── project-management/ # Project planning, organization, and roadmaps
+└── references/         # API docs, architecture, and technical references
 ```
 
 ## 🗂️ Documentation Categories
 
-### 📖 Guides
-Setup instructions, troubleshooting guides, and best practices:
-- **FIREBASE_SETUP.md** - Complete Firebase configuration guide
-- **SETUP_COMPLETE.md** - Initial setup checklist
-- **PHONE_AUTH_TROUBLESHOOTING.md** - Phone authentication debugging
-- **MIGRATION_CHECKLIST.md** - Migration and upgrade guide
-- **CHAT_OPTIMIZATION_GUIDE.md** - Chat performance optimization
-- **COMPOSITE_INDEXES_GUIDE.md** - Firestore indexes configuration
+### 🎨 Branding
+Brand identity, design guidelines, and asset references:
+- **BRAND_GUIDE.md** - Complete brand identity guidelines
+- **BRANDING_SETUP.md** - Brand implementation setup
+- **BRAND_ASSETS_REFERENCE.md** - Asset usage reference
+- **ARABIC_BRAND_PROPOSAL.md** - Arabic branding proposal
+- **NABD_BRAND_IMPLEMENTATION.md** - Nabd brand implementation
+- **COMPLETE_BRANDING_SUMMARY.md** - Complete branding summary
+- **ICON_DESIGN_GUIDE.md** - App icon design guidelines
+
+### 📝 Changelog
+Version history and milestone completion:
+- **CHANGELOG.md** - Complete version history
+- **WEEK3_COMPLETE.md** - Week 3 milestone completion
 
 ### 🚀 Deployment
 Production deployment and release documentation:
 - **DEPLOYMENT_INSTRUCTIONS.md** - Step-by-step deployment guide
 - **DEPLOYMENT_READY.md** - Pre-deployment checklist
+- **DEPLOYMENT_SUCCESS.md** - Deployment success summary
+- **DEPLOYMENT_GUIDE_WEEK3.md** - Week 3 specific deployment guide
+- **WEEK3_IMPLEMENTATION.md** - Week 3 implementation details
+- **QUICK_START_WEEK3.md** - Week 3 quick start guide
 - **IMPLEMENTATION_COMPLETE.md** - Complete implementation summary
 - **IMPLEMENTATION_SUMMARY.md** - Technical implementation details
 
@@ -38,6 +51,24 @@ Historical documentation of bug fixes and improvements:
 - **FIX3_*** - Fix 3 implementation details
 - **FIX4_*** - Fix 4 pagination implementation
 
+### 📖 Guides
+Setup instructions, troubleshooting guides, and best practices:
+- **FIREBASE_SETUP.md** - Complete Firebase configuration guide
+- **SETUP_COMPLETE.md** - Initial setup checklist
+- **PHONE_AUTH_TROUBLESHOOTING.md** - Phone authentication debugging
+- **MIGRATION_CHECKLIST.md** - Migration and upgrade guide
+- **CHAT_OPTIMIZATION_GUIDE.md** - Chat performance optimization
+- **COMPOSITE_INDEXES_GUIDE.md** - Firestore indexes configuration
+- **FCM_COMPLETE_GUIDE.md** - Firebase Cloud Messaging complete guide
+- **FCM_QUICK_ANSWER.md** - FCM quick reference
+
+### 📊 Project Management
+Project planning, organization, and roadmaps:
+- **PROJECT_SUMMARY.md** - High-level project overview
+- **PROJECT_ORGANIZATION.md** - Project structure and organization
+- **IMPLEMENTATION_CHECKLIST.md** - Implementation tracking
+- **SCALING_ROADMAP.md** - Future scaling and growth roadmap
+
 ### 📋 References
 Technical documentation and API references:
 - **API.md** - Complete API documentation
@@ -46,6 +77,8 @@ Technical documentation and API references:
 - **SECURITY_RULES_OPTIMIZATION.md** - Security rules and best practices
 - **INDEX_VERIFICATION.md** - Firestore index verification guide
 - **PAGINATION_FEATURES.md** - Pagination implementation details
+- **Analysis-o- Your-Social-Connect-App.md** - Comprehensive app analysis
+- **QUICK_REFERENCE.md** - Quick technical reference
 
 ## 🔍 Quick Links
 
@@ -53,16 +86,24 @@ Technical documentation and API references:
 1. Start with [FIREBASE_SETUP.md](guides/FIREBASE_SETUP.md)
 2. Follow [SETUP_COMPLETE.md](guides/SETUP_COMPLETE.md)
 3. Review [PROJECT_STRUCTURE.md](references/PROJECT_STRUCTURE.md)
+4. Check [PROJECT_SUMMARY.md](project-management/PROJECT_SUMMARY.md)
+
+### For Branding & Design
+1. Review [BRAND_GUIDE.md](branding/BRAND_GUIDE.md)
+2. Check [ICON_DESIGN_GUIDE.md](branding/ICON_DESIGN_GUIDE.md)
+3. Reference [BRAND_ASSETS_REFERENCE.md](branding/BRAND_ASSETS_REFERENCE.md)
 
 ### For Deployment
-1. Check [DEPLOYMENT_READY.md](deployment/DEPLOYMENT_READY.md)
-2. Follow [DEPLOYMENT_INSTRUCTIONS.md](deployment/DEPLOYMENT_INSTRUCTIONS.md)
-3. Verify [COMPOSITE_INDEXES_GUIDE.md](guides/COMPOSITE_INDEXES_GUIDE.md)
+1. Review [SCALING_ROADMAP.md](project-management/SCALING_ROADMAP.md)
+2. Check [DEPLOYMENT_READY.md](deployment/DEPLOYMENT_READY.md)
+3. Follow [DEPLOYMENT_INSTRUCTIONS.md](deployment/DEPLOYMENT_INSTRUCTIONS.md)
+4. Verify [COMPOSITE_INDEXES_GUIDE.md](guides/COMPOSITE_INDEXES_GUIDE.md)
 
 ### For Troubleshooting
 1. Authentication issues → [PHONE_AUTH_TROUBLESHOOTING.md](guides/PHONE_AUTH_TROUBLESHOOTING.md)
 2. Performance issues → [CHAT_OPTIMIZATION_GUIDE.md](guides/CHAT_OPTIMIZATION_GUIDE.md)
 3. Database issues → [COMPOSITE_INDEXES_GUIDE.md](guides/COMPOSITE_INDEXES_GUIDE.md)
+4. FCM issues → [FCM_COMPLETE_GUIDE.md](guides/FCM_COMPLETE_GUIDE.md)
 
 ## 📝 Contributing to Documentation
 
@@ -78,6 +119,7 @@ This documentation is maintained alongside code changes. If you make significant
 - Update relevant documentation
 - Create new guides if introducing new features
 - Add fix documentation for bug fixes in the `fixes/` directory
+- Update changelog in `changelog/CHANGELOG.md`
 
 ---
 
