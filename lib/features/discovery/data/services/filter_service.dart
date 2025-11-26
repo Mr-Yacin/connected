@@ -12,13 +12,13 @@ class FilterService {
     return users.where((user) => user.country == country).toList();
   }
 
-  /// Apply dialect filter to a list of users
-  /// Returns only users who speak the specified dialect
-  List<UserProfile> applyDialectFilter(
+  /// Apply country filter to a list of users
+  /// Returns only users from the specified country
+  List<UserProfile> applyCountryFilter(
     List<UserProfile> users,
-    String dialect,
+    String country,
   ) {
-    return users.where((user) => user.dialect == dialect).toList();
+    return users.where((user) => user.country == country).toList();
   }
 
   /// Apply multiple filters to a list of users using AND logic

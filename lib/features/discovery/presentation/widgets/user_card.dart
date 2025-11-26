@@ -87,20 +87,6 @@ class UserCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
-                if (user.country != null && user.dialect != null)
-                  const SizedBox(width: 16),
-                if (user.dialect != null) ...[
-                  Icon(
-                    Icons.language,
-                    size: 20,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    user.dialect!,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
               ],
             ),
             const SizedBox(height: 32),

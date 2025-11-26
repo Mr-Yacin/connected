@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../providers/auth_provider.dart';
 
@@ -72,12 +73,17 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
           const SnackBar(
             content: Text('تم التحقق بنجاح!'),
             backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
+            duration: Duration(seconds: 1),
           ),
         );
         
-        // Pop all auth screens - the auth state change will trigger navigation to home
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        // Small delay to ensure auth state is updated
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (mounted) {
+          // Navigate to home - router will handle redirection
+          context.go('/');
+        }
       }
     } on ValidationException catch (e) {
       if (mounted) {

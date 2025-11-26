@@ -1,9 +1,9 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/models/enums.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -29,78 +29,15 @@ class ProfileScreen extends ConsumerStatefulWidget {
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _DebugStatus extends StatelessWidget {
-  final ProfileState profileState;
-  final String? currentUserId;
-  final String? viewedUserId;
-  final bool? hasLoadedProfile;
-  final bool? fetchInProgress;
-
-  const _DebugStatus({
-    required this.profileState,
-    required this.currentUserId,
-    required this.viewedUserId,
-    this.hasLoadedProfile,
-    this.fetchInProgress,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final profileSummary = profileState.profile != null
-        ? profileState.profile!.toJson().toString()
-        : 'No profile loaded';
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text(
-          'معلومات التصحيح',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text('isLoading: ${profileState.isLoading}'),
-        Text('isUploading: ${profileState.isUploading}'),
-        Text('hasLoadedProfile: $hasLoadedProfile'),
-        Text('fetchInProgress: $fetchInProgress'),
-        Text('profile == null: ${profileState.profile == null}'),
-        Text('currentUserId: $currentUserId'),
-        Text('viewedUserId: $viewedUserId'),
-        if (profileState.error != null)
-          Text(
-            'error: ${profileState.error}',
-            style: const TextStyle(color: Colors.red),
-          ),
-        const SizedBox(height: 8),
-        Text(
-          profileSummary,
-          style: const TextStyle(fontSize: 12, color: Colors.black54),
-        ),
-      ],
-    );
-  }
-}
-
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _ageController = TextEditingController();
-  final _countryController = TextEditingController();
-  final _dialectController = TextEditingController();
-
-  final ImagePicker _imagePicker = ImagePicker();
-  File? _selectedImage;
-  bool _isImageBlurred = false;
   bool _hasLoadedProfile = false;
   bool _profileFetchInProgress = false;
-  bool _showDebugPanel = false;
   bool _profileLoadScheduled = false;
 
   @override
   void initState() {
     super.initState();
     // Listen for user changes to load profile once user is available
-    // We do this in a post-frame callback to avoid state errors during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_hasLoadedProfile) {
         _checkAndLoadProfile();
@@ -142,6 +79,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       await ref.read(profileProvider.notifier).loadProfile(resolvedUserId);
       _hasLoadedProfile = true;
+      debugPrint("DEBUG: Profile loaded successfully");
+    } catch (e) {
+      debugPrint("ERROR: Failed to load profile: $e");
     } finally {
       _profileFetchInProgress = false;
     }
@@ -181,6 +121,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
 
     if (confirmed == true) {
+      debugPrint("DEBUG: Blocking user: $viewedUserId");
       await ref
           .read(moderationProvider.notifier)
           .blockUser(currentUserId, viewedUserId);
@@ -200,6 +141,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
     if (currentUserId == null || viewedUserId == null) return;
 
+    debugPrint("DEBUG: Reporting user: $viewedUserId");
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -216,110 +158,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _ageController.dispose();
-    _countryController.dispose();
-    _dialectController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickImage() async {
+  Future<void> _copyAnonymousLink(String link) async {
     try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
-      }
-    } catch (e) {
+      await Clipboard.setData(ClipboardData(text: link));
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('فشل في اختيار الصورة: $e')));
-      }
-    }
-  }
-
-  Future<void> _uploadImage() async {
-    if (_selectedImage == null) return;
-
-    final userId = ref.currentUserId;
-    if (userId == null) return;
-
-    try {
-      final imageUrl = await ref
-          .read(profileProvider.notifier)
-          .uploadProfileImage(userId, _selectedImage!);
-
-      // Update profile with new image URL
-      final currentProfile = ref.read(profileProvider).profile;
-      if (currentProfile != null) {
-        final updatedProfile = currentProfile.copyWith(
-          profileImageUrl: imageUrl,
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم نسخ الرابط')),
         );
-        await ref.read(profileProvider.notifier).updateProfile(updatedProfile);
       }
-
-      if (mounted) {
-        // Clear the selected image after successful upload
-        setState(() {
-          _selectedImage = null;
-        });
-
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('تم رفع الصورة بنجاح')));
-      }
+      debugPrint("DEBUG: Link copied to clipboard: $link");
     } catch (e) {
+      debugPrint("ERROR: Failed to copy link: $e");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('فشل في رفع الصورة: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل في نسخ الرابط: $e')),
+        );
       }
     }
   }
 
-  Future<void> _saveProfile() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final userId = ref.currentUserId;
-    if (userId == null) return;
-
-    final currentProfile = ref.read(profileProvider).profile;
-    if (currentProfile == null) return;
-
+  Future<void> _shareAnonymousLink(String link) async {
     try {
-      final updatedProfile = currentProfile.copyWith(
-        name: _nameController.text.trim(),
-        age: int.tryParse(_ageController.text.trim()),
-        country: _countryController.text.trim(),
-        dialect: _dialectController.text.trim(),
-        isImageBlurred: _isImageBlurred,
+      debugPrint("DEBUG: Sharing link: $link");
+      await Share.share(
+        'تواصل معي بشكل مجهول عبر هذا الرابط:\n$link',
+        subject: 'رابط الملف الشخصي المجهول',
       );
-
-      await ref.read(profileProvider.notifier).updateProfile(updatedProfile);
-
-      // Reload the profile from Firestore to ensure we have the latest data
-      await ref.read(profileProvider.notifier).loadProfile(userId);
-
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('تم حفظ البيانات بنجاح')));
-      }
     } catch (e) {
+      debugPrint("ERROR: Failed to share link: $e");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('فشل في حفظ البيانات: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل في مشاركة الرابط: $e')),
+        );
       }
     }
   }
@@ -329,32 +199,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (userId == null) return;
 
     try {
+      debugPrint("DEBUG: Generating anonymous link for user: $userId");
       final link = await ref
           .read(profileProvider.notifier)
           .generateAnonymousLink(userId);
 
+      debugPrint("DEBUG: Anonymous link generated: $link");
+
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('الرابط المجهول'),
-            content: SelectableText(link),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('إغلاق'),
-              ),
-            ],
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم توليد الرابط المجهول')),
         );
       }
     } catch (e) {
+      debugPrint("ERROR: Failed to generate anonymous link: $e");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('فشل في توليد الرابط: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('فشل في توليد الرابط: $e')),
+        );
       }
     }
+  }
+
+  String _buildFullAnonymousUrl(String linkHash) {
+    // TODO: Replace with your actual domain
+    const domain = 'https://connected.app';
+    return '$domain/profile/link/$linkHash';
   }
 
   @override
@@ -371,25 +241,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final profileState = ref.watch(profileProvider);
     final profile = profileState.profile;
 
-    // Update controllers when profile loads
-    if (profile != null && _nameController.text.isEmpty) {
-      _nameController.text = profile.name ?? '';
-      _ageController.text = profile.age?.toString() ?? '';
-      _countryController.text = profile.country ?? '';
-      _dialectController.text = profile.dialect ?? '';
-      _isImageBlurred = profile.isImageBlurred;
-    }
+    debugPrint("DEBUG: ProfileScreen build - isLoading: ${profileState.isLoading}, hasProfile: ${profile != null}");
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('الملف الشخصي'),
         actions: [
           if (_isViewingOwnProfile) ...[
-            IconButton(
-              icon: const Icon(Icons.link),
-              onPressed: _generateAnonymousLink,
-              tooltip: 'توليد رابط مجهول',
-            ),
+            if (profile?.anonymousLink != null)
+              IconButton(
+                icon: const Icon(Icons.link),
+                onPressed: () {
+                  final fullUrl = _buildFullAnonymousUrl(profile!.anonymousLink!);
+                  _shareAnonymousLink(fullUrl);
+                },
+                tooltip: 'مشاركة الرابط المجهول',
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.add_link),
+                onPressed: _generateAnonymousLink,
+                tooltip: 'توليد رابط مجهول',
+              ),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () {
@@ -433,258 +306,252 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ],
       ),
       body: profileState.isLoading && profile == null
-          ? Center(
-              child: _DebugStatus(
-                profileState: profileState,
-                currentUserId: ref.currentUserId,
-                viewedUserId: widget.viewedUserId,
-                hasLoadedProfile: _hasLoadedProfile,
-                fetchInProgress: _profileFetchInProgress,
-              ),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _showDebugPanel = !_showDebugPanel;
-                          });
-                        },
-                        icon: const Icon(Icons.bug_report),
-                        label: Text(
-                          _showDebugPanel
-                              ? 'إخفاء معلومات التصحيح'
-                              : 'عرض معلومات التصحيح',
-                        ),
-                      ),
-                    ),
-                    if (_showDebugPanel)
-                      Card(
-                        color: Colors.grey.shade100,
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: _DebugStatus(
-                            profileState: profileState,
-                            currentUserId: ref.currentUserId,
-                            viewedUserId: widget.viewedUserId,
-                            hasLoadedProfile: _hasLoadedProfile,
-                            fetchInProgress: _profileFetchInProgress,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-                    // Profile Image Section
-                    Center(
-                      child: Stack(
-                        children: [
-                          CircleAvatar(
-                            radius: 60,
-                            backgroundColor: AppColors.primary.withValues(
-                              alpha: 0.1,
-                            ),
-                            backgroundImage: _selectedImage != null
-                                ? FileImage(_selectedImage!)
-                                : (profile?.profileImageUrl != null
-                                          ? NetworkImage(
-                                              profile!.profileImageUrl!,
-                                            )
-                                          : null)
-                                      as ImageProvider?,
-                            child:
-                                _selectedImage == null &&
-                                    profile?.profileImageUrl == null
-                                ? const Icon(Icons.person, size: 60)
-                                : null,
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: CircleAvatar(
-                              backgroundColor: AppColors.primary,
-                              child: IconButton(
-                                icon: const Icon(
-                                  Icons.camera_alt,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                                onPressed: _pickImage,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    if (_selectedImage != null) ...[
+          ? const Center(child: CircularProgressIndicator())
+          : profile == null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.person_off, size: 64, color: Colors.grey),
                       const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: profileState.isUploading
-                            ? null
-                            : _uploadImage,
-                        child: profileState.isUploading
-                            ? const SizedBox(
-                                height: 20,
-                                width: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : const Text('رفع الصورة'),
+                      Text(
+                        'لم يتم العثور على الملف الشخصي',
+                        style: Theme.of(context).textTheme.titleLarge,
                       ),
-                    ],
-
-                    const SizedBox(height: 24),
-
-                    // Blur Toggle
-                    SwitchListTile(
-                      title: const Text('تمويه الصورة الشخصية'),
-                      subtitle: const Text('إخفاء الصورة جزئياً للآخرين'),
-                      value: _isImageBlurred,
-                      onChanged: (value) {
-                        setState(() {
-                          _isImageBlurred = value;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Name Field
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'الاسم',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.person_outline),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال الاسم';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Age Field
-                    TextFormField(
-                      controller: _ageController,
-                      decoration: const InputDecoration(
-                        labelText: 'العمر',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.cake_outlined),
-                      ),
-                      keyboardType: TextInputType.number,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال العمر';
-                        }
-                        final age = int.tryParse(value.trim());
-                        if (age == null || age < 18 || age > 100) {
-                          return 'الرجاء إدخال عمر صحيح (18-100)';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Country Field
-                    TextFormField(
-                      controller: _countryController,
-                      decoration: const InputDecoration(
-                        labelText: 'الدولة',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.flag_outlined),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال الدولة';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Dialect Field
-                    TextFormField(
-                      controller: _dialectController,
-                      decoration: const InputDecoration(
-                        labelText: 'اللهجة',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.language_outlined),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'الرجاء إدخال اللهجة';
-                        }
-                        return null;
-                      },
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    // Save Button
-                    ElevatedButton(
-                      onPressed: profileState.isLoading ? null : _saveProfile,
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      child: profileState.isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('حفظ التغييرات'),
-                    ),
-
-                    if (profileState.error != null) ...[
-                      const SizedBox(height: 16),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.red.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
+                      const SizedBox(height: 8),
+                      if (profileState.error != null)
+                        Text(
                           profileState.error!,
                           style: const TextStyle(color: Colors.red),
                           textAlign: TextAlign.center,
                         ),
-                      ),
                     ],
-
-                    if (profile?.anonymousLink != null) ...[
-                      const SizedBox(height: 24),
-                      const Divider(),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'الرابط المجهول:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      SelectableText(
-                        profile!.anonymousLink!,
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 12,
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Profile Image
+                      Center(
+                        child: CircleAvatar(
+                          radius: 60,
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.1,
+                          ),
+                          backgroundImage: profile.profileImageUrl != null
+                              ? NetworkImage(profile.profileImageUrl!)
+                              : null,
+                          child: profile.profileImageUrl == null
+                              ? const Icon(Icons.person, size: 60)
+                              : null,
                         ),
                       ),
+
+                      const SizedBox(height: 24),
+
+                      // Profile Information Cards
+                      _buildInfoCard(
+                        icon: Icons.person_outline,
+                        label: 'الاسم',
+                        value: profile.name ?? 'غير محدد',
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      _buildInfoCard(
+                        icon: Icons.cake_outlined,
+                        label: 'العمر',
+                        value: profile.age?.toString() ?? 'غير محدد',
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      _buildInfoCard(
+                        icon: Icons.flag_outlined,
+                        label: 'الدولة',
+                        value: profile.country ?? 'غير محدد',
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      _buildInfoCard(
+                        icon: Icons.blur_on,
+                        label: 'تمويه الصورة',
+                        value: profile.isImageBlurred ? 'مفعّل' : 'غير مفعّل',
+                      ),
+
+                      // Anonymous Link Section
+                      if (_isViewingOwnProfile && profile.anonymousLink != null) ...[
+                        const SizedBox(height: 24),
+                        const Divider(),
+                        const SizedBox(height: 16),
+                        
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'الرابط المجهول',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.copy, size: 20),
+                                  onPressed: () {
+                                    final fullUrl = _buildFullAnonymousUrl(
+                                      profile.anonymousLink!,
+                                    );
+                                    _copyAnonymousLink(fullUrl);
+                                  },
+                                  tooltip: 'نسخ الرابط',
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.share, size: 20),
+                                  onPressed: () {
+                                    final fullUrl = _buildFullAnonymousUrl(
+                                      profile.anonymousLink!,
+                                    );
+                                    _shareAnonymousLink(fullUrl);
+                                  },
+                                  tooltip: 'مشاركة الرابط',
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 8),
+                        
+                        InkWell(
+                          onTap: () {
+                            final fullUrl = _buildFullAnonymousUrl(
+                              profile.anonymousLink!,
+                            );
+                            _copyAnonymousLink(fullUrl);
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppColors.primary.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.link,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _buildFullAnonymousUrl(profile.anonymousLink!),
+                                    style: TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      // Edit Button (only for own profile)
+                      if (_isViewingOwnProfile) ...[
+                        const SizedBox(height: 32),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            debugPrint("DEBUG: Navigating to profile edit screen");
+                            context.push('/profile/edit');
+                          },
+                          icon: const Icon(Icons.edit),
+                          label: const Text('تعديل الملف الشخصي'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                          ),
+                        ),
+                      ],
+
+                      if (profileState.error != null) ...[
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            profileState.error!,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
+    );
+  }
+
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: AppColors.primary,
+            size: 24,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
+          ),
+        ],
+      ),
     );
   }
 }

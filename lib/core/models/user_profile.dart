@@ -7,7 +7,6 @@ class UserProfile {
   final String? name;
   final int? age;
   final String? country;
-  final String? dialect;
   final String? profileImageUrl;
   final String? gender;
   final bool isActive;
@@ -22,7 +21,6 @@ class UserProfile {
     this.name,
     this.age,
     this.country,
-    this.dialect,
     this.profileImageUrl,
     this.gender,
     this.isActive = true,
@@ -40,7 +38,6 @@ class UserProfile {
       'name': name,
       'age': age,
       'country': country,
-      'dialect': dialect,
       'profileImageUrl': profileImageUrl,
       'gender': gender,
       'isActive': isActive,
@@ -96,7 +93,6 @@ class UserProfile {
       name: json['name'] as String?,
       age: parseInt(json['age']),
       country: json['country'] as String?,
-      dialect: json['dialect'] as String?,
       profileImageUrl: json['profileImageUrl'] as String?,
       gender: json['gender'] as String?,
       isActive: json.containsKey('isActive') ? parseBool(json['isActive']) : true,
@@ -114,7 +110,6 @@ class UserProfile {
     String? name,
     int? age,
     String? country,
-    String? dialect,
     String? profileImageUrl,
     String? gender,
     bool? isActive,
@@ -129,7 +124,6 @@ class UserProfile {
       name: name ?? this.name,
       age: age ?? this.age,
       country: country ?? this.country,
-      dialect: dialect ?? this.dialect,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       gender: gender ?? this.gender,
       isActive: isActive ?? this.isActive,
@@ -150,7 +144,6 @@ class UserProfile {
         other.name == name &&
         other.age == age &&
         other.country == country &&
-        other.dialect == dialect &&
         other.profileImageUrl == profileImageUrl &&
         other.gender == gender &&
         other.isActive == isActive &&
@@ -168,7 +161,6 @@ class UserProfile {
       name,
       age,
       country,
-      dialect,
       profileImageUrl,
       gender,
       isActive,

@@ -15,7 +15,6 @@ void main() {
         name: 'Test User',
         age: 25,
         country: 'Saudi Arabia',
-        dialect: 'Najdi',
         profileImageUrl: 'https://example.com/image.jpg',
         isImageBlurred: false,
         anonymousLink: 'https://example.com/anon/123',

@@ -4,9 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 import '../../features/auth/presentation/screens/phone_input_screen.dart';
 import '../../features/auth/presentation/screens/otp_verification_screen.dart';
+import '../../features/auth/presentation/screens/profile_setup_screen.dart';
 import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/chat/presentation/screens/chat_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
+import '../../features/profile/presentation/screens/profile_edit_screen.dart';
+import '../../features/profile/data/repositories/user_repository.dart';
 import '../../features/stories/presentation/screens/story_creation_screen.dart';
 import '../../features/moderation/presentation/screens/blocked_users_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
@@ -15,6 +18,7 @@ import '../../features/discovery/presentation/screens/users_list_screen.dart';
 /// Application router using go_router
 class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
+  static final _userRepository = UserRepository();
 
   static GoRouter createRouter() {
     return GoRouter(
@@ -26,7 +30,8 @@ class AppRouter {
       ),
 
       // Auth guard - redirect to login if not authenticated
-      redirect: (context, state) {
+      // Check profile completion after authentication
+      redirect: (context, state) async {
         final user = FirebaseAuth.instance.currentUser;
         final isAuthRoute = state.matchedLocation.startsWith('/auth');
 
@@ -35,9 +40,30 @@ class AppRouter {
           return '/auth/phone';
         }
 
-        // If user is logged in and trying to access auth routes
-        if (user != null && isAuthRoute) {
-          return '/';
+        // If user is logged in
+        if (user != null) {
+          // Allow access to OTP screen (user might be verifying)
+          if (state.matchedLocation == '/auth/otp') {
+            return null;
+          }
+
+          // Skip profile check for profile setup route itself
+          if (state.matchedLocation == '/auth/profile-setup') {
+            return null;
+          }
+
+          // Check if profile is complete
+          final isComplete = await _userRepository.isProfileComplete(user.uid);
+
+          // If profile is incomplete, redirect to profile setup
+          if (!isComplete) {
+            return '/auth/profile-setup';
+          }
+
+          // If profile is complete and trying to access auth/phone, redirect to home
+          if (isComplete && state.matchedLocation == '/auth/phone') {
+            return '/';
+          }
         }
 
         return null; // No redirect needed
@@ -52,6 +78,10 @@ class AppRouter {
         GoRoute(
           path: '/auth/otp',
           builder: (context, state) => const OtpVerificationScreen(),
+        ),
+        GoRoute(
+          path: '/auth/profile-setup',
+          builder: (context, state) => const ProfileSetupScreen(),
         ),
 
         // Main app routes
@@ -86,6 +116,12 @@ class AppRouter {
             ),
 
             // Profile routes
+            GoRoute(
+              path: 'profile/edit',
+              builder: (context, state) {
+                return const ProfileEditScreen();
+              },
+            ),
             GoRoute(
               path: 'profile/:userId',
               builder: (context, state) {
