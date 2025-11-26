@@ -11,6 +11,7 @@ import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
 
 import '../providers/profile_provider.dart';
+import '../providers/current_user_profile_provider.dart';
 
 /// Helper to get current user from auth state
 extension CurrentUserExtension on WidgetRef {
@@ -33,33 +34,60 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _hasLoadedProfile = false;
   bool _profileFetchInProgress = false;
   bool _profileLoadScheduled = false;
+  String? _lastViewedUserId; // Track the last viewed user to detect changes
 
   @override
   void initState() {
     super.initState();
+    _lastViewedUserId = widget.viewedUserId;
     // Listen for user changes to load profile once user is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_hasLoadedProfile) {
-        _checkAndLoadProfile();
-      }
+      _checkAndLoadProfile(forceReload: true);
     });
+  }
+
+  @override
+  void didUpdateWidget(ProfileScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // This is called when widget is rebuilt with different parameters
+    if (oldWidget.viewedUserId != widget.viewedUserId) {
+      debugPrint("DEBUG: didUpdateWidget - viewedUserId changed from ${oldWidget.viewedUserId} to ${widget.viewedUserId}");
+      _lastViewedUserId = widget.viewedUserId;
+      _hasLoadedProfile = false;
+      _profileFetchInProgress = false; // Reset fetch flag
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkAndLoadProfile(forceReload: true);
+      });
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    
+    // Check if viewedUserId has changed
+    final currentViewedUserId = widget.viewedUserId;
+    bool userIdChanged = false;
+    if (_lastViewedUserId != currentViewedUserId) {
+      debugPrint("DEBUG: didChangeDependencies - viewedUserId changed from $_lastViewedUserId to $currentViewedUserId");
+      _lastViewedUserId = currentViewedUserId;
+      userIdChanged = true;
+      // Reset loaded flag to force reload when user changes
+      _hasLoadedProfile = false;
+    }
+    
     if (!_hasLoadedProfile &&
         !_profileFetchInProgress &&
         !_profileLoadScheduled) {
       _profileLoadScheduled = true;
       Future.microtask(() async {
         _profileLoadScheduled = false;
-        await _checkAndLoadProfile();
+        await _checkAndLoadProfile(forceReload: userIdChanged);
       });
     }
   }
 
-  Future<void> _checkAndLoadProfile({String? userId}) async {
+  Future<void> _checkAndLoadProfile({String? userId, bool forceReload = false}) async {
     if (_profileFetchInProgress) return;
 
     final resolvedUserId =
@@ -68,16 +96,41 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ref.read(currentUserProvider).value?.uid ??
         FirebaseAuth.instance.currentUser?.uid;
 
-    debugPrint("DEBUG: _checkAndLoadProfile called. userId: $resolvedUserId");
+    debugPrint("DEBUG: _checkAndLoadProfile called. userId: $resolvedUserId, forceReload: $forceReload");
+    
+    // Determine which provider to use based on whether viewing own profile
+    final isOwnProfile = widget.viewedUserId == null;
+    
+    if (isOwnProfile) {
+      debugPrint("DEBUG: Current state loadedUserId: ${ref.read(currentUserProfileProvider).loadedUserId}");
+    } else {
+      debugPrint("DEBUG: Current state loadedUserId: ${ref.read(viewedProfileProvider).loadedUserId}");
+    }
 
     if (resolvedUserId == null) {
       debugPrint("DEBUG: userId is null, cannot load profile");
       return;
     }
 
+    // Use the correct provider based on context
+    final notifier = isOwnProfile
+        ? ref.read(currentUserProfileProvider.notifier)
+        : ref.read(viewedProfileProvider.notifier);
+
+    final currentState = isOwnProfile
+        ? ref.read(currentUserProfileProvider)
+        : ref.read(viewedProfileProvider);
+
+    // Check if we need to force reload (when switching users)
+    if (forceReload || currentState.loadedUserId != resolvedUserId) {
+      debugPrint("DEBUG: Force reloading profile for user: $resolvedUserId");
+      // Clear the current state to force reload
+      notifier.resetState();
+    }
+
     _profileFetchInProgress = true;
     try {
-      await ref.read(profileProvider.notifier).loadProfile(resolvedUserId);
+      await notifier.loadProfile(resolvedUserId);
       _hasLoadedProfile = true;
       debugPrint("DEBUG: Profile loaded successfully");
     } catch (e) {
@@ -214,7 +267,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       debugPrint("DEBUG: Generating anonymous link for user: $userId");
       final link = await ref
-          .read(profileProvider.notifier)
+          .read(currentUserProfileProvider.notifier)
           .generateAnonymousLink(userId);
 
       debugPrint("DEBUG: Anonymous link generated: $link");
@@ -242,19 +295,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen for user changes
-    ref.listen<AsyncValue<User?>>(currentUserProvider, (previous, next) {
-      next.whenData((user) {
-        if (user != null && !_hasLoadedProfile) {
-          _checkAndLoadProfile(userId: user.uid);
-        }
-      });
-    });
-
-    final profileState = ref.watch(profileProvider);
+    // Use DIFFERENT providers based on whether viewing own profile or another's
+    final profileState = widget.viewedUserId == null
+        ? ref.watch(currentUserProfileProvider)  // Own profile
+        : ref.watch(viewedProfileProvider);       // Other user's profile
+    
     final profile = profileState.profile;
-
-    debugPrint("DEBUG: ProfileScreen build - isLoading: ${profileState.isLoading}, hasProfile: ${profile != null}");
+    
+    debugPrint("DEBUG: ProfileScreen build - viewedUserId: ${widget.viewedUserId}, loadedUserId: ${profileState.loadedUserId}, hasProfile: ${profile != null}");
 
     return Scaffold(
       body: profileState.isLoading && profile == null

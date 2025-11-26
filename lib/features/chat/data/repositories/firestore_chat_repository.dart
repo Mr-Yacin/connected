@@ -294,9 +294,9 @@ class FirestoreChatRepository implements ChatRepository {
   Future<void> markChatAsRead(String chatId, String userId) async {
     try {
       // OPTIMIZED: Reset unread count for user when opening chat
-      await _firestore.collection('chats').doc(chatId).set({
+      await _firestore.collection('chats').doc(chatId).update({
         'unreadCount.$userId': 0,
-      }, SetOptions(merge: true));
+      });
     } on FirebaseException catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
         e,

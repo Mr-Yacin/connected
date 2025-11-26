@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
-import '../providers/profile_provider.dart';
+import '../providers/current_user_profile_provider.dart';
 
 /// Helper to get current user from auth state
 extension CurrentUserExtension on WidgetRef {
@@ -44,7 +44,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   void _initializeData() {
     if (_hasInitialized) return;
     
-    final profile = ref.read(profileProvider).profile;
+    final profile = ref.read(currentUserProfileProvider).profile;
     if (profile != null) {
       debugPrint('DEBUG: Initializing profile edit with data: ${profile.name}');
       _nameController.text = profile.name ?? '';
@@ -98,18 +98,18 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     try {
       debugPrint('DEBUG: Starting image upload for user: $userId');
       final imageUrl = await ref
-          .read(profileProvider.notifier)
+          .read(currentUserProfileProvider.notifier)
           .uploadProfileImage(userId, _selectedImage!);
 
       debugPrint('DEBUG: Image uploaded successfully: $imageUrl');
 
       // Update profile with new image URL
-      final currentProfile = ref.read(profileProvider).profile;
+      final currentProfile = ref.read(currentUserProfileProvider).profile;
       if (currentProfile != null) {
         final updatedProfile = currentProfile.copyWith(
           profileImageUrl: imageUrl,
         );
-        await ref.read(profileProvider.notifier).updateProfile(updatedProfile);
+        await ref.read(currentUserProfileProvider.notifier).updateProfile(updatedProfile);
       }
 
       if (mounted) {
@@ -138,7 +138,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     final userId = ref.currentUserId;
     if (userId == null) return;
 
-    final currentProfile = ref.read(profileProvider).profile;
+    final currentProfile = ref.read(currentUserProfileProvider).profile;
     if (currentProfile == null) return;
 
     try {
@@ -150,10 +150,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         isImageBlurred: _isImageBlurred,
       );
 
-      await ref.read(profileProvider.notifier).updateProfile(updatedProfile);
+      await ref.read(currentUserProfileProvider.notifier).updateProfile(updatedProfile);
 
       // Reload the profile from Firestore to ensure we have the latest data
-      await ref.read(profileProvider.notifier).loadProfile(userId);
+      await ref.read(currentUserProfileProvider.notifier).loadProfile(userId);
 
       debugPrint('DEBUG: Profile saved successfully');
 
@@ -175,10 +175,10 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   Future<void> _cancel() async {
     final hasChanges = _selectedImage != null ||
-        _nameController.text != (ref.read(profileProvider).profile?.name ?? '') ||
-        _ageController.text != (ref.read(profileProvider).profile?.age?.toString() ?? '') ||
-        _countryController.text != (ref.read(profileProvider).profile?.country ?? '') ||
-        _isImageBlurred != (ref.read(profileProvider).profile?.isImageBlurred ?? false);
+        _nameController.text != (ref.read(currentUserProfileProvider).profile?.name ?? '') ||
+        _ageController.text != (ref.read(currentUserProfileProvider).profile?.age?.toString() ?? '') ||
+        _countryController.text != (ref.read(currentUserProfileProvider).profile?.country ?? '') ||
+        _isImageBlurred != (ref.read(currentUserProfileProvider).profile?.isImageBlurred ?? false);
 
     if (hasChanges) {
       final shouldDiscard = await showDialog<bool>(
@@ -212,7 +212,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profileState = ref.watch(profileProvider);
+    final profileState = ref.watch(currentUserProfileProvider);
     final profile = profileState.profile;
 
     // Initialize data when profile is available

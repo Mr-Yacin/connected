@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/enums.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input_bar.dart';
@@ -168,27 +169,39 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            // Profile image
-            CircleAvatar(
-              radius: 20,
-              backgroundImage: widget.otherUserImageUrl != null
-                  ? NetworkImage(widget.otherUserImageUrl!)
-                  : null,
-              child: widget.otherUserImageUrl == null
-                  ? const Icon(Icons.person)
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            // User name
-            Expanded(
-              child: Text(
-                widget.otherUserName ?? 'مستخدم',
-                style: const TextStyle(fontSize: 18),
+        title: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ProfileScreen(
+                  viewedUserId: widget.otherUserId,
+                ),
               ),
-            ),
-          ],
+            );
+          },
+          child: Row(
+            children: [
+              // Profile image
+              CircleAvatar(
+                radius: 20,
+                backgroundImage: widget.otherUserImageUrl != null
+                    ? NetworkImage(widget.otherUserImageUrl!)
+                    : null,
+                child: widget.otherUserImageUrl == null
+                    ? const Icon(Icons.person)
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              // User name
+              Expanded(
+                child: Text(
+                  widget.otherUserName ?? 'مستخدم',
+                  style: const TextStyle(fontSize: 18),
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           PopupMenuButton<String>(

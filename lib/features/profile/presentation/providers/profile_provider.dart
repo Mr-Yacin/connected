@@ -21,12 +21,14 @@ class ProfileState {
   final bool isLoading;
   final String? error;
   final bool isUploading;
+  final String? loadedUserId;
 
   ProfileState({
     this.profile,
     this.isLoading = false,
     this.error,
     this.isUploading = false,
+    this.loadedUserId,
   });
 
   ProfileState copyWith({
@@ -34,12 +36,14 @@ class ProfileState {
     bool? isLoading,
     String? error,
     bool? isUploading,
+    String? loadedUserId,
   }) {
     return ProfileState(
       profile: profile ?? this.profile,
       isLoading: isLoading ?? this.isLoading,
       error: error,
       isUploading: isUploading ?? this.isUploading,
+      loadedUserId: loadedUserId ?? this.loadedUserId,
     );
   }
 }
@@ -51,13 +55,24 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
   ProfileNotifier(this._repository, this._blurService) : super(ProfileState());
 
+  /// Reset profile state (for switching between users)
+  void resetState() {
+    state = ProfileState();
+  }
+
   /// Load user profile
   Future<void> loadProfile(String userId) async {
+    // Check if we already have this user's profile loaded
+    if (state.loadedUserId == userId && state.profile != null && !state.isLoading) {
+      // Profile for this user is already loaded, no need to reload
+      return;
+    }
+    
     state = state.copyWith(isLoading: true, error: null);
     
     try {
       final profile = await _repository.getProfile(userId);
-      state = state.copyWith(profile: profile, isLoading: false);
+      state = state.copyWith(profile: profile, isLoading: false, loadedUserId: userId);
     } on AppException catch (e) {
       state = state.copyWith(error: e.message, isLoading: false);
     } catch (e) {
@@ -162,8 +177,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   }
 }
 
-/// Provider for ProfileNotifier
-final profileProvider = StateNotifierProvider<ProfileNotifier, ProfileState>((ref) {
+/// Provider for viewing OTHER users' profiles (not your own)
+/// For your own profile, use currentUserProfileProvider
+final viewedProfileProvider = StateNotifierProvider<ProfileNotifier, ProfileState>((ref) {
   final repository = ref.watch(profileRepositoryProvider);
   final blurService = ref.watch(imageBlurServiceProvider);
   return ProfileNotifier(repository, blurService);

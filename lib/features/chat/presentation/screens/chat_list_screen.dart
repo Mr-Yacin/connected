@@ -4,6 +4,7 @@ import '../../../../core/widgets/loading_state_widget.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../providers/chat_provider.dart';
 import 'chat_screen.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
 
 /// Screen for displaying list of chats
 class ChatListScreen extends ConsumerWidget {
@@ -128,14 +129,26 @@ class _ChatListTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: CircleAvatar(
-        radius: 28,
-        backgroundImage: chat.otherUserImageUrl != null
-            ? NetworkImage(chat.otherUserImageUrl!)
-            : null,
-        child: chat.otherUserImageUrl == null
-            ? const Icon(Icons.person, size: 28)
-            : null,
+      leading: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ProfileScreen(
+                viewedUserId: chat.otherUserId,
+              ),
+            ),
+          );
+        },
+        child: CircleAvatar(
+          radius: 28,
+          backgroundImage: chat.otherUserImageUrl != null
+              ? NetworkImage(chat.otherUserImageUrl!)
+              : null,
+          child: chat.otherUserImageUrl == null
+              ? const Icon(Icons.person, size: 28)
+              : null,
+        ),
       ),
       title: Text(
         chat.otherUserName ?? 'مستخدم',
