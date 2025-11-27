@@ -27,6 +27,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
   final _nameController = TextEditingController();
   final _ageController = TextEditingController();
   final _countryController = TextEditingController();
+  final _bioController = TextEditingController();
 
   final ImagePicker _imagePicker = ImagePicker();
   File? _selectedImage;
@@ -61,6 +62,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
     _nameController.dispose();
     _ageController.dispose();
     _countryController.dispose();
+    _bioController.dispose();
     super.dispose();
   }
 
@@ -147,6 +149,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         name: _nameController.text.trim(),
         age: int.tryParse(_ageController.text.trim()),
         country: _countryController.text.trim(),
+        bio: _bioController.text.trim().isEmpty ? null : _bioController.text.trim(),
         isImageBlurred: _isImageBlurred,
       );
 
@@ -178,6 +181,7 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
         _nameController.text != (ref.read(currentUserProfileProvider).profile?.name ?? '') ||
         _ageController.text != (ref.read(currentUserProfileProvider).profile?.age?.toString() ?? '') ||
         _countryController.text != (ref.read(currentUserProfileProvider).profile?.country ?? '') ||
+        _bioController.text != (ref.read(currentUserProfileProvider).profile?.bio ?? '') ||
         _isImageBlurred != (ref.read(currentUserProfileProvider).profile?.isImageBlurred ?? false);
 
     if (hasChanges) {
@@ -377,6 +381,24 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
                         }
                         return null;
                       },
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Bio Field
+                    TextFormField(
+                      controller: _bioController,
+                      decoration: const InputDecoration(
+                        labelText: 'النبذة الشخصية',
+                        hintText: 'اكتب نبذة عن نفسك... (اختياري)',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.info_outline),
+                        alignLabelWithHint: true,
+                      ),
+                      maxLines: 4,
+                      maxLength: 200,
+                      textAlignVertical: TextAlignVertical.top,
+                      keyboardType: TextInputType.multiline,
                     ),
 
                     const SizedBox(height: 24),

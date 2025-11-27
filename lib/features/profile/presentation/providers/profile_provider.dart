@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
@@ -61,9 +62,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   }
 
   /// Load user profile
-  Future<void> loadProfile(String userId) async {
+  Future<void> loadProfile(String userId, {bool forceReload = false}) async {
     // Check if we already have this user's profile loaded
-    if (state.loadedUserId == userId && state.profile != null && !state.isLoading) {
+    if (!forceReload && state.loadedUserId == userId && state.profile != null && !state.isLoading) {
       // Profile for this user is already loaded, no need to reload
       return;
     }
@@ -77,6 +78,19 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       state = state.copyWith(error: e.message, isLoading: false);
     } catch (e) {
       state = state.copyWith(error: 'حدث خطأ غير متوقع', isLoading: false);
+    }
+  }
+  
+  /// Reload profile silently (without showing loading indicator)
+  Future<void> refreshProfile(String userId) async {
+    try {
+      final profile = await _repository.getProfile(userId);
+      state = state.copyWith(profile: profile, loadedUserId: userId, error: null);
+    } on AppException catch (e) {
+      // Silent failure - don't update error state
+      debugPrint('ERROR: Failed to refresh profile: ${e.message}');
+    } catch (e) {
+      debugPrint('ERROR: Failed to refresh profile: $e');
     }
   }
 

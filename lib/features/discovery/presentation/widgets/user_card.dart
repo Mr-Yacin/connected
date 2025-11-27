@@ -9,6 +9,8 @@ class UserCard extends StatelessWidget {
   final VoidCallback? onFollow;
   final VoidCallback? onChat;
   final VoidCallback? onViewProfile;
+  final bool isLiked;
+  final bool isFollowing;
 
   const UserCard({
     super.key,
@@ -17,6 +19,8 @@ class UserCard extends StatelessWidget {
     this.onFollow,
     this.onChat,
     this.onViewProfile,
+    this.isLiked = false,
+    this.isFollowing = false,
   });
 
   @override
@@ -126,18 +130,20 @@ class UserCard extends StatelessWidget {
                 children: [
                   // Follow Button
                   _ActionButton(
-                    icon: Icons.person_add_outlined,
-                    color: Colors.blue,
-                    label: 'متابعة',
+                    icon: isFollowing ? Icons.person_remove_outlined : Icons.person_add_outlined,
+                    color: isFollowing ? Colors.grey : Colors.blue,
+                    label: isFollowing ? 'متابع' : 'متابعة',
                     onPressed: onFollow,
+                    isFilled: isFollowing,
                   ),
                   
                   // Like Button
                   _ActionButton(
-                    icon: Icons.favorite,
-                    color: AppColors.secondary,
-                    label: 'إعجاب',
+                    icon: isLiked ? Icons.favorite : Icons.favorite_border,
+                    color: isLiked ? Colors.red : AppColors.secondary,
+                    label: isLiked ? 'ملعجب' : 'إعجاب',
                     onPressed: onLike,
+                    isFilled: isLiked,
                   ),
                   
                   // Chat Button
@@ -162,12 +168,14 @@ class _ActionButton extends StatelessWidget {
   final Color color;
   final String label;
   final VoidCallback? onPressed;
+  final bool isFilled;
 
   const _ActionButton({
     required this.icon,
     required this.color,
     required this.label,
     this.onPressed,
+    this.isFilled = false,
   });
 
   @override
@@ -176,7 +184,7 @@ class _ActionButton extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Material(
-          color: color.withValues(alpha: 0.1),
+          color: isFilled ? color : color.withValues(alpha: 0.1),
           shape: const CircleBorder(),
           child: InkWell(
             onTap: onPressed,
@@ -185,7 +193,7 @@ class _ActionButton extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               child: Icon(
                 icon,
-                color: color,
+                color: isFilled ? Colors.white : color,
                 size: 28,
               ),
             ),

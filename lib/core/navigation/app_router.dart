@@ -16,6 +16,9 @@ import '../../features/settings/presentation/screens/settings_screen.dart';
 import '../../features/settings/presentation/screens/privacy_policy_screen.dart';
 import '../../features/settings/presentation/screens/terms_of_service_screen.dart';
 import '../../features/discovery/presentation/screens/users_list_screen.dart';
+import '../../features/discovery/presentation/screens/likes_list_screen.dart';
+import '../../features/discovery/presentation/screens/followers_list_screen.dart';
+import '../../features/discovery/presentation/screens/following_list_screen.dart';
 
 /// Application router using go_router
 class AppRouter {
@@ -177,6 +180,38 @@ class AppRouter {
             GoRoute(
               path: 'users',
               builder: (context, state) => const UsersListScreen(),
+            ),
+            
+            // Likes route
+            GoRoute(
+              path: 'likes',
+              builder: (context, state) => const LikesListScreen(),
+            ),
+            
+            // Followers route
+            GoRoute(
+              path: 'followers/:userId',
+              builder: (context, state) {
+                final userId = state.pathParameters['userId']!;
+                final userName = state.uri.queryParameters['userName'] ?? 'المستخدم';
+                return FollowersListScreen(
+                  userId: userId,
+                  userName: userName,
+                );
+              },
+            ),
+            
+            // Following route
+            GoRoute(
+              path: 'following/:userId',
+              builder: (context, state) {
+                final userId = state.pathParameters['userId']!;
+                final userName = state.uri.queryParameters['userName'] ?? 'المستخدم';
+                return FollowingListScreen(
+                  userId: userId,
+                  userName: userName,
+                );
+              },
             ),
           ],
         ),

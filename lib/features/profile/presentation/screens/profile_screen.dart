@@ -9,6 +9,7 @@ import '../../../../core/models/enums.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
+import '../../../discovery/presentation/providers/follow_provider.dart';
 
 import '../providers/profile_provider.dart';
 import '../providers/current_user_profile_provider.dart';
@@ -332,7 +333,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   slivers: [
                     // Gradient Header with Profile Image
                     SliverAppBar(
-                      expandedHeight: 280,
+                      expandedHeight: 185,
                       pinned: true,
                       flexibleSpace: FlexibleSpaceBar(
                         background: _buildProfileHeader(profile),
@@ -385,6 +386,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         children: [
                           const SizedBox(height: 16),
 
+                          // Bio Card (if available)
+                          if (profile.bio != null && profile.bio!.isNotEmpty)
+                            _buildBioCard(profile),
+
+                          if (profile.bio != null && profile.bio!.isNotEmpty)
+                            const SizedBox(height: 16),
+
+                          // Follow/Message buttons for other users' profiles
+                          if (!_isViewingOwnProfile)
+                            _buildOtherUserActions(profile),
+
+                          if (!_isViewingOwnProfile)
+                            const SizedBox(height: 24),
+
                           // Quick Actions (only for own profile)
                           if (_isViewingOwnProfile)
                             _buildQuickActions(profile),
@@ -395,6 +410,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           _buildInformationGrid(profile),
 
                           const SizedBox(height: 24),
+                          
+                          // View Likes Button (only for own profile)
+                          if (_isViewingOwnProfile && profile.likesCount > 0)
+                            _buildViewLikesButton(profile),
+
+                          if (_isViewingOwnProfile && profile.likesCount > 0)
+                            const SizedBox(height: 24),
 
                           // Anonymous Link Card
                           if (_isViewingOwnProfile && profile.anonymousLink != null)
@@ -432,149 +454,215 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Container(
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
       ),
       child: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 40),
-            // Profile Image with Gradient Border
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.8),
-                    Colors.white.withValues(alpha: 0.4),
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Profile Image
+              Container(
+                padding: const EdgeInsets.all(2.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white,
+                    width: 2.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 56,
-                    backgroundColor: Colors.white,
-                    backgroundImage: profile.profileImageUrl != null
-                        ? NetworkImage(profile.profileImageUrl!)
-                        : null,
-                    child: profile.profileImageUrl == null
-                        ? const Icon(Icons.person, size: 56, color: Colors.grey)
-                        : null,
-                  ),
-                  if (profile.isImageBlurred)
-                    Positioned.fill(
-                      child: ClipOval(
-                        child: Container(
-                          color: Colors.black54,
-                          child: const Icon(
-                            Icons.blur_on,
-                            color: Colors.white,
-                            size: 32,
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 40,
+                      backgroundColor: Colors.white,
+                      backgroundImage: profile.profileImageUrl != null
+                          ? NetworkImage(profile.profileImageUrl!)
+                          : null,
+                      child: profile.profileImageUrl == null
+                          ? Icon(Icons.person, size: 38, color: Colors.grey[400])
+                          : null,
+                    ),
+                    if (profile.isImageBlurred)
+                      Positioned.fill(
+                        child: ClipOval(
+                          child: Container(
+                            color: Colors.black54,
+                            child: const Icon(
+                              Icons.blur_on,
+                              color: Colors.white,
+                              size: 20,
+                            ),
                           ),
                         ),
                       ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 9),
+
+              // Name and Info Combined
+              Column(
+                children: [
+                  Text(
+                    profile.name ?? 'مستخدم',
+                    style: const TextStyle(
+                      fontSize: 19,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.3,
                     ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Name
-            Text(
-              profile.name ?? 'غير محدد',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                shadows: [
-                  Shadow(
-                    color: Colors.black26,
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Country and Age Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
+                  const SizedBox(height: 2.5),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.flag, size: 16, color: Colors.white),
-                      const SizedBox(width: 6),
-                      Text(
-                        profile.country ?? 'غير محدد',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                      if (profile.age != null) ...[ 
+                        Icon(Icons.cake_outlined, size: 12.5, color: Colors.white.withValues(alpha: 0.85)),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${profile.age}',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
-                      ),
+                      ],
+                      if (profile.age != null && profile.country != null)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 5.5),
+                          child: Container(
+                            width: 2.5,
+                            height: 2.5,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      if (profile.country != null) ...[
+                        Icon(Icons.location_on_outlined, size: 12.5, color: Colors.white.withValues(alpha: 0.85)),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Text(
+                            profile.country!,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.cake, size: 16, color: Colors.white),
-                      const SizedBox(width: 6),
-                      Text(
-                        profile.age != null ? '${profile.age} سنة' : 'غير محدد',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildOtherUserActions(dynamic profile) {
+    final currentUserId = ref.currentUserId;
+    if (currentUserId == null) return const SizedBox.shrink();
+
+    final followState = ref.watch(followProvider);
+    
+    // Load follow status from Firestore if not in cache
+    final isFollowing = followState.followingStatus[profile.id];
+    
+    // If we don't have the follow status cached, load it
+    if (isFollowing == null) {
+      // Load asynchronously without blocking the UI
+      Future.microtask(() {
+        ref.read(followProvider.notifier).checkFollowStatus(
+          currentUserId,
+          profile.id,
+        );
+      });
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildActionButton(
+              icon: (isFollowing ?? false) ? Icons.person_remove_outlined : Icons.person_add_outlined,
+              label: (isFollowing ?? false) ? 'إلغاء المتابعة' : 'متابعة',
+              gradient: (isFollowing ?? false)
+                  ? LinearGradient(colors: [Colors.grey.shade600, Colors.grey.shade700])
+                  : AppColors.primaryGradient,
+              onTap: () async {
+                try {
+                  await ref.read(followProvider.notifier).toggleFollow(
+                        currentUserId,
+                        profile.id,
+                      );
+
+                  final newStatus = ref.read(followProvider).followingStatus[profile.id] ?? false;
+
+                  // Refresh the viewed profile to get updated counts
+                  await ref.read(viewedProfileProvider.notifier).refreshProfile(profile.id);
+                  
+                  // Also refresh current user's profile to update their following count
+                  await ref.read(currentUserProfileProvider.notifier).refreshProfile(currentUserId);
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(newStatus ? 'تمت المتابعة بنجاح!' : 'تم إلغاء المتابعة'),
+                        backgroundColor: newStatus ? Colors.green : Colors.orange,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('فشل في المتابعة: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildActionButton(
+              icon: Icons.chat_bubble_outline,
+              label: 'محادثة',
+              gradient: LinearGradient(
+                colors: [Colors.blue.shade400, Colors.blue.shade600],
+              ),
+              onTap: () {
+                final otherUserId = profile.id;
+                final chatId = 'new_$otherUserId';
+
+                context.push(
+                  '/chat/$chatId?currentUserId=$currentUserId&otherUserId=$otherUserId&otherUserName=${Uri.encodeComponent(profile.name ?? "")}&otherUserImageUrl=${Uri.encodeComponent(profile.profileImageUrl ?? "")}',
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -586,8 +674,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           Expanded(
             child: _buildActionButton(
-              icon: Icons.edit_outlined,
-              label: 'تعديل الملف',
+              icon: Icons.edit,
+              label: 'تعديل',
               gradient: AppColors.primaryGradient,
               onTap: () => context.push('/profile/edit'),
             ),
@@ -595,8 +683,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: _buildActionButton(
-              icon: profile.anonymousLink != null ? Icons.link : Icons.add_link,
-              label: profile.anonymousLink != null ? 'مشاركة الرابط' : 'توليد رابط',
+              icon: profile.anonymousLink != null ? Icons.share : Icons.add_link,
+              label: profile.anonymousLink != null ? 'مشاركة' : 'رابط',
               gradient: LinearGradient(
                 colors: [Colors.blue.shade400, Colors.blue.shade600],
               ),
@@ -623,31 +711,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           gradient: gradient,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 6),
             Text(
               label,
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
-                fontSize: 14,
+                fontSize: 13,
               ),
             ),
           ],
@@ -666,56 +754,52 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            const Text(
-              'معلومات الملف الشخصي',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            _buildStatItem(
+              icon: Icons.favorite,
+              value: '${profile.likesCount ?? 0}',
+              color: Colors.red.shade400,
+              onTap: _isViewingOwnProfile && (profile.likesCount ?? 0) > 0
+                  ? () => context.push('/likes')
+                  : null,
             ),
-            const SizedBox(height: 20),
-            
-            // Stats Row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildStatItem(
-                  icon: Icons.people,
-                  label: 'المتابعون',
-                  value: '${profile.followerCount ?? 0}',
-                  color: AppColors.primary,
-                ),
-                _buildStatItem(
-                  icon: Icons.person_add,
-                  label: 'المتابَعون',
-                  value: '${profile.followingCount ?? 0}',
-                  color: AppColors.secondary,
-                ),
-                _buildStatItem(
-                  icon: Icons.favorite,
-                  label: 'الإعجابات',
-                  value: '${profile.likesCount ?? 0}',
-                  color: Colors.red,
-                ),
-              ],
+            Container(
+              width: 1,
+              height: 40,
+              color: Colors.grey.shade200,
             ),
-            
-            const SizedBox(height: 20),
-            
-            _buildCompactInfoItem(
-              icon: Icons.blur_on,
-              label: 'خصوصية الصورة',
-              value: profile.isImageBlurred ? 'مموهة' : 'ظاهرة',
-              color: profile.isImageBlurred ? Colors.orange : Colors.green,
+            _buildStatItem(
+              icon: Icons.people,
+              value: '${profile.followerCount ?? 0}',
+              color: AppColors.primary,
+              onTap: (profile.followerCount ?? 0) > 0
+                  ? () => context.push(
+                        '/followers/${profile.id}?userName=${Uri.encodeComponent(profile.name ?? "المستخدم")}',
+                      )
+                  : null,
+            ),
+            Container(
+              width: 1,
+              height: 40,
+              color: Colors.grey.shade200,
+            ),
+            _buildStatItem(
+              icon: Icons.person_add,
+              value: '${profile.followingCount ?? 0}',
+              color: AppColors.secondary,
+              onTap: (profile.followingCount ?? 0) > 0
+                  ? () => context.push(
+                        '/following/${profile.id}?userName=${Uri.encodeComponent(profile.name ?? "المستخدم")}',
+                      )
+                  : null,
             ),
           ],
         ),
@@ -725,79 +809,134 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildStatItem({
     required IconData icon,
-    required String label,
     required String value,
     required Color color,
+    VoidCallback? onTap,
   }) {
-    return Column(
+    final child = Column(
       children: [
-        Icon(icon, color: color, size: 28),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
         const SizedBox(height: 8),
         Text(
           value,
           style: TextStyle(
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+            color: Colors.grey[800],
           ),
         ),
       ],
     );
+
+    if (onTap != null) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: child,
+        ),
+      );
+    }
+
+    return child;
   }
 
-  Widget _buildCompactInfoItem({
-    required IconData icon,
-    required String label,
-    required String value,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: color.withValues(alpha: 0.3),
-          width: 1,
+  Widget _buildBioCard(dynamic profile) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.info_outline,
+                color: Colors.white,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                profile.bio!,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[700],
+                  height: 1.5,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
-              ],
+    );
+  }
+
+  Widget _buildViewLikesButton(dynamic profile) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: InkWell(
+        onTap: () => context.push('/likes'),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.pink.shade400, Colors.red.shade400],
             ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.favorite, color: Colors.white, size: 24),
+              const SizedBox(width: 12),
+              Text(
+                'عرض الإعجابات (${profile.likesCount})',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -806,122 +945,62 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.secondary.withValues(alpha: 0.1),
-              AppColors.primary.withValues(alpha: 0.1),
-            ],
-          ),
+          color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            width: 1,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.link,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'الرابط المجهول',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        'شارك ملفك الشخصي بشكل مجهول',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            const SizedBox(height: 16),
+          ],
+        ),
+        child: Row(
+          children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white,
+                gradient: AppColors.primaryGradient,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _buildFullAnonymousUrl(profile.anonymousLink!),
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: () {
-                      final fullUrl = _buildFullAnonymousUrl(profile.anonymousLink!);
-                      _copyAnonymousLink(fullUrl);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.copy,
-                        size: 18,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  InkWell(
-                    onTap: () {
-                      final fullUrl = _buildFullAnonymousUrl(profile.anonymousLink!);
-                      _shareAnonymousLink(fullUrl);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: AppColors.secondary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.share,
-                        size: 18,
-                        color: AppColors.secondary,
-                      ),
-                    ),
-                  ),
-                ],
+              child: const Icon(
+                Icons.link,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                _buildFullAnonymousUrl(profile.anonymousLink!),
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: () {
+                final fullUrl = _buildFullAnonymousUrl(profile.anonymousLink!);
+                _copyAnonymousLink(fullUrl);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.copy,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
               ),
             ),
           ],

@@ -175,8 +175,23 @@ class FirestoreStoryRepository implements StoryRepository {
   @override
   Future<void> recordView(String storyId, String viewerId) async {
     try {
-      await _firestore.collection('stories').doc(storyId).update({
-        'viewerIds': FieldValue.arrayUnion([viewerId]),
+      // Use transaction to prevent duplicate views
+      await _firestore.runTransaction((transaction) async {
+        final storyRef = _firestore.collection('stories').doc(storyId);
+        final storySnapshot = await transaction.get(storyRef);
+        
+        if (!storySnapshot.exists) {
+          return; // Story doesn't exist, skip
+        }
+        
+        final story = Story.fromJson(storySnapshot.data()!);
+        
+        // Only add view if not already viewed
+        if (!story.viewerIds.contains(viewerId)) {
+          transaction.update(storyRef, {
+            'viewerIds': FieldValue.arrayUnion([viewerId]),
+          });
+        }
       });
     } on FirebaseException catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(

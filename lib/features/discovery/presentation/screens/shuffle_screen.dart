@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/discovery_provider.dart';
 import '../providers/follow_provider.dart';
+import '../providers/like_provider.dart';
 import '../widgets/user_card.dart';
 import '../widgets/filter_bottom_sheet.dart';
 
@@ -47,15 +48,42 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
     );
   }
 
-  void _handleLike() {
-    // TODO: Implement like functionality (could save to favorites)
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('تم الإعجاب!')));
-    _loadNextUser();
+  Future<void> _handleLike() async {
+    final currentUser = ref.read(discoveryProvider).currentUser;
+    final loggedInUser = ref.read(currentUserProvider).value;
+
+    if (currentUser != null && loggedInUser != null) {
+      try {
+        await ref
+            .read(likeProvider.notifier)
+            .toggleLike(loggedInUser.uid, currentUser.id);
+
+        final isLiked = ref.read(likeProvider).likedUsers[currentUser.id] ?? false;
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(isLiked ? 'تم الإعجاب!' : 'تم إلغاء الإعجاب'),
+              backgroundColor: isLiked ? Colors.green : Colors.orange,
+            ),
+          );
+        }
+
+        // Auto-shuffle to next user only if liked
+        if (isLiked) {
+          _loadNextUser();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('فشل في الإعجاب: $e')),
+          );
+        }
+      }
+    }
   }
 
-  void _handleFollow() async {
+  Future<void> _handleFollow() async {
     final currentUser = ref.read(discoveryProvider).currentUser;
     final loggedInUser = ref.read(currentUserProvider).value;
 
@@ -63,16 +91,23 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
       try {
         await ref
             .read(followProvider.notifier)
-            .followUser(loggedInUser.uid, currentUser.id);
+            .toggleFollow(loggedInUser.uid, currentUser.id);
+
+        final isFollowing = ref.read(followProvider).followingStatus[currentUser.id] ?? false;
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تمت المتابعة بنجاح!')),
+            SnackBar(
+              content: Text(isFollowing ? 'تمت المتابعة بنجاح!' : 'تم إلغاء المتابعة'),
+              backgroundColor: isFollowing ? Colors.green : Colors.orange,
+            ),
           );
         }
 
-        // Auto-shuffle to next user
-        _loadNextUser();
+        // Auto-shuffle to next user only if followed
+        if (isFollowing) {
+          _loadNextUser();
+        }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -113,7 +148,44 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
   @override
   Widget build(BuildContext context) {
     final discoveryState = ref.watch(discoveryProvider);
+    final likeState = ref.watch(likeProvider);
+    final followState = ref.watch(followProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final loggedInUser = ref.watch(currentUserProvider).value;
+    
+    // Check if current user is liked/followed
+    final currentUser = discoveryState.currentUser;
+    
+    // Load follow and like status if we have a current user and they're not cached
+    if (currentUser != null && loggedInUser != null) {
+      final isFollowingCached = followState.followingStatus[currentUser.id];
+      final isLikedCached = likeState.likedUsers[currentUser.id];
+      
+      if (isFollowingCached == null) {
+        Future.microtask(() {
+          ref.read(followProvider.notifier).checkFollowStatus(
+            loggedInUser.uid,
+            currentUser.id,
+          );
+        });
+      }
+      
+      if (isLikedCached == null) {
+        Future.microtask(() {
+          ref.read(likeProvider.notifier).checkIfLiked(
+            loggedInUser.uid,
+            currentUser.id,
+          );
+        });
+      }
+    }
+    
+    final isLiked = currentUser != null 
+        ? (likeState.likedUsers[currentUser.id] ?? false)
+        : false;
+    final isFollowing = currentUser != null
+        ? (followState.followingStatus[currentUser.id] ?? false)
+        : false;
 
     return Scaffold(
       appBar: AppBar(
@@ -212,7 +284,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
               const SizedBox(height: 16),
 
               // Main content
-              Expanded(child: _buildContent(discoveryState, isDark)),
+              Expanded(child: _buildContent(discoveryState, isDark, isLiked, isFollowing)),
             ],
           ),
         ),
@@ -229,7 +301,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
     );
   }
 
-  Widget _buildContent(DiscoveryState state, bool isDark) {
+  Widget _buildContent(DiscoveryState state, bool isDark, bool isLiked, bool isFollowing) {
     if (state.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -303,6 +375,8 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
       child: SingleChildScrollView(
         child: UserCard(
           user: state.currentUser!,
+          isLiked: isLiked,
+          isFollowing: isFollowing,
           onLike: _handleLike,
           onFollow: _handleFollow,
           onChat: _handleChat,

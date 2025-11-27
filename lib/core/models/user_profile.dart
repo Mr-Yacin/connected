@@ -9,6 +9,7 @@ class UserProfile {
   final String? country;
   final String? profileImageUrl;
   final String? gender;
+  final String? bio;
   final bool isActive;
   final bool isImageBlurred;
   final String? anonymousLink;
@@ -26,6 +27,7 @@ class UserProfile {
     this.country,
     this.profileImageUrl,
     this.gender,
+    this.bio,
     this.isActive = true,
     this.isImageBlurred = false,
     this.anonymousLink,
@@ -46,6 +48,7 @@ class UserProfile {
       'country': country,
       'profileImageUrl': profileImageUrl,
       'gender': gender,
+      'bio': bio,
       'isActive': isActive,
       'isImageBlurred': isImageBlurred,
       'anonymousLink': anonymousLink,
@@ -104,6 +107,7 @@ class UserProfile {
       country: json['country'] as String?,
       profileImageUrl: json['profileImageUrl'] as String?,
       gender: json['gender'] as String?,
+      bio: json['bio'] as String?,
       isActive: json.containsKey('isActive') ? parseBool(json['isActive']) : true,
       isImageBlurred: parseBool(json['isImageBlurred']),
       anonymousLink: json['anonymousLink'] as String?,
@@ -124,6 +128,7 @@ class UserProfile {
     String? country,
     String? profileImageUrl,
     String? gender,
+    String? bio,
     bool? isActive,
     bool? isImageBlurred,
     String? anonymousLink,
@@ -141,6 +146,7 @@ class UserProfile {
       country: country ?? this.country,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       gender: gender ?? this.gender,
+      bio: bio ?? this.bio,
       isActive: isActive ?? this.isActive,
       isImageBlurred: isImageBlurred ?? this.isImageBlurred,
       anonymousLink: anonymousLink ?? this.anonymousLink,
@@ -164,6 +170,7 @@ class UserProfile {
         other.country == country &&
         other.profileImageUrl == profileImageUrl &&
         other.gender == gender &&
+        other.bio == bio &&
         other.isActive == isActive &&
         other.isImageBlurred == isImageBlurred &&
         other.anonymousLink == anonymousLink &&
@@ -184,6 +191,7 @@ class UserProfile {
       country,
       profileImageUrl,
       gender,
+      bio,
       isActive,
       isImageBlurred,
       anonymousLink,

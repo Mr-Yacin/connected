@@ -52,12 +52,17 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen>
     _progressController.reset();
     _progressController.forward();
 
-    // Record view
+    // Record view only if viewing someone else's story
     final story = widget.stories[_currentIndex];
-    ref.read(storyCreationProvider.notifier).recordView(
-          story.id,
-          widget.currentUserId,
-        );
+    if (story.userId != widget.currentUserId) {
+      ref.read(storyCreationProvider.notifier).recordView(
+            story.id,
+            widget.currentUserId,
+          ).then((_) {
+        // Refresh UI after recording view
+        ref.invalidate(activeStoriesProvider);
+      });
+    }
 
     // Auto-advance to next story
     _progressTimer?.cancel();
