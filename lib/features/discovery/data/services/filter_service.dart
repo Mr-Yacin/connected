@@ -12,13 +12,23 @@ class FilterService {
     return users.where((user) => user.country == country).toList();
   }
 
-  /// Apply country filter to a list of users
-  /// Returns only users from the specified country
-  List<UserProfile> applyCountryFilter(
+  /// Apply gender filter to a list of users
+  /// Returns only users of the specified gender
+  List<UserProfile> applyGenderFilter(
     List<UserProfile> users,
-    String country,
+    String gender,
   ) {
-    return users.where((user) => user.country == country).toList();
+    return users.where((user) => user.gender == gender).toList();
+  }
+
+  /// Apply last active filter to a list of users
+  /// Returns only users who were active within the specified hours
+  List<UserProfile> applyLastActiveFilter(
+    List<UserProfile> users,
+    int hours,
+  ) {
+    final cutoffTime = DateTime.now().subtract(Duration(hours: hours));
+    return users.where((user) => user.lastActive.isAfter(cutoffTime)).toList();
   }
 
   /// Apply multiple filters to a list of users using AND logic
@@ -34,9 +44,9 @@ class FilterService {
       filteredUsers = applyCountryFilter(filteredUsers, filters.country!);
     }
 
-    // Apply dialect filter if specified
-    if (filters.dialect != null) {
-      filteredUsers = applyDialectFilter(filteredUsers, filters.dialect!);
+    // Apply gender filter if specified
+    if (filters.gender != null) {
+      filteredUsers = applyGenderFilter(filteredUsers, filters.gender!);
     }
 
     // Apply age range filters if specified
@@ -50,6 +60,14 @@ class FilterService {
       filteredUsers = filteredUsers
           .where((user) => user.age != null && user.age! <= filters.maxAge!)
           .toList();
+    }
+
+    // Apply last active filter if specified
+    if (filters.lastActiveWithinHours != null) {
+      filteredUsers = applyLastActiveFilter(
+        filteredUsers,
+        filters.lastActiveWithinHours!,
+      );
     }
 
     // Exclude specified user IDs

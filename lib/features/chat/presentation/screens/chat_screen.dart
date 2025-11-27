@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/enums.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
@@ -99,19 +100,43 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('حظر المستخدم'),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.block_rounded, color: Colors.red, size: 28),
+            SizedBox(width: 12),
+            Text(
+              'حظر المستخدم',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
         content: const Text(
           'هل تريد حظر هذا المستخدم؟ لن يتمكن من التواصل معك.',
+          style: TextStyle(fontSize: 15),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('إلغاء'),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey[700],
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text('إلغاء', style: TextStyle(fontSize: 15)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('حظر'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text('حظر', style: TextStyle(fontSize: 15)),
           ),
         ],
       ),
@@ -123,9 +148,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           .blockUser(widget.currentUserId, widget.otherUserId);
 
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('تم حظر المستخدم')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.check_circle_rounded, color: Colors.white),
+                SizedBox(width: 12),
+                Text('تم حظر المستخدم بنجاح'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
         Navigator.of(context).pop();
       }
     }
@@ -168,7 +206,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
 
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.1),
+        backgroundColor: Colors.white,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: GestureDetector(
           onTap: () {
             Navigator.push(
@@ -182,22 +228,36 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           },
           child: Row(
             children: [
-              // Profile image
-              CircleAvatar(
-                radius: 20,
-                backgroundImage: widget.otherUserImageUrl != null
-                    ? NetworkImage(widget.otherUserImageUrl!)
-                    : null,
-                child: widget.otherUserImageUrl == null
-                    ? const Icon(Icons.person)
-                    : null,
+              // Profile image with online indicator
+              Stack(
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                    backgroundImage: widget.otherUserImageUrl != null
+                        ? NetworkImage(widget.otherUserImageUrl!)
+                        : null,
+                    child: widget.otherUserImageUrl == null
+                        ? Icon(Icons.person, color: AppColors.primary)
+                        : null,
+                  ),
+                ],
               ),
               const SizedBox(width: 12),
               // User name
               Expanded(
-                child: Text(
-                  widget.otherUserName ?? 'مستخدم',
-                  style: const TextStyle(fontSize: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.otherUserName ?? 'مستخدم',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -205,6 +265,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ),
         actions: [
           PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.black87),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             onSelected: (value) {
               if (value == 'block') {
                 _blockUser(context, ref);
@@ -217,9 +281,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 value: 'block',
                 child: Row(
                   children: [
-                    Icon(Icons.block, color: Colors.red),
-                    SizedBox(width: 8),
-                    Text('حظر المستخدم'),
+                    Icon(Icons.block_rounded, color: Colors.red, size: 20),
+                    SizedBox(width: 12),
+                    Text('حظر المستخدم', style: TextStyle(fontSize: 15)),
                   ],
                 ),
               ),
@@ -227,9 +291,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 value: 'report',
                 child: Row(
                   children: [
-                    Icon(Icons.flag, color: Colors.orange),
-                    SizedBox(width: 8),
-                    Text('الإبلاغ عن المستخدم'),
+                    Icon(Icons.flag_rounded, color: Colors.orange, size: 20),
+                    SizedBox(width: 12),
+                    Text('الإبلاغ عن المستخدم', style: TextStyle(fontSize: 15)),
                   ],
                 ),
               ),
@@ -244,11 +308,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             child: messagesAsync.when(
               data: (messages) {
                 if (messages.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'لا توجد رسائل بعد\nابدأ المحادثة!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline_rounded,
+                          size: 80,
+                          color: Colors.grey[300],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'لا توجد رسائل بعد',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'ابدأ المحادثة الآن!',
+                          style: TextStyle(
+                            fontSize: 15,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -260,12 +346,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   children: [
                     // Load more indicator at top
                     if (_isLoadingMore)
-                      const Padding(
-                        padding: EdgeInsets.all(8.0),
+                      Padding(
+                        padding: const EdgeInsets.all(12.0),
                         child: SizedBox(
                           height: 24,
                           width: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.primary,
+                          ),
                         ),
                       )
                     else if (hasMore && messages.length >= 50)
@@ -273,10 +362,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         padding: const EdgeInsets.all(8.0),
                         child: TextButton.icon(
                           onPressed: _loadMoreMessages,
-                          icon: const Icon(Icons.arrow_upward, size: 16),
+                          icon: const Icon(Icons.arrow_upward_rounded, size: 18),
                           label: const Text('تحميل رسائل أقدم'),
                           style: TextButton.styleFrom(
-                            foregroundColor: Colors.grey[600],
+                            foregroundColor: AppColors.primary,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                           ),
                         ),
                       ),
@@ -286,7 +383,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       child: ListView.builder(
                         controller: _scrollController,
                         reverse: true,
-                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 12,
+                          horizontal: 4,
+                        ),
                         itemCount: messages.length,
                         itemBuilder: (context, index) {
                           // Reverse index for reversed list
@@ -310,29 +410,57 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ],
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () => Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primary,
+                ),
+              ),
               error: (error, stack) => Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 48,
-                      color: Colors.red,
+                    Icon(
+                      Icons.error_outline_rounded,
+                      size: 64,
+                      color: Colors.red[300],
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'حدث خطأ في تحميل الرسائل',
-                      style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[700],
+                      ),
                     ),
                     const SizedBox(height: 8),
-                    TextButton(
+                    Text(
+                      'يرجى المحاولة مرة أخرى',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
                       onPressed: () {
                         ref.invalidate(
                           paginatedMessagesStreamProvider(widget.chatId),
                         );
                       },
-                      child: const Text('إعادة المحاولة'),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('إعادة المحاولة'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
                     ),
                   ],
                 ),

@@ -3,18 +3,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Discovery filters model for filtering user search results
 class DiscoveryFilters {
   final String? country;
-  final String? dialect;
+  final String? gender; // 'male', 'female', or null for all
   final int? minAge;
   final int? maxAge;
+  final int? lastActiveWithinHours; // Filter by last active within hours (e.g., 24)
   final List<String> excludedUserIds;
   final int pageSize;
   final DocumentSnapshot? lastDocument;
 
   DiscoveryFilters({
     this.country,
-    this.dialect,
+    this.gender,
     this.minAge,
     this.maxAge,
+    this.lastActiveWithinHours,
     this.excludedUserIds = const [],
     this.pageSize = 20,
     this.lastDocument,
@@ -25,9 +27,10 @@ class DiscoveryFilters {
   Map<String, dynamic> toJson() {
     return {
       'country': country,
-      'dialect': dialect,
+      'gender': gender,
       'minAge': minAge,
       'maxAge': maxAge,
+      'lastActiveWithinHours': lastActiveWithinHours,
       'excludedUserIds': excludedUserIds,
       'pageSize': pageSize,
     };
@@ -37,9 +40,10 @@ class DiscoveryFilters {
   factory DiscoveryFilters.fromJson(Map<String, dynamic> json) {
     return DiscoveryFilters(
       country: json['country'] as String?,
-      dialect: json['dialect'] as String?,
+      gender: json['gender'] as String?,
       minAge: json['minAge'] as int?,
       maxAge: json['maxAge'] as int?,
+      lastActiveWithinHours: json['lastActiveWithinHours'] as int?,
       excludedUserIds: (json['excludedUserIds'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
@@ -51,19 +55,23 @@ class DiscoveryFilters {
   /// Create a copy of DiscoveryFilters with updated fields
   DiscoveryFilters copyWith({
     String? country,
-    String? dialect,
+    String? gender,
     int? minAge,
     int? maxAge,
+    int? lastActiveWithinHours,
     List<String>? excludedUserIds,
     int? pageSize,
     DocumentSnapshot? lastDocument,
     bool clearLastDocument = false,
+    bool clearGender = false,
+    bool clearLastActive = false,
   }) {
     return DiscoveryFilters(
       country: country ?? this.country,
-      dialect: dialect ?? this.dialect,
+      gender: clearGender ? null : (gender ?? this.gender),
       minAge: minAge ?? this.minAge,
       maxAge: maxAge ?? this.maxAge,
+      lastActiveWithinHours: clearLastActive ? null : (lastActiveWithinHours ?? this.lastActiveWithinHours),
       excludedUserIds: excludedUserIds ?? this.excludedUserIds,
       pageSize: pageSize ?? this.pageSize,
       lastDocument: clearLastDocument ? null : (lastDocument ?? this.lastDocument),
@@ -73,9 +81,10 @@ class DiscoveryFilters {
   /// Check if any filters are active
   bool get hasActiveFilters =>
       country != null ||
-      dialect != null ||
+      gender != null ||
       minAge != null ||
       maxAge != null ||
+      lastActiveWithinHours != null ||
       excludedUserIds.isNotEmpty;
 
   @override
@@ -84,9 +93,10 @@ class DiscoveryFilters {
 
     return other is DiscoveryFilters &&
         other.country == country &&
-        other.dialect == dialect &&
+        other.gender == gender &&
         other.minAge == minAge &&
         other.maxAge == maxAge &&
+        other.lastActiveWithinHours == lastActiveWithinHours &&
         other.pageSize == pageSize &&
         _listEquals(other.excludedUserIds, excludedUserIds);
   }
@@ -95,9 +105,10 @@ class DiscoveryFilters {
   int get hashCode {
     return Object.hash(
       country,
-      dialect,
+      gender,
       minAge,
       maxAge,
+      lastActiveWithinHours,
       pageSize,
       Object.hashAll(excludedUserIds),
     );

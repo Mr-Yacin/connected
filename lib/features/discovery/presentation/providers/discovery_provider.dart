@@ -3,10 +3,16 @@ import '../../../../core/models/user_profile.dart';
 import '../../../../core/models/discovery_filters.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../data/repositories/firestore_discovery_repository.dart';
+import '../../data/services/viewed_users_service.dart';
 
 /// Provider for DiscoveryRepository
 final discoveryRepositoryProvider = Provider<FirestoreDiscoveryRepository>((ref) {
   return FirestoreDiscoveryRepository();
+});
+
+/// Provider for ViewedUsersService
+final viewedUsersServiceProvider = Provider<ViewedUsersService>((ref) {
+  return ViewedUsersService();
 });
 
 /// State for discovery operations
@@ -18,6 +24,10 @@ class DiscoveryState {
   final bool isLoadingMore;
   final bool hasMore;
   final String? error;
+  final Set<String> viewedUserIds;
+  final DateTime? lastShuffleTime;
+  final bool canShuffle;
+  final int cooldownSeconds;
 
   DiscoveryState({
     this.currentUser,
@@ -27,6 +37,10 @@ class DiscoveryState {
     this.isLoadingMore = false,
     this.hasMore = true,
     this.error,
+    this.viewedUserIds = const {},
+    this.lastShuffleTime,
+    this.canShuffle = true,
+    this.cooldownSeconds = 0,
   }) : filters = filters ?? DiscoveryFilters();
 
   DiscoveryState copyWith({
@@ -37,6 +51,10 @@ class DiscoveryState {
     bool? isLoadingMore,
     bool? hasMore,
     String? error,
+    Set<String>? viewedUserIds,
+    DateTime? lastShuffleTime,
+    bool? canShuffle,
+    int? cooldownSeconds,
   }) {
     return DiscoveryState(
       currentUser: currentUser ?? this.currentUser,
@@ -46,6 +64,10 @@ class DiscoveryState {
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       hasMore: hasMore ?? this.hasMore,
       error: error,
+      viewedUserIds: viewedUserIds ?? this.viewedUserIds,
+      lastShuffleTime: lastShuffleTime ?? this.lastShuffleTime,
+      canShuffle: canShuffle ?? this.canShuffle,
+      cooldownSeconds: cooldownSeconds ?? this.cooldownSeconds,
     );
   }
 }
@@ -53,9 +75,18 @@ class DiscoveryState {
 /// Discovery provider for managing discovery state
 class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
   final FirestoreDiscoveryRepository _repository;
+  final ViewedUsersService _viewedUsersService;
   String? _currentUserId;
 
-  DiscoveryNotifier(this._repository) : super(DiscoveryState());
+  DiscoveryNotifier(this._repository, this._viewedUsersService) : super(DiscoveryState()) {
+    _initViewedUsers();
+  }
+
+  /// Initialize viewed users from storage
+  Future<void> _initViewedUsers() async {
+    final viewedUsers = await _viewedUsersService.getViewedUsers();
+    state = state.copyWith(viewedUserIds: viewedUsers);
+  }
 
   /// Set current user ID
   void setCurrentUserId(String userId) {
@@ -72,7 +103,18 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
     state = state.copyWith(isLoading: true, error: null);
     
     try {
-      final user = await _repository.getRandomUser(_currentUserId!, state.filters);
+      // Reload viewed users from storage
+      final viewedUsers = await _viewedUsersService.getViewedUsers();
+      
+      // Add viewed users to filters
+      final updatedFilters = state.filters.copyWith(
+        excludedUserIds: [
+          ...state.filters.excludedUserIds,
+          ...viewedUsers,
+        ],
+      );
+
+      final user = await _repository.getRandomUser(_currentUserId!, updatedFilters);
       
       if (user == null) {
         state = state.copyWith(
@@ -81,9 +123,14 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
           error: 'لا يوجد مستخدمين متاحين بهذه الفلاتر',
         );
       } else {
+        // Add to viewed users
+        await _viewedUsersService.addViewedUser(user.id);
+        final updatedViewedUsers = {...state.viewedUserIds, user.id};
+
         state = state.copyWith(
           currentUser: user,
           isLoading: false,
+          viewedUserIds: updatedViewedUsers,
         );
       }
     } on AppException catch (e) {
@@ -91,6 +138,66 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
     } catch (e) {
       state = state.copyWith(error: 'حدث خطأ غير متوقع', isLoading: false);
     }
+  }
+
+  /// Shuffle with cooldown (3 seconds)
+  Future<void> shuffleWithCooldown() async {
+    if (!_canShuffle()) {
+      final remaining = _getRemainingSeconds();
+      state = state.copyWith(
+        error: 'يرجى الانتظار $remaining ثانية',
+        cooldownSeconds: remaining,
+      );
+      return;
+    }
+
+    // Update last shuffle time
+    state = state.copyWith(
+      lastShuffleTime: DateTime.now(),
+      canShuffle: false,
+      cooldownSeconds: 3,
+    );
+
+    // Start cooldown countdown
+    _startCooldownCountdown();
+
+    // Get random user
+    await getRandomUser();
+  }
+
+  /// Check if shuffle is available (3+ seconds passed)
+  bool _canShuffle() {
+    if (state.lastShuffleTime == null) return true;
+    final now = DateTime.now();
+    final diff = now.difference(state.lastShuffleTime!);
+    return diff.inSeconds >= 3;
+  }
+
+  /// Get remaining cooldown seconds
+  int _getRemainingSeconds() {
+    if (state.lastShuffleTime == null) return 0;
+    final now = DateTime.now();
+    final diff = now.difference(state.lastShuffleTime!);
+    final remaining = 3 - diff.inSeconds;
+    return remaining > 0 ? remaining : 0;
+  }
+
+  /// Start cooldown countdown
+  void _startCooldownCountdown() {
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        final remaining = _getRemainingSeconds();
+        if (remaining > 0) {
+          state = state.copyWith(cooldownSeconds: remaining);
+          _startCooldownCountdown();
+        } else {
+          state = state.copyWith(
+            canShuffle: true,
+            cooldownSeconds: 0,
+          );
+        }
+      }
+    });
   }
 
   /// Get filtered users (deprecated - use getFilteredUsersPaginated)
@@ -220,5 +327,6 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
 /// Provider for DiscoveryNotifier
 final discoveryProvider = StateNotifierProvider<DiscoveryNotifier, DiscoveryState>((ref) {
   final repository = ref.watch(discoveryRepositoryProvider);
-  return DiscoveryNotifier(repository);
+  final viewedUsersService = ref.watch(viewedUsersServiceProvider);
+  return DiscoveryNotifier(repository, viewedUsersService);
 });

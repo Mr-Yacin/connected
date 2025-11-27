@@ -20,17 +20,22 @@ class FilterBottomSheet extends StatefulWidget {
 
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
   late String? selectedCountry;
-  late String? selectedDialect;
-  late int? minAge;
-  late int? maxAge;
+  late String? selectedGender;
+  late RangeValues ageRange;
+  late bool filterByLastActive;
 
   @override
   void initState() {
     super.initState();
     selectedCountry = widget.initialFilters.country;
-    selectedDialect = widget.initialFilters.dialect;
-    minAge = widget.initialFilters.minAge;
-    maxAge = widget.initialFilters.maxAge;
+    selectedGender = widget.initialFilters.gender;
+    
+    // Initialize age range with default values if not set
+    final minAge = widget.initialFilters.minAge?.toDouble() ?? 18.0;
+    final maxAge = widget.initialFilters.maxAge?.toDouble() ?? 35.0;
+    ageRange = RangeValues(minAge, maxAge);
+    
+    filterByLastActive = widget.initialFilters.lastActiveWithinHours != null;
   }
 
   @override
@@ -61,9 +66,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                 onPressed: () {
                   setState(() {
                     selectedCountry = null;
-                    selectedDialect = null;
-                    minAge = null;
-                    maxAge = null;
+                    selectedGender = null;
+                    ageRange = const RangeValues(18, 35);
+                    filterByLastActive = false;
                   });
                 },
                 child: const Text('إعادة تعيين'),
@@ -106,41 +111,56 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           ),
           const SizedBox(height: 16),
           
-          // Dialect Filter
+          // Gender Filter
           Text(
-            'اللهجة',
+            'الجنس',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
           ),
-          const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
-            value: selectedDialect,
-            decoration: InputDecoration(
-              hintText: 'اختر اللهجة',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _GenderOption(
+                  label: 'الكل',
+                  isSelected: selectedGender == null,
+                  onTap: () {
+                    setState(() {
+                      selectedGender = null;
+                    });
+                  },
+                ),
               ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
+              const SizedBox(width: 12),
+              Expanded(
+                child: _GenderOption(
+                  label: 'ذكر',
+                  isSelected: selectedGender == 'male',
+                  onTap: () {
+                    setState(() {
+                      selectedGender = 'male';
+                    });
+                  },
+                ),
               ),
-            ),
-            items: _arabicDialects.map((dialect) {
-              return DropdownMenuItem(
-                value: dialect,
-                child: Text(dialect),
-              );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                selectedDialect = value;
-              });
-            },
+              const SizedBox(width: 12),
+              Expanded(
+                child: _GenderOption(
+                  label: 'أنثى',
+                  isSelected: selectedGender == 'female',
+                  onTap: () {
+                    setState(() {
+                      selectedGender = 'female';
+                    });
+                  },
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           
-          // Age Range
+          // Age Range Slider
           Text(
             'العمر',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -149,46 +169,65 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
           ),
           const SizedBox(height: 8),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'من ${ageRange.start.round()}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              Text(
+                'إلى ${ageRange.end.round() >= 35 ? "35+" : ageRange.end.round()}',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ],
+          ),
+          RangeSlider(
+            values: ageRange,
+            min: 18,
+            max: 35,
+            divisions: 17,
+            labels: RangeLabels(
+              '${ageRange.start.round()}',
+              ageRange.end.round() >= 35 ? '35+' : '${ageRange.end.round()}',
+            ),
+            activeColor: AppColors.primary,
+            onChanged: (RangeValues values) {
+              setState(() {
+                ageRange = values;
+              });
+            },
+          ),
+          const SizedBox(height: 16),
+          
+          // Last Active Filter
+          Text(
+            'آخر تواجد',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 12),
+          Row(
             children: [
               Expanded(
-                child: TextFormField(
-                  initialValue: minAge?.toString(),
-                  decoration: InputDecoration(
-                    hintText: 'من',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
+                child: _LastActiveOption(
+                  label: 'أي وقت',
+                  isSelected: !filterByLastActive,
+                  onTap: () {
                     setState(() {
-                      minAge = int.tryParse(value);
+                      filterByLastActive = false;
                     });
                   },
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
-                child: TextFormField(
-                  initialValue: maxAge?.toString(),
-                  decoration: InputDecoration(
-                    hintText: 'إلى',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                  ),
-                  keyboardType: TextInputType.number,
-                  onChanged: (value) {
+                child: _LastActiveOption(
+                  label: 'آخر 24 ساعة',
+                  isSelected: filterByLastActive,
+                  onTap: () {
                     setState(() {
-                      maxAge = int.tryParse(value);
+                      filterByLastActive = true;
                     });
                   },
                 ),
@@ -202,9 +241,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
             onPressed: () {
               final filters = DiscoveryFilters(
                 country: selectedCountry,
-                dialect: selectedDialect,
-                minAge: minAge,
-                maxAge: maxAge,
+                gender: selectedGender,
+                minAge: ageRange.start.round(),
+                maxAge: ageRange.end.round() >= 35 ? null : ageRange.end.round(),
+                lastActiveWithinHours: filterByLastActive ? 24 : null,
                 excludedUserIds: widget.initialFilters.excludedUserIds,
               );
               widget.onApply(filters);
@@ -232,13 +272,92 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   }
 }
 
-// Arabic dialects list
-const List<String> _arabicDialects = [
-  'المصرية',
-  'الخليجية',
-  'الشامية',
-  'المغاربية',
-  'العراقية',
-  'اليمنية',
-  'السودانية',
-];
+// Gender option widget
+class _GenderOption extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _GenderOption({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : (isDark ? Colors.grey[800] : Colors.grey[200]),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? AppColors.primary : null,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Last active option widget
+class _LastActiveOption extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _LastActiveOption({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : (isDark ? Colors.grey[800] : Colors.grey[200]),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            width: 2,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? AppColors.primary : null,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

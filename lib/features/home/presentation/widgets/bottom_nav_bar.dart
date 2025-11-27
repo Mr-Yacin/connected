@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 /// Bottom navigation bar widget for the main app
@@ -28,8 +29,8 @@ class BottomNavBar extends StatelessWidget {
           label: 'الرئيسية',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.shuffle_outlined),
-          activeIcon: Icon(Icons.shuffle),
+          icon: Icon(CupertinoIcons.shuffle),
+          activeIcon: Icon(CupertinoIcons.shuffle_thick),
           label: 'الشفل',
         ),
         BottomNavigationBarItem(

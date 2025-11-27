@@ -20,19 +20,26 @@ class MessageBubble extends StatelessWidget {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 12),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
         decoration: BoxDecoration(
-          color: isMe ? AppColors.primary : Colors.grey[300],
+          color: isMe ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: isMe ? const Radius.circular(16) : Radius.zero,
-            bottomRight: isMe ? Radius.zero : const Radius.circular(16),
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: isMe ? const Radius.circular(18) : const Radius.circular(4),
+            bottomRight: isMe ? const Radius.circular(4) : const Radius.circular(18),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.7,
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,7 +50,8 @@ class MessageBubble extends StatelessWidget {
                 message.content,
                 style: TextStyle(
                   color: isMe ? Colors.white : Colors.black87,
-                  fontSize: 16,
+                  fontSize: 15,
+                  height: 1.4,
                 ),
               )
             else if (message.type == MessageType.voice)
@@ -52,7 +60,7 @@ class MessageBubble extends StatelessWidget {
                 isMe: isMe,
               ),
 
-            const SizedBox(height: 4),
+            const SizedBox(height: 5),
 
             // Timestamp and read status
             Row(
@@ -61,16 +69,16 @@ class MessageBubble extends StatelessWidget {
                 Text(
                   _formatTime(message.timestamp),
                   style: TextStyle(
-                    color: isMe ? Colors.white70 : Colors.black54,
-                    fontSize: 12,
+                    color: isMe ? Colors.white.withValues(alpha: 0.8) : Colors.grey[600],
+                    fontSize: 11,
                   ),
                 ),
-                if (isMe) ...[
+                if (isMe) ...[ 
                   const SizedBox(width: 4),
                   Icon(
-                    message.isRead ? Icons.done_all : Icons.done,
+                    message.isRead ? Icons.done_all_rounded : Icons.done_rounded,
                     size: 16,
-                    color: message.isRead ? Colors.blue : Colors.white70,
+                    color: message.isRead ? Colors.lightBlue[200] : Colors.white.withValues(alpha: 0.8),
                   ),
                 ],
               ],

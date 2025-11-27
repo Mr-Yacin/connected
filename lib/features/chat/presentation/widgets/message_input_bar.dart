@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../providers/chat_provider.dart';
 
-/// Widget for message input with text and voice recording
+/// Widget for message input with text
 class MessageInputBar extends ConsumerStatefulWidget {
   final String chatId;
   final String senderId;
@@ -21,7 +22,6 @@ class MessageInputBar extends ConsumerStatefulWidget {
 
 class _MessageInputBarState extends ConsumerState<MessageInputBar> {
   final TextEditingController _textController = TextEditingController();
-  bool _isRecording = false;
   bool _hasText = false;
 
   @override
@@ -59,126 +59,69 @@ class _MessageInputBarState extends ConsumerState<MessageInputBar> {
         );
   }
 
-  Future<void> _startRecording() async {
-    setState(() {
-      _isRecording = true;
-    });
-
-    await ref.read(chatNotifierProvider.notifier).startRecording();
-  }
-
-  Future<void> _stopRecording() async {
-    final audioFile =
-        await ref.read(chatNotifierProvider.notifier).stopRecording();
-
-    setState(() {
-      _isRecording = false;
-    });
-
-    if (audioFile != null) {
-      await ref.read(chatNotifierProvider.notifier).sendVoiceMessage(
-            chatId: widget.chatId,
-            senderId: widget.senderId,
-            receiverId: widget.receiverId,
-            audioFile: audioFile,
-          );
-    }
-  }
-
-  Future<void> _cancelRecording() async {
-    await ref.read(chatNotifierProvider.notifier).cancelRecording();
-
-    setState(() {
-      _isRecording = false;
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
             offset: const Offset(0, -2),
           ),
         ],
       ),
       child: SafeArea(
-        child: Row(
-          children: [
-            // Text input field
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        decoration: const InputDecoration(
-                          hintText: 'اكتب رسالة...',
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                        ),
-                        textDirection: TextDirection.rtl,
-                        maxLines: null,
-                        enabled: !_isRecording,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: Colors.grey[300]!,
+              width: 1,
             ),
-
-            const SizedBox(width: 8),
-
-            // Send button or voice recording button
-            if (_isRecording)
-              Row(
-                children: [
-                  // Cancel button
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.red),
-                    onPressed: _cancelRecording,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              const SizedBox(width: 16),
+              // Text input field
+              Expanded(
+                child: TextField(
+                  controller: _textController,
+                  decoration: const InputDecoration(
+                    hintText: 'اكتب رسالة...',
+                    hintStyle: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 15,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 0,
+                      vertical: 12,
+                    ),
                   ),
-                  // Stop recording button
-                  IconButton(
-                    icon: const Icon(Icons.send, color: Colors.blue),
-                    onPressed: _stopRecording,
-                  ),
-                ],
-              )
-            else if (_hasText)
-              IconButton(
-                icon: const Icon(Icons.send, color: Colors.blue),
-                onPressed: _sendTextMessage,
-              )
-            else
-              GestureDetector(
-                onLongPress: _startRecording,
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(
-                    color: Colors.blue,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.mic,
-                    color: Colors.white,
-                  ),
+                  textDirection: TextDirection.rtl,
+                  maxLines: 5,
+                  minLines: 1,
+                  style: const TextStyle(fontSize: 15),
                 ),
               ),
-          ],
+              // Send button
+              IconButton(
+                onPressed: _hasText ? _sendTextMessage : null,
+                icon: Icon(
+                  Icons.send_rounded,
+                  color: _hasText ? AppColors.primary : Colors.grey[400],
+                  size: 24,
+                ),
+                padding: const EdgeInsets.all(8),
+              ),
+              const SizedBox(width: 4),
+            ],
+          ),
         ),
       ),
     );

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/discovery_provider.dart';
+import '../providers/follow_provider.dart';
 import '../widgets/user_card.dart';
 import '../widgets/filter_bottom_sheet.dart';
 
@@ -54,9 +55,39 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
     _loadNextUser();
   }
 
-  void _handleSkip() {
-    ref.read(discoveryProvider.notifier).skipCurrentUser();
-    _loadNextUser();
+  void _handleFollow() async {
+    final currentUser = ref.read(discoveryProvider).currentUser;
+    final loggedInUser = ref.read(currentUserProvider).value;
+
+    if (currentUser != null && loggedInUser != null) {
+      try {
+        await ref
+            .read(followProvider.notifier)
+            .followUser(loggedInUser.uid, currentUser.id);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تمت المتابعة بنجاح!')),
+          );
+        }
+
+        // Auto-shuffle to next user
+        _loadNextUser();
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('فشل في المتابعة: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _handleViewProfile() {
+    final currentUser = ref.read(discoveryProvider).currentUser;
+    if (currentUser != null) {
+      context.push('/profile/${currentUser.id}');
+    }
   }
 
   void _handleChat() {
@@ -76,7 +107,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
   }
 
   void _loadNextUser() {
-    ref.read(discoveryProvider.notifier).getRandomUser();
+    ref.read(discoveryProvider.notifier).shuffleWithCooldown();
   }
 
   @override
@@ -109,7 +140,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -143,6 +174,41 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
                     ],
                   ),
                 ),
+              
+              // Cooldown indicator
+              if (discoveryState.cooldownSeconds > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.timer,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'انتظر ${discoveryState.cooldownSeconds} ثانية',
+                          style: const TextStyle(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              
               const SizedBox(height: 16),
 
               // Main content
@@ -151,15 +217,15 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
           ),
         ),
       ),
-      floatingActionButton:
-          discoveryState.currentUser != null && !discoveryState.isLoading
-          ? FloatingActionButton.extended(
-              onPressed: _loadNextUser,
-              backgroundColor: AppColors.primary,
-              icon: const Icon(Icons.shuffle),
-              label: const Text('شفل'),
-            )
-          : null,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: discoveryState.canShuffle ? _loadNextUser : null,
+        backgroundColor: discoveryState.canShuffle 
+            ? AppColors.primary 
+            : Colors.grey,
+        icon: const Icon(Icons.shuffle),
+        label: const Text('شفل'),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 
@@ -238,8 +304,9 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
         child: UserCard(
           user: state.currentUser!,
           onLike: _handleLike,
-          onSkip: _handleSkip,
+          onFollow: _handleFollow,
           onChat: _handleChat,
+          onViewProfile: _handleViewProfile,
         ),
       ),
     );

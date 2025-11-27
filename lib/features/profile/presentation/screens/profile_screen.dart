@@ -683,6 +683,34 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 20),
+            
+            // Stats Row
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildStatItem(
+                  icon: Icons.people,
+                  label: 'المتابعون',
+                  value: '${profile.followerCount ?? 0}',
+                  color: AppColors.primary,
+                ),
+                _buildStatItem(
+                  icon: Icons.person_add,
+                  label: 'المتابَعون',
+                  value: '${profile.followingCount ?? 0}',
+                  color: AppColors.secondary,
+                ),
+                _buildStatItem(
+                  icon: Icons.favorite,
+                  label: 'الإعجابات',
+                  value: '${profile.likesCount ?? 0}',
+                  color: Colors.red,
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 20),
+            
             _buildCompactInfoItem(
               icon: Icons.blur_on,
               label: 'خصوصية الصورة',
@@ -692,6 +720,36 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 28),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
     );
   }
 

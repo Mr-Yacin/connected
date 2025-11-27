@@ -73,7 +73,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dialect",
+          "fieldPath": "gender",
           "order": "ASCENDING"
         },
         {
@@ -95,7 +95,7 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "dialect",
+          "fieldPath": "gender",
           "order": "ASCENDING"
         },
         {

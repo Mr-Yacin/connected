@@ -6,118 +6,151 @@ import '../../../../core/theme/app_colors.dart';
 class UserCard extends StatelessWidget {
   final UserProfile user;
   final VoidCallback? onLike;
-  final VoidCallback? onSkip;
+  final VoidCallback? onFollow;
   final VoidCallback? onChat;
+  final VoidCallback? onViewProfile;
 
   const UserCard({
     super.key,
     required this.user,
     this.onLike,
-    this.onSkip,
+    this.onFollow,
     this.onChat,
+    this.onViewProfile,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Profile Image
-            CircleAvatar(
-              radius: 80,
-              backgroundColor: AppColors.primary.withOpacity(0.1),
-              backgroundImage: user.profileImageUrl != null
-                  ? NetworkImage(user.profileImageUrl!)
-                  : null,
-              child: user.profileImageUrl == null
-                  ? Icon(
-                      Icons.person,
-                      size: 80,
-                      color: AppColors.primary,
-                    )
-                  : null,
-            ),
-            const SizedBox(height: 24),
-            
-            // Name
-            Text(
-              user.name ?? 'مستخدم',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            
-            // Age
-            if (user.age != null)
-              Text(
-                '${user.age} سنة',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: isDark
-                          ? AppColors.textSecondaryDark
-                          : AppColors.textSecondary,
-                    ),
+    return InkWell(
+      onTap: onViewProfile,
+      borderRadius: BorderRadius.circular(20),
+      child: Card(
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Profile Image
+              CircleAvatar(
+                radius: 80,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                backgroundImage: user.profileImageUrl != null
+                    ? NetworkImage(user.profileImageUrl!)
+                    : null,
+                child: user.profileImageUrl == null
+                    ? Icon(
+                        Icons.person,
+                        size: 80,
+                        color: AppColors.primary,
+                      )
+                    : null,
               ),
-            const SizedBox(height: 16),
-            
-            // Country and Dialect
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (user.country != null) ...[
+              const SizedBox(height: 24),
+              
+              // Name
+              Text(
+                user.name ?? 'مستخدم',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              
+              // Age
+              if (user.age != null)
+                Text(
+                  '${user.age} سنة',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: isDark
+                            ? AppColors.textSecondaryDark
+                            : AppColors.textSecondary,
+                      ),
+                ),
+              const SizedBox(height: 16),
+              
+              // Country and Stats
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (user.country != null) ...[
+                    Icon(
+                      Icons.location_on,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      user.country!,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    const SizedBox(width: 16),
+                  ],
+                  // Followers count
                   Icon(
-                    Icons.location_on,
+                    Icons.people,
                     size: 20,
-                    color: AppColors.primary,
+                    color: AppColors.secondary,
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    user.country!,
+                    '${user.followerCount}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  const SizedBox(width: 16),
+                  // Likes count
+                  Icon(
+                    Icons.favorite,
+                    size: 20,
+                    color: Colors.red,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${user.likesCount}',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
-              ],
-            ),
-            const SizedBox(height: 32),
-            
-            // Action Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // Skip Button
-                _ActionButton(
-                  icon: Icons.close,
-                  color: AppColors.error,
-                  onPressed: onSkip,
-                ),
-                
-                // Like Button
-                _ActionButton(
-                  icon: Icons.favorite,
-                  color: AppColors.secondary,
-                  onPressed: onLike,
-                ),
-                
-                // Chat Button
-                _ActionButton(
-                  icon: Icons.chat_bubble,
-                  color: AppColors.primary,
-                  onPressed: onChat,
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 32),
+              
+              // Action Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Follow Button
+                  _ActionButton(
+                    icon: Icons.person_add_outlined,
+                    color: Colors.blue,
+                    label: 'متابعة',
+                    onPressed: onFollow,
+                  ),
+                  
+                  // Like Button
+                  _ActionButton(
+                    icon: Icons.favorite,
+                    color: AppColors.secondary,
+                    label: 'إعجاب',
+                    onPressed: onLike,
+                  ),
+                  
+                  // Chat Button
+                  _ActionButton(
+                    icon: Icons.chat_bubble,
+                    color: AppColors.primary,
+                    label: 'محادثة',
+                    onPressed: onChat,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -127,32 +160,47 @@ class UserCard extends StatelessWidget {
 class _ActionButton extends StatelessWidget {
   final IconData icon;
   final Color color;
+  final String label;
   final VoidCallback? onPressed;
 
   const _ActionButton({
-    super.key,
     required this.icon,
     required this.color,
+    required this.label,
     this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: color.withOpacity(0.1),
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onPressed,
-        customBorder: const CircleBorder(),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          child: Icon(
-            icon,
-            color: color,
-            size: 32,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Material(
+          color: color.withValues(alpha: 0.1),
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onPressed,
+            customBorder: const CircleBorder(),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              child: Icon(
+                icon,
+                color: color,
+                size: 28,
+              ),
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
     );
   }
 }

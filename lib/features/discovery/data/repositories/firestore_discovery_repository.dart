@@ -67,9 +67,9 @@ class FirestoreDiscoveryRepository implements DiscoveryRepository {
         query = query.where('country', isEqualTo: filters.country);
       }
 
-      // Apply dialect filter (indexed)
-      if (filters.dialect != null && filters.dialect!.isNotEmpty) {
-        query = query.where('dialect', isEqualTo: filters.dialect);
+      // Apply gender filter (indexed)
+      if (filters.gender != null && filters.gender!.isNotEmpty) {
+        query = query.where('gender', isEqualTo: filters.gender);
       }
       
       // IMPORTANT: Add id filter to prevent duplicate results and use composite index
@@ -90,6 +90,16 @@ class FirestoreDiscoveryRepository implements DiscoveryRepository {
           if (filters.minAge != null && profile.age! < filters.minAge!) return false;
           if (filters.maxAge != null && profile.age! > filters.maxAge!) return false;
           return true;
+        }).toList();
+      }
+
+      // Apply last active filter (client-side)
+      if (filters.lastActiveWithinHours != null) {
+        final cutoffTime = DateTime.now().subtract(
+          Duration(hours: filters.lastActiveWithinHours!),
+        );
+        profiles = profiles.where((profile) {
+          return profile.lastActive.isAfter(cutoffTime);
         }).toList();
       }
 
@@ -140,9 +150,9 @@ class FirestoreDiscoveryRepository implements DiscoveryRepository {
         query = query.where('country', isEqualTo: filters.country);
       }
 
-      // Apply dialect filter (indexed)
-      if (filters.dialect != null && filters.dialect!.isNotEmpty) {
-        query = query.where('dialect', isEqualTo: filters.dialect);
+      // Apply gender filter (indexed)
+      if (filters.gender != null && filters.gender!.isNotEmpty) {
+        query = query.where('gender', isEqualTo: filters.gender);
       }
       
       // IMPORTANT: Add id filter to prevent duplicate results and use composite index
@@ -177,6 +187,16 @@ class FirestoreDiscoveryRepository implements DiscoveryRepository {
           if (filters.minAge != null && profile.age! < filters.minAge!) return false;
           if (filters.maxAge != null && profile.age! > filters.maxAge!) return false;
           return true;
+        }).toList();
+      }
+
+      // Apply last active filter (client-side)
+      if (filters.lastActiveWithinHours != null) {
+        final cutoffTime = DateTime.now().subtract(
+          Duration(hours: filters.lastActiveWithinHours!),
+        );
+        profiles = profiles.where((profile) {
+          return profile.lastActive.isAfter(cutoffTime);
         }).toList();
       }
 
