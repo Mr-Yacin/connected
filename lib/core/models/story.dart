@@ -9,6 +9,8 @@ class Story {
   final DateTime createdAt;
   final DateTime expiresAt;
   final List<String> viewerIds;
+  final List<String> likedBy;
+  final int replyCount;
 
   Story({
     required this.id,
@@ -18,6 +20,8 @@ class Story {
     required this.createdAt,
     required this.expiresAt,
     this.viewerIds = const [],
+    this.likedBy = const [],
+    this.replyCount = 0,
   });
 
   /// Check if the story has expired
@@ -33,6 +37,8 @@ class Story {
       'createdAt': createdAt.toIso8601String(),
       'expiresAt': expiresAt.toIso8601String(),
       'viewerIds': viewerIds,
+      'likedBy': likedBy,
+      'replyCount': replyCount,
     };
   }
 
@@ -52,6 +58,11 @@ class Story {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      likedBy: (json['likedBy'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      replyCount: (json['replyCount'] as int?) ?? 0,
     );
   }
 
@@ -64,6 +75,8 @@ class Story {
     DateTime? createdAt,
     DateTime? expiresAt,
     List<String>? viewerIds,
+    List<String>? likedBy,
+    int? replyCount,
   }) {
     return Story(
       id: id ?? this.id,
@@ -73,6 +86,8 @@ class Story {
       createdAt: createdAt ?? this.createdAt,
       expiresAt: expiresAt ?? this.expiresAt,
       viewerIds: viewerIds ?? this.viewerIds,
+      likedBy: likedBy ?? this.likedBy,
+      replyCount: replyCount ?? this.replyCount,
     );
   }
 
@@ -87,7 +102,9 @@ class Story {
         other.type == type &&
         other.createdAt == createdAt &&
         other.expiresAt == expiresAt &&
-        _listEquals(other.viewerIds, viewerIds);
+        _listEquals(other.viewerIds, viewerIds) &&
+        _listEquals(other.likedBy, likedBy) &&
+        other.replyCount == replyCount;
   }
 
   @override
@@ -100,6 +117,8 @@ class Story {
       createdAt,
       expiresAt,
       Object.hashAll(viewerIds),
+      Object.hashAll(likedBy),
+      replyCount,
     );
   }
 

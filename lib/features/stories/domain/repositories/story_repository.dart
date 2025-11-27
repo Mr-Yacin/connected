@@ -1,4 +1,5 @@
 import '../../../../core/models/story.dart';
+import '../../../../core/models/story_reply.dart';
 
 /// Repository interface for managing stories
 abstract class StoryRepository {
@@ -31,4 +32,13 @@ abstract class StoryRepository {
 
   /// Delete a specific story
   Future<void> deleteStory(String storyId);
+
+  /// Like a story
+  Future<void> likeStory(String storyId, String userId);
+
+  /// Unlike a story
+  Future<void> unlikeStory(String storyId, String userId);
+
+  /// Create a story reply
+  Future<void> createStoryReply(StoryReply reply);
 }

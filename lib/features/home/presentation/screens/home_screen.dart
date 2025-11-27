@@ -5,6 +5,7 @@ import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../discovery/presentation/screens/shuffle_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../stories/presentation/widgets/story_bar_widget.dart';
+import '../../../stories/presentation/widgets/stories_grid_widget.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 /// Main home screen with bottom navigation
@@ -82,7 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'تطبيق التواصل الاجتماعي',
+                  'القصص',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -91,45 +92,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // Story bar
+          // Story bar - Horizontal scroll
           StoryBarWidget(currentUserId: userId),
 
           const Divider(),
 
-          // Main content area
+          // Stories Grid - Main content
           Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.connect_without_contact,
-                    size: 100,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'مرحباً بك في تطبيق التواصل الاجتماعي',
-                    style: Theme.of(context).textTheme.headlineMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'استخدم الشفل للعثور على أصدقاء جدد',
-                    style: Theme.of(context).textTheme.bodyLarge,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'أو تصفح القصص في الأعلى',
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
+            child: StoriesGridWidget(currentUserId: userId),
           ),
         ],
       ),

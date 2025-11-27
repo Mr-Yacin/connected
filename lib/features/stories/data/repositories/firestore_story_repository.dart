@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/models/story.dart';
+import '../../../../core/models/story_reply.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/story_repository.dart';
 import '../../../../services/error_logging_service.dart';
@@ -290,6 +291,84 @@ class FirestoreStoryRepository implements StoryRepository {
         context: 'Unexpected error deleting story',
         screen: 'StoryViewScreen',
         operation: 'deleteStory',
+      );
+      throw AppException('حدث خطأ غير متوقع: $e');
+    }
+  }
+
+  @override
+  Future<void> likeStory(String storyId, String userId) async {
+    try {
+      await _firestore.collection('stories').doc(storyId).update({
+        'likedBy': FieldValue.arrayUnion([userId]),
+      });
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to like story',
+        screen: 'StoryViewScreen',
+        operation: 'likeStory',
+        collection: 'stories',
+        documentId: storyId,
+      );
+      throw AppException('فشل في الإعجاب بالقصة: ${e.message}');
+    }
+  }
+
+  @override
+  Future<void> unlikeStory(String storyId, String userId) async {
+    try {
+      await _firestore.collection('stories').doc(storyId).update({
+        'likedBy': FieldValue.arrayRemove([userId]),
+      });
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to unlike story',
+        screen: 'StoryViewScreen',
+        operation: 'unlikeStory',
+        collection: 'stories',
+        documentId: storyId,
+      );
+      throw AppException('فشل في إلغاء الإعجاب: ${e.message}');
+    }
+  }
+
+  @override
+  Future<void> createStoryReply(StoryReply reply) async {
+    try {
+      final replyId = reply.id.isEmpty ? _uuid.v4() : reply.id;
+      final replyPayload = reply.copyWith(id: replyId);
+
+      // Save reply to Firestore
+      await _firestore
+          .collection('story_replies')
+          .doc(replyId)
+          .set(replyPayload.toJson());
+
+      // Increment reply count in story
+      await _firestore.collection('stories').doc(reply.storyId).update({
+        'replyCount': FieldValue.increment(1),
+      });
+    } on FirebaseException catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to create story reply',
+        screen: 'StoryViewScreen',
+        operation: 'createStoryReply',
+        collection: 'story_replies',
+      );
+      throw AppException('فشل في إرسال الرد: ${e.message}');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error creating story reply',
+        screen: 'StoryViewScreen',
+        operation: 'createStoryReply',
       );
       throw AppException('حدث خطأ غير متوقع: $e');
     }
