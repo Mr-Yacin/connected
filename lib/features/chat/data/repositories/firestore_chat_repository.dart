@@ -5,11 +5,13 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/models/message.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
+import '../../../../core/data/base_firestore_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../../../services/error_logging_service.dart';
 
 /// Firestore implementation of ChatRepository
-class FirestoreChatRepository implements ChatRepository {
+class FirestoreChatRepository extends BaseFirestoreRepository 
+    implements ChatRepository {
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
   final Uuid _uuid;
@@ -147,55 +149,40 @@ class FirestoreChatRepository implements ChatRepository {
     required String receiverId,
     required String text,
   }) async {
-    try {
-      final messageId = _uuid.v4();
-      final message = Message(
-        id: messageId,
-        chatId: chatId,
-        senderId: senderId,
-        receiverId: receiverId,
-        type: MessageType.text,
-        content: text,
-        timestamp: DateTime.now(),
-        isRead: false,
-      );
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        final messageId = _uuid.v4();
+        final message = Message(
+          id: messageId,
+          chatId: chatId,
+          senderId: senderId,
+          receiverId: receiverId,
+          type: MessageType.text,
+          content: text,
+          timestamp: DateTime.now(),
+          isRead: false,
+        );
 
-      // Save message to Firestore
-      await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc(messageId)
-          .set(message.toJson());
+        await _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .doc(messageId)
+            .set(message.toJson());
 
-      // Update chat metadata
-      await _updateChatMetadata(
-        chatId: chatId,
-        senderId: senderId,
-        receiverId: receiverId,
-        lastMessage: text,
-        lastMessageTime: message.timestamp,
-      );
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to send text message',
-        screen: 'ChatScreen',
-        operation: 'sendTextMessage',
-        collection: 'chats/$chatId/messages',
-      );
-      throw AppException('فشل في إرسال الرسالة: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error sending text message',
-        screen: 'ChatScreen',
-        operation: 'sendTextMessage',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+        await _updateChatMetadata(
+          chatId: chatId,
+          senderId: senderId,
+          receiverId: receiverId,
+          lastMessage: text,
+          lastMessageTime: message.timestamp,
+        );
+      },
+      operationName: 'sendTextMessage',
+      screen: 'ChatScreen',
+      arabicErrorMessage: 'فشل في إرسال الرسالة',
+      collection: 'chats/$chatId/messages',
+    );
   }
 
   @override
@@ -205,184 +192,96 @@ class FirestoreChatRepository implements ChatRepository {
     required String receiverId,
     required File audioFile,
   }) async {
-    try {
-      // Upload audio file to Firebase Storage
-      final audioUrl = await _uploadVoiceMessage(chatId, audioFile);
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        final audioUrl = await _uploadVoiceMessage(chatId, audioFile);
 
-      final messageId = _uuid.v4();
-      final message = Message(
-        id: messageId,
-        chatId: chatId,
-        senderId: senderId,
-        receiverId: receiverId,
-        type: MessageType.voice,
-        content: audioUrl,
-        timestamp: DateTime.now(),
-        isRead: false,
-      );
+        final messageId = _uuid.v4();
+        final message = Message(
+          id: messageId,
+          chatId: chatId,
+          senderId: senderId,
+          receiverId: receiverId,
+          type: MessageType.voice,
+          content: audioUrl,
+          timestamp: DateTime.now(),
+          isRead: false,
+        );
 
-      // Save message to Firestore
-      await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc(messageId)
-          .set(message.toJson());
+        await _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .doc(messageId)
+            .set(message.toJson());
 
-      // Update chat metadata
-      await _updateChatMetadata(
-        chatId: chatId,
-        senderId: senderId,
-        receiverId: receiverId,
-        lastMessage: '🎤 رسالة صوتية',
-        lastMessageTime: message.timestamp,
-      );
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logStorageError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to send voice message',
-        screen: 'ChatScreen',
-        operation: 'sendVoiceMessage',
-      );
-      throw AppException('فشل في إرسال الرسالة الصوتية: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error sending voice message',
-        screen: 'ChatScreen',
-        operation: 'sendVoiceMessage',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+        await _updateChatMetadata(
+          chatId: chatId,
+          senderId: senderId,
+          receiverId: receiverId,
+          lastMessage: '🎤 رسالة صوتية',
+          lastMessageTime: message.timestamp,
+        );
+      },
+      operationName: 'sendVoiceMessage',
+      screen: 'ChatScreen',
+      arabicErrorMessage: 'فشل في إرسال الرسالة الصوتية',
+      collection: 'chats/$chatId/messages',
+    );
   }
 
   @override
   Future<void> markAsRead(String chatId, String messageId) async {
-    try {
-      await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .doc(messageId)
-          .update({'isRead': true});
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to mark message as read',
-        screen: 'ChatScreen',
-        operation: 'markAsRead',
-        collection: 'chats/$chatId/messages',
-        documentId: messageId,
-      );
-      throw AppException('فشل في تحديث حالة الرسالة: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error marking message as read',
-        screen: 'ChatScreen',
-        operation: 'markAsRead',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        await _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .doc(messageId)
+            .update({'isRead': true});
+      },
+      operationName: 'markAsRead',
+      screen: 'ChatScreen',
+      arabicErrorMessage: 'فشل في تحديث حالة الرسالة',
+      collection: 'chats/$chatId/messages',
+      documentId: messageId,
+    );
   }
 
   @override
   Future<void> markChatAsRead(String chatId, String userId) async {
-    try {
-      // OPTIMIZED: Reset unread count for user when opening chat
-      await _firestore.collection('chats').doc(chatId).update({
-        'unreadCount.$userId': 0,
-      });
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to mark chat as read',
-        screen: 'ChatScreen',
-        operation: 'markChatAsRead',
-        collection: 'chats',
-        documentId: chatId,
-      );
-      throw AppException('فشل في تحديث حالة المحادثة: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error marking chat as read',
-        screen: 'ChatScreen',
-        operation: 'markChatAsRead',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        await _firestore.collection('chats').doc(chatId).update({
+          'unreadCount.$userId': 0,
+        });
+      },
+      operationName: 'markChatAsRead',
+      screen: 'ChatScreen',
+      arabicErrorMessage: 'فشل في تحديث حالة المحادثة',
+      collection: 'chats',
+      documentId: chatId,
+    );
   }
 
   @override
   Future<List<ChatPreview>> getChatList(String userId) async {
-    try {
-      // Get all chats where user is a participant
-      final chatsSnapshot = await _firestore
-          .collection('chats')
-          .where('participants', arrayContains: userId)
-          .orderBy('lastMessageTime', descending: true)
-          .get();
+    return handleFirestoreOperation(
+      operation: () async {
+        final chatsSnapshot = await _firestore
+            .collection('chats')
+            .where('participants', arrayContains: userId)
+            .orderBy('lastMessageTime', descending: true)
+            .get();
 
-      final chatPreviews = <ChatPreview>[];
-
-      for (final doc in chatsSnapshot.docs) {
-        final data = doc.data();
-        final participants = List<String>.from(data['participants'] as List);
-        final otherUserId =
-            participants.firstWhere((id) => id != userId, orElse: () => '');
-
-        if (otherUserId.isEmpty) continue;
-
-        // Get other user's profile
-        final userDoc =
-            await _firestore.collection('users').doc(otherUserId).get();
-        final userData = userDoc.data();
-
-        // OPTIMIZED: Read unread count directly from denormalized field
-        final unreadCountMap = data['unreadCount'] as Map<String, dynamic>?;
-        final unreadCount = unreadCountMap?[userId] as int? ?? 0;
-
-        chatPreviews.add(ChatPreview(
-          chatId: doc.id,
-          otherUserId: otherUserId,
-          otherUserName: userData?['name'] as String?,
-          otherUserImageUrl: userData?['profileImageUrl'] as String?,
-          lastMessage: data['lastMessage'] as String?,
-          lastMessageTime: data['lastMessageTime'] != null
-              ? (data['lastMessageTime'] as Timestamp).toDate()
-              : null,
-          unreadCount: unreadCount,
-        ));
-      }
-
-      return chatPreviews;
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to get chat list',
-        screen: 'ChatListScreen',
-        operation: 'getChatList',
-        collection: 'chats',
-      );
-      throw AppException('فشل في جلب قائمة المحادثات: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error getting chat list',
-        screen: 'ChatListScreen',
-        operation: 'getChatList',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+        return _buildChatPreviews(chatsSnapshot, userId);
+      },
+      operationName: 'getChatList',
+      screen: 'ChatListScreen',
+      arabicErrorMessage: 'فشل في جلب قائمة المحادثات',
+      collection: 'chats',
+    );
   }
 
   @override
@@ -441,27 +340,58 @@ class FirestoreChatRepository implements ChatRepository {
     }
   }
 
+  /// Build chat previews from snapshot
+  Future<List<ChatPreview>> _buildChatPreviews(
+    QuerySnapshot chatsSnapshot,
+    String userId,
+  ) async {
+    final chatPreviews = <ChatPreview>[];
+
+    for (final doc in chatsSnapshot.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      final participants = List<String>.from(data['participants'] as List);
+      final otherUserId =
+          participants.firstWhere((id) => id != userId, orElse: () => '');
+
+      if (otherUserId.isEmpty) continue;
+
+      final userDoc =
+          await _firestore.collection('users').doc(otherUserId).get();
+      final userData = userDoc.data();
+
+      final unreadCountMap = data['unreadCount'] as Map<String, dynamic>?;
+      final unreadCount = unreadCountMap?[userId] as int? ?? 0;
+
+      chatPreviews.add(ChatPreview(
+        chatId: doc.id,
+        otherUserId: otherUserId,
+        otherUserName: userData?['name'] as String?,
+        otherUserImageUrl: userData?['profileImageUrl'] as String?,
+        lastMessage: data['lastMessage'] as String?,
+        lastMessageTime: data['lastMessageTime'] != null
+            ? (data['lastMessageTime'] as Timestamp).toDate()
+            : null,
+        unreadCount: unreadCount,
+      ));
+    }
+
+    return chatPreviews;
+  }
+
   /// Upload voice message to Firebase Storage
   Future<String> _uploadVoiceMessage(String chatId, File audioFile) async {
-    try {
-      final fileName = '${_uuid.v4()}.m4a';
-      final ref = _storage.ref().child('voice_messages/$chatId/$fileName');
+    return handleFirestoreOperation(
+      operation: () async {
+        final fileName = '${_uuid.v4()}.m4a';
+        final ref = _storage.ref().child('voice_messages/$chatId/$fileName');
 
-      final uploadTask = await ref.putFile(audioFile);
-      final downloadUrl = await uploadTask.ref.getDownloadURL();
-
-      return downloadUrl;
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logStorageError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to upload voice message',
-        screen: 'ChatScreen',
-        operation: '_uploadVoiceMessage',
-        filePath: 'voice_messages/$chatId',
-      );
-      throw AppException('فشل في رفع الرسالة الصوتية: ${e.message}');
-    }
+        final uploadTask = await ref.putFile(audioFile);
+        return await uploadTask.ref.getDownloadURL();
+      },
+      operationName: 'uploadVoiceMessage',
+      screen: 'ChatScreen',
+      arabicErrorMessage: 'فشل في رفع الرسالة الصوتية',
+    );
   }
 
   /// Update chat metadata (last message, timestamp, participants)
@@ -472,26 +402,21 @@ class FirestoreChatRepository implements ChatRepository {
     required String lastMessage,
     required DateTime lastMessageTime,
   }) async {
-    try {
-      await _firestore.collection('chats').doc(chatId).set({
-        'participants': [senderId, receiverId],
-        'lastMessage': lastMessage,
-        'lastMessageTime': Timestamp.fromDate(lastMessageTime),
-        'updatedAt': FieldValue.serverTimestamp(),
-        // OPTIMIZED: Increment unread count for receiver
-        'unreadCount.$receiverId': FieldValue.increment(1),
-      }, SetOptions(merge: true));
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to update chat metadata',
-        screen: 'ChatScreen',
-        operation: '_updateChatMetadata',
-        collection: 'chats',
-        documentId: chatId,
-      );
-      throw AppException('فشل في تحديث بيانات المحادثة: ${e.message}');
-    }
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        await _firestore.collection('chats').doc(chatId).set({
+          'participants': [senderId, receiverId],
+          'lastMessage': lastMessage,
+          'lastMessageTime': Timestamp.fromDate(lastMessageTime),
+          'updatedAt': FieldValue.serverTimestamp(),
+          'unreadCount.$receiverId': FieldValue.increment(1),
+        }, SetOptions(merge: true));
+      },
+      operationName: 'updateChatMetadata',
+      screen: 'ChatScreen',
+      arabicErrorMessage: 'فشل في تحديث بيانات المحادثة',
+      collection: 'chats',
+      documentId: chatId,
+    );
   }
 }

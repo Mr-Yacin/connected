@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/models/user_profile.dart';
+import '../../../../core/models/like.dart';
 import '../../data/repositories/firestore_like_repository.dart';
 import '../../domain/repositories/like_repository.dart';
 import '../../../profile/data/repositories/firestore_profile_repository.dart';
@@ -184,6 +185,11 @@ class LikeNotifier extends StateNotifier<LikeState> {
         error: 'فشل في تحميل المعجبين: $e',
       );
     }
+  }
+
+  /// Get likes for a user (returns raw Like objects)
+  Future<List<Like>> getLikes(String userId) async {
+    return await _repository.getUserLikes(userId);
   }
 
   /// Clear cache

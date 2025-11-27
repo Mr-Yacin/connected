@@ -1,13 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../core/models/discovery_filters.dart';
-import '../../../../core/exceptions/app_exceptions.dart';
+import '../../../../core/data/base_firestore_repository.dart';
 import '../../domain/repositories/discovery_repository.dart';
-import '../../../../services/error_logging_service.dart';
 import 'dart:math';
 
 /// Firestore implementation of DiscoveryRepository
-class FirestoreDiscoveryRepository implements DiscoveryRepository {
+class FirestoreDiscoveryRepository extends BaseFirestoreRepository 
+    implements DiscoveryRepository {
   final FirebaseFirestore _firestore;
   final Random _random;
 
@@ -22,32 +22,17 @@ class FirestoreDiscoveryRepository implements DiscoveryRepository {
     String currentUserId,
     DiscoveryFilters filters,
   ) async {
-    try {
-      // Use paginated query to get users more efficiently
-      final result = await getFilteredUsersPaginated(currentUserId, filters);
-      if (result.users.isEmpty) return null;
-      
-      return result.users[_random.nextInt(result.users.length)];
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to get random user',
-        screen: 'ShuffleScreen',
-        operation: 'getRandomUser',
-        collection: 'users',
-      );
-      throw AppException('فشل في جلب مستخدم عشوائي: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error getting random user',
-        screen: 'ShuffleScreen',
-        operation: 'getRandomUser',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+    return handleFirestoreOperation(
+      operation: () async {
+        final result = await getFilteredUsersPaginated(currentUserId, filters);
+        if (result.users.isEmpty) return null;
+        return result.users[_random.nextInt(result.users.length)];
+      },
+      operationName: 'getRandomUser',
+      screen: 'ShuffleScreen',
+      arabicErrorMessage: 'فشل في جلب مستخدم عشوائي',
+      collection: 'users',
+    );
   }
 
   @override
@@ -55,82 +40,24 @@ class FirestoreDiscoveryRepository implements DiscoveryRepository {
     String currentUserId,
     DiscoveryFilters filters,
   ) async {
-    try {
-      // OPTIMIZED: Use composite indexes for better query performance
-      Query query = _firestore.collection('users');
-      
-      // Start with indexed fields for optimal performance
-      query = query.where('isActive', isEqualTo: true);
-      
-      // Apply country filter (indexed)
-      if (filters.country != null && filters.country!.isNotEmpty) {
-        query = query.where('country', isEqualTo: filters.country);
-      }
+    return handleFirestoreOperation(
+      operation: () async {
+        Query query = _buildBaseQuery(currentUserId, filters);
+        query = query.limit(100);
 
-      // Apply gender filter (indexed)
-      if (filters.gender != null && filters.gender!.isNotEmpty) {
-        query = query.where('gender', isEqualTo: filters.gender);
-      }
-      
-      // IMPORTANT: Add id filter to prevent duplicate results and use composite index
-      query = query.where('id', isNotEqualTo: currentUserId);
-
-      // OPTIMIZED: Limit to 100 users for better performance
-      query = query.limit(100);
-
-      final snapshot = await query.get();
-      var profiles = snapshot.docs
-          .map((doc) => UserProfile.fromJson(doc.data() as Map<String, dynamic>))
-          .toList();
-
-      // Apply age filter (client-side filtering is more efficient for ranges)
-      if (filters.minAge != null || filters.maxAge != null) {
-        profiles = profiles.where((profile) {
-          if (profile.age == null) return false;
-          if (filters.minAge != null && profile.age! < filters.minAge!) return false;
-          if (filters.maxAge != null && profile.age! > filters.maxAge!) return false;
-          return true;
-        }).toList();
-      }
-
-      // Apply last active filter (client-side)
-      if (filters.lastActiveWithinHours != null) {
-        final cutoffTime = DateTime.now().subtract(
-          Duration(hours: filters.lastActiveWithinHours!),
+        final snapshot = await query.get();
+        var profiles = mapQuerySnapshot(
+          snapshot: snapshot,
+          fromJson: UserProfile.fromJson,
         );
-        profiles = profiles.where((profile) {
-          return profile.lastActive.isAfter(cutoffTime);
-        }).toList();
-      }
 
-      // Exclude specified user IDs (client-side)
-      if (filters.excludedUserIds.isNotEmpty) {
-        profiles = profiles.where((profile) {
-          return !filters.excludedUserIds.contains(profile.id);
-        }).toList();
-      }
-
-      return profiles;
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to get filtered users',
-        screen: 'ShuffleScreen',
-        operation: 'getFilteredUsers',
-        collection: 'users',
-      );
-      throw AppException('فشل في جلب المستخدمين: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error getting filtered users',
-        screen: 'ShuffleScreen',
-        operation: 'getFilteredUsers',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+        return _applyClientSideFilters(profiles, filters);
+      },
+      operationName: 'getFilteredUsers',
+      screen: 'ShuffleScreen',
+      arabicErrorMessage: 'فشل في جلب المستخدمين',
+      collection: 'users',
+    );
   }
 
   @override
@@ -138,104 +65,98 @@ class FirestoreDiscoveryRepository implements DiscoveryRepository {
     String currentUserId,
     DiscoveryFilters filters,
   ) async {
-    try {
-      // OPTIMIZED: Use composite indexes for better query performance
-      Query query = _firestore.collection('users');
-      
-      // Start with indexed fields for optimal performance
-      query = query.where('isActive', isEqualTo: true);
-      
-      // Apply country filter (indexed)
-      if (filters.country != null && filters.country!.isNotEmpty) {
-        query = query.where('country', isEqualTo: filters.country);
-      }
+    return handleFirestoreOperation(
+      operation: () async {
+        Query query = _buildBaseQuery(currentUserId, filters);
 
-      // Apply gender filter (indexed)
-      if (filters.gender != null && filters.gender!.isNotEmpty) {
-        query = query.where('gender', isEqualTo: filters.gender);
-      }
-      
-      // IMPORTANT: Add id filter to prevent duplicate results and use composite index
-      query = query.where('id', isNotEqualTo: currentUserId);
+        if (filters.lastDocument != null) {
+          query = query.startAfterDocument(filters.lastDocument!);
+        }
 
-      // Apply pagination cursor
-      if (filters.lastDocument != null) {
-        query = query.startAfterDocument(filters.lastDocument!);
-      }
+        query = query.limit(filters.pageSize + 1);
 
-      // OPTIMIZED: Fetch one more than pageSize to check if there are more results
-      query = query.limit(filters.pageSize + 1);
+        final snapshot = await query.get();
+        final hasMore = snapshot.docs.length > filters.pageSize;
+        final docs = hasMore 
+            ? snapshot.docs.take(filters.pageSize).toList()
+            : snapshot.docs;
+        
+        var profiles = docs
+            .map((doc) => UserProfile.fromJson(doc.data() as Map<String, dynamic>))
+            .toList();
 
-      final snapshot = await query.get();
-      
-      // Check if there are more results
-      final hasMore = snapshot.docs.length > filters.pageSize;
-      
-      // Take only the requested pageSize
-      final docs = hasMore 
-          ? snapshot.docs.take(filters.pageSize).toList()
-          : snapshot.docs;
-      
-      var profiles = docs
-          .map((doc) => UserProfile.fromJson(doc.data() as Map<String, dynamic>))
-          .toList();
+        profiles = _applyClientSideFilters(profiles, filters);
 
-      // Apply age filter (client-side filtering is more efficient for ranges)
-      if (filters.minAge != null || filters.maxAge != null) {
-        profiles = profiles.where((profile) {
-          if (profile.age == null) return false;
-          if (filters.minAge != null && profile.age! < filters.minAge!) return false;
-          if (filters.maxAge != null && profile.age! > filters.maxAge!) return false;
-          return true;
-        }).toList();
-      }
+        final updatedFilters = docs.isNotEmpty
+            ? filters.copyWith(lastDocument: docs.last)
+            : filters;
 
-      // Apply last active filter (client-side)
-      if (filters.lastActiveWithinHours != null) {
-        final cutoffTime = DateTime.now().subtract(
-          Duration(hours: filters.lastActiveWithinHours!),
+        return PaginatedUsers(
+          users: profiles,
+          hasMore: hasMore,
+          updatedFilters: updatedFilters,
         );
-        profiles = profiles.where((profile) {
-          return profile.lastActive.isAfter(cutoffTime);
-        }).toList();
-      }
+      },
+      operationName: 'getFilteredUsersPaginated',
+      screen: 'ShuffleScreen',
+      arabicErrorMessage: 'فشل في جلب المستخدمين',
+      collection: 'users',
+    );
+  }
 
-      // Exclude specified user IDs (client-side)
-      if (filters.excludedUserIds.isNotEmpty) {
-        profiles = profiles.where((profile) {
-          return !filters.excludedUserIds.contains(profile.id);
-        }).toList();
-      }
-
-      // Update filters with new lastDocument if we have results
-      final updatedFilters = docs.isNotEmpty
-          ? filters.copyWith(lastDocument: docs.last)
-          : filters;
-
-      return PaginatedUsers(
-        users: profiles,
-        hasMore: hasMore,
-        updatedFilters: updatedFilters,
-      );
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to get paginated filtered users',
-        screen: 'ShuffleScreen',
-        operation: 'getFilteredUsersPaginated',
-        collection: 'users',
-      );
-      throw AppException('فشل في جلب المستخدمين: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error getting paginated filtered users',
-        screen: 'ShuffleScreen',
-        operation: 'getFilteredUsersPaginated',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
+  /// Builds base query with indexed filters
+  Query _buildBaseQuery(String currentUserId, DiscoveryFilters filters) {
+    Query query = _firestore.collection('users');
+    
+    query = query.where('isActive', isEqualTo: true);
+    
+    if (filters.country != null && filters.country!.isNotEmpty) {
+      query = query.where('country', isEqualTo: filters.country);
     }
+
+    if (filters.gender != null && filters.gender!.isNotEmpty) {
+      query = query.where('gender', isEqualTo: filters.gender);
+    }
+    
+    query = query.where('id', isNotEqualTo: currentUserId);
+    
+    return query;
+  }
+
+  /// Applies client-side filters (age, last active, exclusions)
+  List<UserProfile> _applyClientSideFilters(
+    List<UserProfile> profiles,
+    DiscoveryFilters filters,
+  ) {
+    var filtered = profiles;
+
+    // Apply age filter
+    if (filters.minAge != null || filters.maxAge != null) {
+      filtered = filtered.where((profile) {
+        if (profile.age == null) return false;
+        if (filters.minAge != null && profile.age! < filters.minAge!) return false;
+        if (filters.maxAge != null && profile.age! > filters.maxAge!) return false;
+        return true;
+      }).toList();
+    }
+
+    // Apply last active filter
+    if (filters.lastActiveWithinHours != null) {
+      final cutoffTime = DateTime.now().subtract(
+        Duration(hours: filters.lastActiveWithinHours!),
+      );
+      filtered = filtered.where((profile) {
+        return profile.lastActive.isAfter(cutoffTime);
+      }).toList();
+    }
+
+    // Exclude specified user IDs
+    if (filters.excludedUserIds.isNotEmpty) {
+      filtered = filtered.where((profile) {
+        return !filters.excludedUserIds.contains(profile.id);
+      }).toList();
+    }
+
+    return filtered;
   }
 }
