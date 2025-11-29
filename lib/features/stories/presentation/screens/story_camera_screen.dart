@@ -1,15 +1,18 @@
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 import '../../../../core/models/enums.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../services/analytics_events.dart';
 import '../../../../services/crashlytics_service.dart';
 import '../providers/story_provider.dart';
 
-/// Camera-first story creation screen (TikTok/Instagram style)
+/// Professional story camera screen with modern UI/UX
 class StoryCameraScreen extends ConsumerStatefulWidget {
   final String userId;
 
@@ -23,7 +26,7 @@ class StoryCameraScreen extends ConsumerStatefulWidget {
 }
 
 class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
   bool _isInitialized = false;
@@ -31,19 +34,51 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
   bool _isProcessing = false;
   int _currentCameraIndex = 0;
   FlashMode _flashMode = FlashMode.off;
-  
+
   File? _capturedMedia;
   StoryType? _mediaType;
   VideoPlayerController? _videoController;
-  
+
   final ImagePicker _picker = ImagePicker();
+
+  // Animation controllers
+  late AnimationController _recordingAnimationController;
+  late AnimationController _buttonScaleController;
+  late Animation<double> _recordingPulse;
+  late Animation<double> _buttonScale;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Initialize animations
+    _recordingAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _buttonScaleController = AnimationController(
+      duration: const Duration(milliseconds: 100),
+      vsync: this,
+    );
+
+    _recordingPulse = Tween<double>(begin: 1.0, end: 1.2).animate(
+      CurvedAnimation(
+        parent: _recordingAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _buttonScale = Tween<double>(begin: 1.0, end: 0.9).animate(
+      CurvedAnimation(
+        parent: _buttonScaleController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     _initializeCamera();
-    
+
     // Track screen view
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(analyticsEventsProvider).trackScreenView('story_camera_screen');
@@ -54,8 +89,17 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _recordingAnimationController.dispose();
+    _buttonScaleController.dispose();
     _cameraController?.dispose();
     _videoController?.dispose();
+    // Reset orientation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     super.dispose();
   }
 
@@ -77,15 +121,15 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
   Future<void> _initializeCamera() async {
     try {
       _cameras = await availableCameras();
-      
+
       if (_cameras == null || _cameras!.isEmpty) {
-        _showError('لا توجد كاميرا متاحة');
+        _showError('No camera available');
         return;
       }
 
       _cameraController = CameraController(
         _cameras![_currentCameraIndex],
-        ResolutionPreset.high,
+        ResolutionPreset.veryHigh,
         enableAudio: true,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
@@ -93,24 +137,30 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
       await _cameraController!.initialize();
       await _cameraController!.setFlashMode(_flashMode);
 
+      // Lock device orientation to portrait
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+
       if (mounted) {
         setState(() {
           _isInitialized = true;
         });
       }
     } catch (e) {
-      _showError('فشل في تهيئة الكاميرا: $e');
+      _showError('Failed to initialize camera');
       await ref.read(crashlyticsServiceProvider).logError(
-        e,
-        StackTrace.current,
-        reason: 'Failed to initialize camera',
-      );
+            e,
+            StackTrace.current,
+            reason: 'Failed to initialize camera',
+          );
     }
   }
 
   Future<void> _toggleCamera() async {
     if (_cameras == null || _cameras!.length < 2) return;
 
+    HapticFeedback.lightImpact();
     setState(() {
       _isInitialized = false;
       _currentCameraIndex = (_currentCameraIndex + 1) % _cameras!.length;
@@ -123,6 +173,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
   Future<void> _toggleFlash() async {
     if (_cameraController == null) return;
 
+    HapticFeedback.lightImpact();
     FlashMode newMode;
     switch (_flashMode) {
       case FlashMode.off:
@@ -149,11 +200,18 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
       return;
     }
 
+    if (_isProcessing) return;
+
+    HapticFeedback.mediumImpact();
+    _buttonScaleController.forward().then((_) => _buttonScaleController.reverse());
+
+    setState(() {
+      _isProcessing = true;
+    });
+
     try {
-      setState(() => _isProcessing = true);
-      
       final XFile image = await _cameraController!.takePicture();
-      
+
       setState(() {
         _capturedMedia = File(image.path);
         _mediaType = StoryType.image;
@@ -162,12 +220,12 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
 
       // Track capture event
       ref.read(analyticsEventsProvider).performanceService.trackEvent(
-        'story_photo_captured',
-        parameters: {'source': 'camera'},
-      );
+            'story_photo_captured',
+            parameters: {'source': 'camera'},
+          );
     } catch (e) {
       setState(() => _isProcessing = false);
-      _showError('فشل في التقاط الصورة: $e');
+      _showError('Failed to capture photo');
     }
   }
 
@@ -178,27 +236,31 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
 
     if (_isRecording) return;
 
+    HapticFeedback.mediumImpact();
+
     try {
       await _cameraController!.startVideoRecording();
       setState(() => _isRecording = true);
-      
+
       ref.read(analyticsEventsProvider).performanceService.trackEvent(
-        'story_video_recording_started',
-        parameters: {'source': 'camera'},
-      );
+            'story_video_recording_started',
+            parameters: {'source': 'camera'},
+          );
     } catch (e) {
-      _showError('فشل في بدء تسجيل الفيديو: $e');
+      _showError('Failed to start recording');
     }
   }
 
   Future<void> _stopVideoRecording() async {
     if (_cameraController == null || !_isRecording) return;
 
+    HapticFeedback.mediumImpact();
+
     try {
       setState(() => _isProcessing = true);
-      
+
       final XFile video = await _cameraController!.stopVideoRecording();
-      
+
       setState(() {
         _isRecording = false;
         _capturedMedia = File(video.path);
@@ -209,26 +271,29 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
       // Initialize video player for preview
       _videoController = VideoPlayerController.file(_capturedMedia!)
         ..initialize().then((_) {
-          setState(() {});
-          _videoController!.play();
-          _videoController!.setLooping(true);
+          if (mounted) {
+            setState(() {});
+            _videoController!.play();
+            _videoController!.setLooping(true);
+          }
         });
 
       // Track capture event
       ref.read(analyticsEventsProvider).performanceService.trackEvent(
-        'story_video_captured',
-        parameters: {'source': 'camera'},
-      );
+            'story_video_captured',
+            parameters: {'source': 'camera'},
+          );
     } catch (e) {
       setState(() {
         _isRecording = false;
         _isProcessing = false;
       });
-      _showError('فشل في إيقاف تسجيل الفيديو: $e');
+      _showError('Failed to stop recording');
     }
   }
 
   Future<void> _pickFromGallery() async {
+    HapticFeedback.lightImpact();
     try {
       final XFile? media = await _picker.pickImage(
         source: ImageSource.gallery,
@@ -242,19 +307,21 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
           _capturedMedia = File(media.path);
           _mediaType = StoryType.image;
         });
-        
+
         ref.read(analyticsEventsProvider).performanceService.trackEvent(
-          'story_media_selected',
-          parameters: {'source': 'gallery'},
-        );
+              'story_media_selected',
+              parameters: {'source': 'gallery'},
+            );
       }
     } catch (e) {
-      _showError('فشل في اختيار الوسائط: $e');
+      _showError('Failed to select media');
     }
   }
 
   Future<void> _createStory() async {
     if (_capturedMedia == null || _mediaType == null) return;
+
+    HapticFeedback.mediumImpact();
 
     try {
       setState(() => _isProcessing = true);
@@ -268,14 +335,21 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
       final state = ref.read(storyCreationProvider);
       if (state.createdStory != null) {
         await ref.read(analyticsEventsProvider).trackStoryCreated(
-          storyId: state.createdStory!.id,
-          mediaType: _mediaType.toString(),
-        );
-        
+              storyId: state.createdStory!.id,
+              mediaType: _mediaType.toString(),
+            );
+
         if (mounted) {
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم نشر القصة بنجاح')),
+            SnackBar(
+              content: const Text('Story published successfully'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.green.shade900,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
           );
         }
       } else if (state.error != null) {
@@ -285,11 +359,11 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
     } catch (e, stackTrace) {
       setState(() => _isProcessing = false);
       await ref.read(crashlyticsServiceProvider).logError(
-        e,
-        stackTrace,
-        reason: 'Failed to create story',
-      );
-      _showError('فشل في إنشاء القصة');
+            e,
+            stackTrace,
+            reason: 'Failed to create story',
+          );
+      _showError('Failed to create story');
     }
   }
 
@@ -298,13 +372,18 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red.shade900,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
   }
 
   void _discardMedia() {
+    HapticFeedback.lightImpact();
     setState(() {
       _capturedMedia = null;
       _mediaType = null;
@@ -315,220 +394,422 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
 
   @override
   Widget build(BuildContext context) {
-    // If media is captured, show preview screen
     if (_capturedMedia != null) {
       return _buildPreviewScreen();
     }
 
-    // Otherwise, show camera screen
-    return _buildCameraScreen();
+    return Scaffold(
+      backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
+      body: _isInitialized ? _buildCameraScreen() : _buildLoadingScreen(),
+    );
+  }
+
+  Widget _buildLoadingScreen() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF1A1A1A), Colors.black],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: AppColors.primaryGradient,
+              ),
+              child: const SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 3,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Initializing Camera...',
+              style: TextStyle(
+                color: Colors.white70,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildCameraScreen() {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: [
-          // Camera preview
-          if (_isInitialized && _cameraController != null)
-            Positioned.fill(
-              child: CameraPreview(_cameraController!),
-            )
-          else
-            const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
+    if (_cameraController == null) {
+      return const Center(
+        child: Text(
+          'Camera not available',
+          style: TextStyle(color: Colors.white),
+        ),
+      );
+    }
 
-          // Top controls
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Close button
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  
-                  // Flash toggle
-                  if (_isInitialized && _cameras != null && _currentCameraIndex == 0)
-                    IconButton(
-                      icon: Icon(
-                        _flashMode == FlashMode.off
-                            ? Icons.flash_off
-                            : _flashMode == FlashMode.auto
-                                ? Icons.flash_auto
-                                : Icons.flash_on,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                      onPressed: _toggleFlash,
-                    ),
+    final size = MediaQuery.of(context).size;
+    final deviceRatio = size.width / size.height;
+    
+    // Camera aspect ratio is width/height, but we need to handle it properly
+    var cameraRatio = _cameraController!.value.aspectRatio;
+    
+    // For portrait mode, invert the camera ratio if needed
+    if (cameraRatio > 1) {
+      cameraRatio = 1 / cameraRatio;
+    }
+    
+    // Calculate scale to fill the screen
+    var scale = deviceRatio / cameraRatio;
+    
+    // If scale is less than 1, invert it to ensure we fill the screen
+    if (scale < 1) {
+      scale = 1 / scale;
+    }
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Camera preview - Full screen with proper aspect ratio
+        Center(
+          child: Transform.scale(
+            scale: scale,
+            child: AspectRatio(
+              aspectRatio: cameraRatio,
+              child: CameraPreview(_cameraController!),
+            ),
+          ),
+        ),
+
+        // Gradient overlays for better UI contrast
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 200,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.6),
+                  Colors.transparent,
                 ],
               ),
             ),
           ),
+        ),
 
-          // Bottom controls
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          height: 250,
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [
+                  Colors.black.withOpacity(0.8),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // Top controls
+        Positioned(
+          top: MediaQuery.of(context).padding.top + 16,
+          left: 16,
+          right: 16,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Close button
+              _buildGlassButton(
+                icon: Icons.close_rounded,
+                onPressed: () => Navigator.pop(context),
+              ),
+
+              const Spacer(),
+
+              // Flash toggle
+              if (_currentCameraIndex == 0)
+                _buildGlassButton(
+                  icon: _flashMode == FlashMode.off
+                      ? Icons.flash_off_rounded
+                      : _flashMode == FlashMode.auto
+                          ? Icons.flash_auto_rounded
+                          : Icons.flash_on_rounded,
+                  onPressed: _toggleFlash,
+                  isActive: _flashMode != FlashMode.off,
+                ),
+
+              const SizedBox(width: 12),
+
+              // Camera flip
+              if (_cameras != null && _cameras!.length > 1)
+                _buildGlassButton(
+                  icon: Icons.flip_camera_ios_rounded,
+                  onPressed: _toggleCamera,
+                ),
+            ],
+          ),
+        ),
+
+        // Bottom controls
+        Positioned(
+          bottom: MediaQuery.of(context).padding.bottom + 32,
+          left: 0,
+          right: 0,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Gallery button
+                  _buildBottomIconButton(
+                    icon: Icons.photo_library_rounded,
+                    onPressed: _pickFromGallery,
+                  ),
+
+                  // Capture/Record button
+                  _buildCaptureButton(),
+
+                  // Placeholder for balance
+                  const SizedBox(width: 56),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        // Recording indicator
+        if (_isRecording)
           Positioned(
+            top: MediaQuery.of(context).padding.top + 80,
             left: 0,
             right: 0,
-            bottom: 0,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    Colors.black.withOpacity(0.7),
-                    Colors.transparent,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(0.5),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
                   ],
                 ),
-              ),
-              child: SafeArea(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Gallery button
-                    GestureDetector(
-                      onTap: _pickFromGallery,
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: const Icon(
-                          Icons.photo_library,
-                          color: Colors.white,
-                          size: 28,
-                        ),
+                    Icon(Icons.fiber_manual_record, color: Colors.white, size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      'Recording...',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-
-                    // Capture button
-                    GestureDetector(
-                      onTap: _isProcessing ? null : _takePicture,
-                      onLongPressStart: (_) => _startVideoRecording(),
-                      onLongPressEnd: (_) => _stopVideoRecording(),
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 5),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(5),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              shape: _isRecording ? BoxShape.rectangle : BoxShape.circle,
-                              color: _isRecording ? Colors.red : Colors.white,
-                              borderRadius: _isRecording
-                                  ? BorderRadius.circular(8)
-                                  : null,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Flip camera button
-                    if (_cameras != null && _cameras!.length > 1)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.flip_camera_ios,
-                          color: Colors.white,
-                          size: 35,
-                        ),
-                        onPressed: _toggleCamera,
-                      )
-                    else
-                      const SizedBox(width: 50),
                   ],
                 ),
               ),
             ),
           ),
 
-          // Recording indicator
-          if (_isRecording)
-            SafeArea(
-              child: Center(
-                child: Column(
-                  children: [
-                    const SizedBox(height: 20),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.fiber_manual_record, color: Colors.white, size: 16),
-                          SizedBox(width: 8),
-                          Text(
-                            'جاري التسجيل...',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+        // Instructions
+        if (!_isRecording && !_isProcessing)
+          Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 140,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.2),
+                        width: 1,
                       ),
                     ),
-                  ],
+                    child: const Text(
+                      'Tap for photo • Hold for video',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
+          ),
+      ],
+    );
+  }
 
-          // Processing overlay
-          if (_isProcessing)
-            Container(
-              color: Colors.black54,
-              child: const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+  Widget _buildGlassButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    bool isActive = false,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: isActive
+                ? AppColors.primary.withOpacity(0.3)
+                : Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(30),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 24,
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
 
-          // Instructions
-          if (!_isRecording && !_isProcessing)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 120,
-              child: Center(
+  Widget _buildBottomIconButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.3),
+              width: 1.5,
+            ),
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onPressed,
+              borderRadius: BorderRadius.circular(28),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCaptureButton() {
+    return GestureDetector(
+      onTap: _isRecording ? null : _takePicture,
+      onLongPressStart: (_) => _startVideoRecording(),
+      onLongPressEnd: (_) => _stopVideoRecording(),
+      child: AnimatedBuilder(
+        animation: _isRecording ? _recordingPulse : _buttonScale,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: _isRecording ? _recordingPulse.value : _buttonScale.value,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white,
+                  width: 4,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: _isRecording
+                        ? Colors.red.withOpacity(0.5)
+                        : AppColors.primary.withOpacity(0.3),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
                   decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(20),
+                    shape: _isRecording ? BoxShape.rectangle : BoxShape.circle,
+                    borderRadius: _isRecording ? BorderRadius.circular(8) : null,
+                    gradient: _isRecording
+                        ? const LinearGradient(
+                            colors: [Colors.red, Colors.redAccent],
+                          )
+                        : AppColors.primaryGradient,
                   ),
-                  child: const Text(
-                    'اضغط للصورة • اضغط مطولاً للفيديو',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                    ),
-                  ),
+                  child: _isProcessing
+                      ? const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        )
+                      : null,
                 ),
               ),
             ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -538,65 +819,94 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
 
     return Scaffold(
       backgroundColor: Colors.black,
+      extendBodyBehindAppBar: true,
       body: Stack(
+        fit: StackFit.expand,
         children: [
-          // Media preview
+          // Media preview - Full screen
           Center(
             child: _mediaType == StoryType.image
                 ? Image.file(
                     _capturedMedia!,
                     fit: BoxFit.contain,
                   )
-                : (_videoController != null &&
-                        _videoController!.value.isInitialized)
+                : (_videoController != null && _videoController!.value.isInitialized)
                     ? AspectRatio(
                         aspectRatio: _videoController!.value.aspectRatio,
                         child: VideoPlayer(_videoController!),
                       )
-                    : const CircularProgressIndicator(color: Colors.white),
+                    : Container(
+                        color: Colors.black,
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(height: 16),
+                              Text(
+                                'Loading video...',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
           ),
 
-          // Top bar
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Discard button
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 30),
-                    onPressed: _isProcessing ? null : _discardMedia,
-                  ),
-                  
-                  // Post button
-                  TextButton(
-                    onPressed: _isProcessing ? null : _createStory,
-                    child: state.isLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Text(
-                            'نشر',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                  ),
-                ],
+          // Gradient overlays
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 200,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.6),
+                    Colors.transparent,
+                  ],
+                ),
               ),
             ),
           ),
 
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 200,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.8),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Back button
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            left: 16,
+            child: _buildGlassButton(
+              icon: Icons.arrow_back_rounded,
+              onPressed: state.isLoading ? () {} : _discardMedia,
+            ),
+          ),
+
           // Play/pause button for video
-          if (_mediaType == StoryType.video && _videoController != null)
+          if (_mediaType == StoryType.video && _videoController != null && _videoController!.value.isInitialized)
             Center(
               child: GestureDetector(
                 onTap: () {
@@ -609,23 +919,132 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                   });
                 },
                 child: Container(
-                  width: 60,
-                  height: 60,
+                  width: 80,
+                  height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.black54,
+                    color: Colors.black.withOpacity(0.5),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 2,
+                    ),
                   ),
                   child: Icon(
-                    _videoController!.value.isPlaying
-                        ? Icons.pause
-                        : Icons.play_arrow,
+                    _videoController!.value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                     color: Colors.white,
-                    size: 40,
+                    size: 48,
                   ),
                 ),
               ),
             ),
+
+          // Action buttons at bottom
+          Positioned(
+            bottom: MediaQuery.of(context).padding.bottom + 32,
+            left: 32,
+            right: 32,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                // Discard button
+                Expanded(
+                  child: _buildFloatingActionButton(
+                    icon: Icons.close_rounded,
+                    label: 'Discard',
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6B7280), Color(0xFF4B5563)],
+                    ),
+                    onPressed: state.isLoading ? () {} : _discardMedia,
+                    isDisabled: state.isLoading,
+                  ),
+                ),
+
+                const SizedBox(width: 16),
+
+                // Publish button
+                Expanded(
+                  child: _buildFloatingActionButton(
+                    icon: Icons.check_rounded,
+                    label: state.isLoading ? 'Publishing...' : 'Publish',
+                    gradient: AppColors.primaryGradient,
+                    onPressed: state.isLoading ? () {} : _createStory,
+                    isLoading: state.isLoading,
+                    isDisabled: state.isLoading,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingActionButton({
+    required IconData icon,
+    required String label,
+    required Gradient gradient,
+    required VoidCallback onPressed,
+    bool isLoading = false,
+    bool isDisabled = false,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(30),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: isDisabled ? null : gradient,
+            color: isDisabled ? Colors.grey.shade800 : null,
+            borderRadius: BorderRadius.circular(30),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 20,
+                spreadRadius: 0,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: isDisabled ? null : onPressed,
+              borderRadius: BorderRadius.circular(30),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (isLoading)
+                    const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  else
+                    Icon(icon, color: Colors.white, size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
