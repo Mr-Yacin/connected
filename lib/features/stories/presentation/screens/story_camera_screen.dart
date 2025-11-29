@@ -11,6 +11,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../services/analytics_events.dart';
 import '../../../../services/crashlytics_service.dart';
 import '../providers/story_provider.dart';
+import '../../data/models/camera_filter.dart';
+import '../widgets/filter_carousel_widget.dart';
 
 /// Professional story camera screen with modern UI/UX
 class StoryCameraScreen extends ConsumerStatefulWidget {
@@ -40,6 +42,11 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
   VideoPlayerController? _videoController;
 
   final ImagePicker _picker = ImagePicker();
+
+  // Filter state
+  CameraFilter _selectedFilter = CameraFilter.none;
+  bool _showFilters = false;
+  double _filterIntensity = 1.0;
 
   // Animation controllers
   late AnimationController _recordingAnimationController;
@@ -387,9 +394,33 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
     setState(() {
       _capturedMedia = null;
       _mediaType = null;
+      _selectedFilter = CameraFilter.none;
     });
     _videoController?.dispose();
     _videoController = null;
+  }
+
+  void _toggleFilters() {
+    HapticFeedback.lightImpact();
+    setState(() {
+      _showFilters = !_showFilters;
+    });
+  }
+
+  void _onFilterSelected(CameraFilter filter) {
+    setState(() {
+      _selectedFilter = filter;
+      // Reset intensity when changing filters
+      if (filter.id != 'none') {
+        _filterIntensity = 1.0;
+      }
+    });
+
+    // Track filter usage
+    ref.read(analyticsEventsProvider).performanceService.trackEvent(
+          'camera_filter_selected',
+          parameters: {'filter': filter.id},
+        );
   }
 
   @override
@@ -480,13 +511,17 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Camera preview - Full screen with proper aspect ratio
+        // Camera preview - Full screen with proper aspect ratio and filter
         Center(
-          child: Transform.scale(
-            scale: scale,
-            child: AspectRatio(
-              aspectRatio: cameraRatio,
-              child: CameraPreview(_cameraController!),
+          child: FilterPreviewWidget(
+            filter: _selectedFilter,
+            intensity: _filterIntensity,
+            child: Transform.scale(
+              scale: scale,
+              child: AspectRatio(
+                aspectRatio: cameraRatio,
+                child: CameraPreview(_cameraController!),
+              ),
             ),
           ),
         ),
@@ -578,6 +613,16 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Filter carousel
+              if (_showFilters)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: FilterCarouselWidget(
+                    selectedFilter: _selectedFilter,
+                    onFilterSelected: _onFilterSelected,
+                  ),
+                ),
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -591,8 +636,12 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                   // Capture/Record button
                   _buildCaptureButton(),
 
-                  // Placeholder for balance
-                  const SizedBox(width: 56),
+                  // Filter button
+                  _buildBottomIconButton(
+                    icon: Icons.filter_vintage_rounded,
+                    onPressed: _toggleFilters,
+                    isActive: _showFilters,
+                  ),
                 ],
               ),
             ],
@@ -723,6 +772,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
   Widget _buildBottomIconButton({
     required IconData icon,
     required VoidCallback onPressed,
+    bool isActive = false,
   }) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
@@ -732,12 +782,25 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
+            color: isActive
+                ? AppColors.primary.withOpacity(0.3)
+                : Colors.white.withOpacity(0.15),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: Colors.white.withOpacity(0.3),
-              width: 1.5,
+              color: isActive
+                  ? Colors.white.withOpacity(0.5)
+                  : Colors.white.withOpacity(0.3),
+              width: isActive ? 2 : 1.5,
             ),
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: AppColors.primary.withOpacity(0.3),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
           ),
           child: Material(
             color: Colors.transparent,
@@ -823,37 +886,41 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Media preview - Full screen
+          // Media preview - Full screen with filter applied
           Center(
-            child: _mediaType == StoryType.image
-                ? Image.file(
-                    _capturedMedia!,
-                    fit: BoxFit.contain,
-                  )
-                : (_videoController != null && _videoController!.value.isInitialized)
-                    ? AspectRatio(
-                        aspectRatio: _videoController!.value.aspectRatio,
-                        child: VideoPlayer(_videoController!),
-                      )
-                    : Container(
-                        color: Colors.black,
-                        child: const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              CircularProgressIndicator(color: Colors.white),
-                              SizedBox(height: 16),
-                              Text(
-                                'Loading video...',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
+            child: FilterPreviewWidget(
+              filter: _selectedFilter,
+              intensity: _filterIntensity,
+              child: _mediaType == StoryType.image
+                  ? Image.file(
+                      _capturedMedia!,
+                      fit: BoxFit.contain,
+                    )
+                  : (_videoController != null && _videoController!.value.isInitialized)
+                      ? AspectRatio(
+                          aspectRatio: _videoController!.value.aspectRatio,
+                          child: VideoPlayer(_videoController!),
+                        )
+                      : Container(
+                          color: Colors.black,
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(color: Colors.white),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Loading video...',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
+            ),
           ),
 
           // Gradient overlays
@@ -895,15 +962,44 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
             ),
           ),
 
-          // Back button
+          // Top controls
           Positioned(
             top: MediaQuery.of(context).padding.top + 16,
             left: 16,
-            child: _buildGlassButton(
-              icon: Icons.arrow_back_rounded,
-              onPressed: state.isLoading ? () {} : _discardMedia,
+            right: 16,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Back button
+                _buildGlassButton(
+                  icon: Icons.arrow_back_rounded,
+                  onPressed: state.isLoading ? () {} : _discardMedia,
+                ),
+
+                // Filter button
+                _buildGlassButton(
+                  icon: Icons.filter_vintage_rounded,
+                  onPressed: state.isLoading ? () {} : _toggleFilters,
+                  isActive: _showFilters || _selectedFilter.id != 'none',
+                ),
+              ],
             ),
           ),
+
+          // Filter carousel in preview mode
+          if (_showFilters)
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 120,
+              left: 0,
+              right: 0,
+              child: FilterCarouselWidget(
+                selectedFilter: _selectedFilter,
+                onFilterSelected: _onFilterSelected,
+                previewImage: _mediaType == StoryType.image
+                    ? Image.file(_capturedMedia!, fit: BoxFit.cover)
+                    : null,
+              ),
+            ),
 
           // Play/pause button for video
           if (_mediaType == StoryType.video && _videoController != null && _videoController!.value.isInitialized)
