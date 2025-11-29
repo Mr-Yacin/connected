@@ -6,6 +6,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/models/enums.dart';
+import '../../../../services/analytics_events.dart';
+import '../../../../services/crashlytics_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
@@ -41,6 +43,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void initState() {
     super.initState();
     _lastViewedUserId = widget.viewedUserId;
+    
+    // Track screen view
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final isOwnProfile = widget.viewedUserId == null;
+      ref.read(analyticsEventsProvider).trackScreenView(
+        isOwnProfile ? 'own_profile_screen' : 'user_profile_screen',
+      );
+    });
+    
     // Listen for user changes to load profile once user is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndLoadProfile(forceReload: true);
@@ -134,8 +145,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       await notifier.loadProfile(resolvedUserId);
       _hasLoadedProfile = true;
       debugPrint("DEBUG: Profile loaded successfully");
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint("ERROR: Failed to load profile: $e");
+      await ref.read(crashlyticsServiceProvider).logError(
+        e,
+        stackTrace,
+        reason: 'Failed to load profile',
+        information: [
+          'screen: profile_screen',
+          'userId: $resolvedUserId',
+          'isOwnProfile: ${isOwnProfile.toString()}',
+        ],
+      );
     } finally {
       _profileFetchInProgress = false;
     }
@@ -175,16 +196,43 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
 
     if (confirmed == true) {
-      debugPrint("DEBUG: Blocking user: $viewedUserId");
-      await ref
-          .read(moderationProvider.notifier)
-          .blockUser(currentUserId, viewedUserId);
+      try {
+        debugPrint("DEBUG: Blocking user: $viewedUserId");
+        await ref
+            .read(moderationProvider.notifier)
+            .blockUser(currentUserId, viewedUserId);
 
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('تم حظر المستخدم')));
-        Navigator.of(context).pop();
+        // Log block action
+        await ref.read(crashlyticsServiceProvider).log(
+          'User blocked: $currentUserId blocked $viewedUserId',
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('تم حظر المستخدم')));
+          Navigator.of(context).pop();
+        }
+      } catch (e, stackTrace) {
+        await ref.read(crashlyticsServiceProvider).logError(
+          e,
+          stackTrace,
+          reason: 'Failed to block user from profile',
+          information: [
+            'screen: profile_screen',
+            'currentUserId: $currentUserId',
+            'viewedUserId: $viewedUserId',
+          ],
+        );
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('فشل في حظر المستخدم'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../services/analytics_events.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../discovery/presentation/screens/shuffle_screen.dart';
@@ -18,6 +19,30 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Track initial screen view
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsEventsProvider).trackScreenView('home_screen');
+    });
+  }
+
+  void _onTabChanged(int index) {
+    final analytics = ref.read(analyticsEventsProvider);
+    
+    // Track tab changes
+    final tabs = ['home', 'shuffle', 'chat', 'profile'];
+    analytics.trackTabChanged(
+      fromTab: tabs[_currentIndex],
+      toTab: tabs[index],
+    );
+    
+    setState(() {
+      _currentIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,11 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             bottomNavigationBar: BottomNavBar(
               currentIndex: _currentIndex,
-              onTap: (index) {
-                setState(() {
-                  _currentIndex = index;
-                });
-              },
+              onTap: _onTabChanged,
             ),
           ),
         );

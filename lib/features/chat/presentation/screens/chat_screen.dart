@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../services/analytics_events.dart';
+import '../../../../services/crashlytics_service.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
@@ -37,6 +39,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Track screen view
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsEventsProvider).trackScreenView('chat_screen');
+    });
+    
     // OPTIMIZED: Mark chat as read when opening to reset unread count
     Future.microtask(() {
       ref
@@ -88,6 +96,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         },
         loading: () {},
         error: (_, __) {},
+      );
+    } catch (e, stackTrace) {
+      await ref.read(crashlyticsServiceProvider).logError(
+        e,
+        stackTrace,
+        reason: 'Failed to load more messages',
+        information: [
+          'screen: chat_screen',
+          'chatId: ${widget.chatId}',
+          'action: load_more_messages',
+        ],
       );
     } finally {
       if (mounted) {
@@ -143,28 +162,55 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     );
 
     if (confirmed == true) {
-      await ref
-          .read(moderationProvider.notifier)
-          .blockUser(widget.currentUserId, widget.otherUserId);
+      try {
+        await ref
+            .read(moderationProvider.notifier)
+            .blockUser(widget.currentUserId, widget.otherUserId);
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle_rounded, color: Colors.white),
-                SizedBox(width: 12),
-                Text('تم حظر المستخدم بنجاح'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+        // Track block user event
+        await ref.read(analyticsEventsProvider).trackUserFollowed(
+          followedUserId: widget.otherUserId, // Using existing method
         );
-        Navigator.of(context).pop();
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('تم حظر المستخدم بنجاح'),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+          Navigator.of(context).pop();
+        }
+      } catch (e, stackTrace) {
+        await ref.read(crashlyticsServiceProvider).logError(
+          e,
+          stackTrace,
+          reason: 'Failed to block user',
+          information: [
+            'screen: chat_screen',
+            'currentUserId: ${widget.currentUserId}',
+            'otherUserId: ${widget.otherUserId}',
+          ],
+        );
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('فشل في حظر المستخدم'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

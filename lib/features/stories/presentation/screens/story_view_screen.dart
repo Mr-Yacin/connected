@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
+import '../../../../services/analytics_events.dart';
+import '../../../../services/crashlytics_service.dart';
 import '../providers/story_provider.dart';
 
 /// Screen for viewing stories in fullscreen mode
@@ -38,6 +40,11 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen>
       duration: _storyDuration,
     );
 
+    // Track screen view
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsEventsProvider).trackScreenView('story_view_screen');
+    });
+
     _startStory();
   }
 
@@ -59,8 +66,26 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen>
             story.id,
             widget.currentUserId,
           ).then((_) {
+        // Track story view event
+        ref.read(analyticsEventsProvider).trackStoryViewed(
+          storyId: story.id,
+          authorId: story.userId,
+        );
+        
         // Refresh UI after recording view
         ref.invalidate(activeStoriesProvider);
+      }).catchError((e, stackTrace) {
+        // Log error if view recording fails
+        ref.read(crashlyticsServiceProvider).logError(
+          e,
+          stackTrace,
+          reason: 'Failed to record story view',
+          information: [
+            'screen: story_view_screen',
+            'storyId: ${story.id}',
+            'viewerId: ${widget.currentUserId}',
+          ],
+        );
       });
     }
 

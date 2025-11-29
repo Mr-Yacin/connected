@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../../../core/models/country_code.dart';
+import '../../../../services/analytics_events.dart';
 import '../providers/auth_provider.dart';
 import 'otp_verification_screen.dart';
 
@@ -17,6 +18,15 @@ class _PhoneInputScreenState extends ConsumerState<PhoneInputScreen> {
   final _formKey = GlobalKey<FormState>();
   final _phoneController = TextEditingController();
   CountryCode _selectedCountry = CountryCodes.defaultCountry;
+
+  @override
+  void initState() {
+    super.initState();
+    // Track screen view
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsEventsProvider).trackScreenView('phone_input_screen');
+    });
+  }
 
   @override
   void dispose() {

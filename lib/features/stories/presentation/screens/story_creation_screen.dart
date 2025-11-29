@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/models/enums.dart';
+import '../../../../services/analytics_events.dart';
+import '../../../../services/crashlytics_service.dart';
 import '../providers/story_provider.dart';
 
 /// Screen for creating a new story
@@ -27,6 +29,12 @@ class _StoryCreationScreenState extends ConsumerState<StoryCreationScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Track screen view
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsEventsProvider).trackScreenView('story_creation_screen');
+    });
+    
     // Reset state when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(storyCreationProvider.notifier).reset();
@@ -97,21 +105,43 @@ class _StoryCreationScreenState extends ConsumerState<StoryCreationScreen> {
       return;
     }
 
-    await ref.read(storyCreationProvider.notifier).createStory(
-          userId: widget.userId,
-          mediaFile: _selectedMedia!,
-          type: _storyType,
-        );
+    try {
+      await ref.read(storyCreationProvider.notifier).createStory(
+            userId: widget.userId,
+            mediaFile: _selectedMedia!,
+            type: _storyType,
+          );
 
-    // Check if story was created successfully
-    final state = ref.read(storyCreationProvider);
-    if (state.createdStory != null && mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم نشر القصة بنجاح')),
+      // Check if story was created successfully
+      final state = ref.read(storyCreationProvider);
+      if (state.createdStory != null) {
+        // Track story creation event
+        await ref.read(analyticsEventsProvider).trackStoryCreated(
+          storyId: state.createdStory!.id,
+          mediaType: _storyType.toString(),
+        );
+        
+        if (mounted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('تم نشر القصة بنجاح')),
+          );
+        }
+      } else if (state.error != null) {
+        _showError(state.error!);
+      }
+    } catch (e, stackTrace) {
+      await ref.read(crashlyticsServiceProvider).logError(
+        e,
+        stackTrace,
+        reason: 'Failed to create story',
+        information: [
+          'screen: story_creation_screen',
+          'userId: ${widget.userId}',
+          'storyType: ${_storyType.toString()}',
+        ],
       );
-    } else if (state.error != null) {
-      _showError(state.error!);
+      _showError('فشل في إنشاء القصة');
     }
   }
 

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../services/analytics_events.dart';
+import '../../../../services/crashlytics_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/discovery_provider.dart';
 import '../providers/follow_provider.dart';
@@ -21,6 +23,12 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // Track screen view
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(analyticsEventsProvider).trackScreenView('shuffle_screen');
+    });
+    
     // Initialize with current user ID
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final currentUser = ref.read(currentUserProvider).value;
@@ -60,6 +68,14 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
 
         final isLiked = ref.read(likeProvider).likedUsers[currentUser.id] ?? false;
 
+        // Track like event using existing method
+        if (isLiked) {
+          await ref.read(analyticsEventsProvider).trackPostLiked(
+            postId: currentUser.id,
+            authorId: currentUser.id,
+          );
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -73,7 +89,18 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
         if (isLiked) {
           _loadNextUser();
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
+        await ref.read(crashlyticsServiceProvider).logError(
+          e,
+          stackTrace,
+          reason: 'Failed to like profile',
+          information: [
+            'screen: shuffle_screen',
+            'userId: ${loggedInUser.uid}',
+            'likedUserId: ${currentUser.id}',
+          ],
+        );
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('فشل في الإعجاب: $e')),
@@ -95,6 +122,17 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
 
         final isFollowing = ref.read(followProvider).followingStatus[currentUser.id] ?? false;
 
+        // Track follow event
+        if (isFollowing) {
+          await ref.read(analyticsEventsProvider).trackUserFollowed(
+            followedUserId: currentUser.id,
+          );
+        } else {
+          await ref.read(analyticsEventsProvider).trackUserUnfollowed(
+            unfollowedUserId: currentUser.id,
+          );
+        }
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -108,7 +146,18 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
         if (isFollowing) {
           _loadNextUser();
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
+        await ref.read(crashlyticsServiceProvider).logError(
+          e,
+          stackTrace,
+          reason: 'Failed to follow user',
+          information: [
+            'screen: shuffle_screen',
+            'userId: ${loggedInUser.uid}',
+            'followedUserId: ${currentUser.id}',
+          ],
+        );
+        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('فشل في المتابعة: $e')),
