@@ -9,7 +9,7 @@ import '../../../../services/error_logging_service.dart';
 import '../../../../core/data/base_firestore_repository.dart';
 
 /// Firestore implementation of ProfileRepository
-class FirestoreProfileRepository extends BaseFirestoreRepository 
+class FirestoreProfileRepository extends BaseFirestoreRepository
     implements ProfileRepository {
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
@@ -25,10 +25,8 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
 
   @override
   Future<UserProfile> getProfile(String userId) async {
-    print("DEBUG: Repository getProfile called for $userId");
     return handleFirestoreOperation(
       operation: () async {
-        print("DEBUG: Fetching doc from Firestore...");
         final doc = await _firestore
             .collection('users')
             .doc(userId)
@@ -41,19 +39,15 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
                 );
               },
             );
-        print("DEBUG: Doc fetched. Exists: ${doc.exists}");
 
         if (!doc.exists) {
-          print("DEBUG: Doc does not exist");
           throw AppException('الملف الشخصي غير موجود');
         }
 
-        print("DEBUG: Parsing JSON...");
         final data = Map<String, dynamic>.from(doc.data() ?? {});
         data['id'] ??= userId;
         data['phoneNumber'] ??= data['phone'] ?? '';
         final profile = UserProfile.fromJson(data);
-        print("DEBUG: JSON parsed successfully");
         return profile;
       },
       operationName: 'get user profile',
@@ -102,10 +96,9 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
         final anonymousLinkId = _uuid.v4();
 
         // Store the mapping in Firestore
-        await _firestore.collection('anonymous_links').doc(anonymousLinkId).set({
-          'userId': userId,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
+        await _firestore.collection('anonymous_links').doc(anonymousLinkId).set(
+          {'userId': userId, 'createdAt': FieldValue.serverTimestamp()},
+        );
 
         return anonymousLinkId;
       },
@@ -145,7 +138,7 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
   Future<bool> isProfileComplete(String userId) async {
     try {
       final profile = await getProfile(userId);
-      
+
       // Check if all required fields are present
       return profile.name != null &&
           profile.name!.isNotEmpty &&
@@ -195,7 +188,7 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
         // Fetch all profiles in parallel for better performance
         // 10 profiles: ~200ms vs sequential ~2sec (10x faster!)
         final profileFutures = userIds.map((userId) => getProfile(userId));
-        
+
         // Wait for all to complete, catching errors individually
         final results = await Future.wait(
           profileFutures.map((future) async {
@@ -207,7 +200,7 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
             }
           }),
         );
-        
+
         // Return only successful profiles (filter out nulls from errors)
         return results.whereType<UserProfile>().toList();
       },
@@ -225,7 +218,7 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
         if (userIds.isEmpty) return [];
 
         final profiles = <UserProfile>[];
-        
+
         // Fetch profiles one by one (useful for rate-limiting scenarios)
         for (final userId in userIds) {
           try {
@@ -236,7 +229,7 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
             continue;
           }
         }
-        
+
         return profiles;
       },
       operationName: 'get multiple profiles sequentially',

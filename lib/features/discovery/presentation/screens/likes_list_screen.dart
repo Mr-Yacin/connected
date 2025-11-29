@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/widgets/user_list_screen.dart';
-import '../../../../core/models/like.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/like_provider.dart';
 
 /// Screen to display users who liked the current user
-/// 
+///
 /// This screen is now refactored to use the generic UserListScreen widget,
 /// eliminating code duplication and improving maintainability.
 class LikesListScreen extends ConsumerWidget {
@@ -17,11 +16,7 @@ class LikesListScreen extends ConsumerWidget {
     final currentUser = ref.watch(currentUserProvider).value;
 
     if (currentUser == null) {
-      return const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return UserListScreen(

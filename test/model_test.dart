@@ -96,7 +96,7 @@ void main() {
     test('DiscoveryFilters toJson should work correctly', () {
       final filters = DiscoveryFilters(
         country: 'Saudi Arabia',
-        dialect: 'Najdi',
+        gender: 'male',
         minAge: 18,
         maxAge: 30,
         excludedUserIds: ['user-1', 'user-2'],
@@ -105,7 +105,7 @@ void main() {
       final json = filters.toJson();
 
       expect(json['country'], equals('Saudi Arabia'));
-      expect(json['dialect'], equals('Najdi'));
+      expect(json['gender'], equals('male'));
       expect(json['minAge'], equals(18));
       expect(json['maxAge'], equals(30));
     });

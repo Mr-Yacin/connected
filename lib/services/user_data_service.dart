@@ -13,9 +13,9 @@ class UserDataService {
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
     FirebaseStorage? storage,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance,
-        _storage = storage ?? FirebaseStorage.instance;
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _auth = auth ?? FirebaseAuth.instance,
+       _storage = storage ?? FirebaseStorage.instance;
 
   /// Delete user account and all associated data
   /// This marks the account for deletion and schedules data cleanup
@@ -114,8 +114,8 @@ class UserDataService {
       final storiesRef = _storage.ref('stories/$userId');
       await _deleteDirectory(storiesRef);
     } catch (e) {
-      // Log error but don't throw - storage deletion is best effort
-      print('تحذير: فشل حذف بعض الملفات من التخزين: $e');
+      // Storage deletion is best effort - log error but don't throw
+      // Error is already logged by Firebase
     }
   }
 
@@ -175,27 +175,21 @@ class UserDataService {
           .collection('stories')
           .where('userId', isEqualTo: userId)
           .get();
-      exportData['stories'] = stories.docs
-          .map((doc) => doc.data())
-          .toList();
+      exportData['stories'] = stories.docs.map((doc) => doc.data()).toList();
 
       // Export reports (as reporter)
       final reports = await _firestore
           .collection('reports')
           .where('reporterId', isEqualTo: userId)
           .get();
-      exportData['reports'] = reports.docs
-          .map((doc) => doc.data())
-          .toList();
+      exportData['reports'] = reports.docs.map((doc) => doc.data()).toList();
 
       // Export blocks
       final blocks = await _firestore
           .collection('blocks')
           .where('blockerId', isEqualTo: userId)
           .get();
-      exportData['blocks'] = blocks.docs
-          .map((doc) => doc.data())
-          .toList();
+      exportData['blocks'] = blocks.docs.map((doc) => doc.data()).toList();
 
       // Add metadata
       exportData['exportDate'] = DateTime.now().toIso8601String();

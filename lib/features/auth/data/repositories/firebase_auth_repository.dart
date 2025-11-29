@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../services/error_logging_service.dart';
@@ -20,7 +19,7 @@ class FirebaseAuthRepository implements AuthRepository {
   static const Duration otpResendCooldown = Duration(seconds: 60);
 
   FirebaseAuthRepository({FirebaseAuth? firebaseAuth})
-      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   @override
   User? get currentUser => _firebaseAuth.currentUser;
@@ -41,7 +40,8 @@ class FirebaseAuthRepository implements AuthRepository {
       // Check resend cooldown
       if (!canResendOtp(phoneNumber)) {
         final lastSent = _lastOtpSentTime[phoneNumber]!;
-        final remainingSeconds = otpResendCooldown.inSeconds -
+        final remainingSeconds =
+            otpResendCooldown.inSeconds -
             DateTime.now().difference(lastSent).inSeconds;
         throw RateLimitException(
           'يرجى الانتظار $remainingSeconds ثانية قبل إعادة إرسال الرمز',
@@ -54,14 +54,11 @@ class FirebaseAuthRepository implements AuthRepository {
 
       // Use Completer to properly wait for verification ID
       final completer = Completer<String>();
-      
+
       await _firebaseAuth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Auto-verification (Android only)
-          if (kDebugMode) {
-            print('Auto verification completed');
-          }
         },
         verificationFailed: (FirebaseAuthException e) {
           ErrorLoggingService.logAuthError(
@@ -72,25 +69,16 @@ class FirebaseAuthRepository implements AuthRepository {
           );
           if (!completer.isCompleted) {
             completer.completeError(
-              AuthException(
-                _getArabicErrorMessage(e.code),
-                code: e.code,
-              ),
+              AuthException(_getArabicErrorMessage(e.code), code: e.code),
             );
           }
         },
         codeSent: (String verId, int? resendToken) {
-          if (kDebugMode) {
-            print('Code sent to $phoneNumber');
-          }
           if (!completer.isCompleted) {
             completer.complete(verId);
           }
         },
         codeAutoRetrievalTimeout: (String verId) {
-          if (kDebugMode) {
-            print('Auto retrieval timeout, verification ID: $verId');
-          }
           // Only complete if not already completed by codeSent
           if (!completer.isCompleted) {
             completer.complete(verId);
@@ -141,7 +129,9 @@ class FirebaseAuthRepository implements AuthRepository {
         smsCode: otp,
       );
 
-      final userCredential = await _firebaseAuth.signInWithCredential(credential);
+      final userCredential = await _firebaseAuth.signInWithCredential(
+        credential,
+      );
 
       // Clear failed attempts on successful verification
       if (userCredential.user != null) {
@@ -167,10 +157,7 @@ class FirebaseAuthRepository implements AuthRepository {
         _recordFailedAttempt(verificationId);
       }
 
-      throw AuthException(
-        _getArabicErrorMessage(e.code),
-        code: e.code,
-      );
+      throw AuthException(_getArabicErrorMessage(e.code), code: e.code);
     } on ValidationException {
       rethrow;
     } catch (e, stackTrace) {
