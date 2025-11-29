@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/preferences_service.dart';
 
 enum ThemeOption {
@@ -21,12 +22,10 @@ enum ThemeOption {
     );
   }
 
-  ThemeMode toThemeMode({Brightness systemBrightness = Brightness.light}) {
+  ThemeMode toThemeMode() {
     switch (this) {
       case ThemeOption.system:
-        return systemBrightness == Brightness.dark 
-            ? ThemeMode.dark 
-            : ThemeMode.light;
+        return ThemeMode.system;
       case ThemeOption.light:
         return ThemeMode.light;
       case ThemeOption.dark:
@@ -37,48 +36,27 @@ enum ThemeOption {
 
 class ThemeNotifier extends StateNotifier<ThemeMode> {
   final PreferencesService _preferences;
-  final Ref _ref;
-  late final VoidCallback _platformBrightnessListener;
-  
-  ThemeNotifier(this._preferences, this._ref) : super(ThemeMode.dark) {
+
+  ThemeNotifier(this._preferences, Ref ref) : super(ThemeMode.system) {
     _initializeTheme();
-    _setupPlatformListener();
   }
 
   Future<void> _initializeTheme() async {
     try {
       final savedThemeOption = await _preferences.getThemeOption();
-      final systemBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
-      
-      state = savedThemeOption.toThemeMode(systemBrightness: systemBrightness);
+      state = savedThemeOption.toThemeMode();
     } catch (e) {
-      state = ThemeMode.dark;
+      state = ThemeMode.system;
     }
-  }
-
-  void _setupPlatformListener() {
-    _platformBrightnessListener = () {
-      final savedThemeOption = _preferences.getThemeOptionSync();
-      if (savedThemeOption == ThemeOption.system) {
-        final systemBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
-        state = systemBrightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light;
-      }
-    };
-    
-    WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = 
-        _platformBrightnessListener;
   }
 
   Future<void> setThemeOption(ThemeOption option) async {
     try {
+      // Update state immediately
+      state = option.toThemeMode();
+
+      // Save to preferences asynchronously
       await _preferences.setThemeOption(option);
-      
-      if (option == ThemeOption.system) {
-        final systemBrightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
-        state = systemBrightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light;
-      } else {
-        state = option.toThemeMode();
-      }
     } catch (e) {
       debugPrint('Error saving theme preference: $e');
     }
@@ -89,23 +67,27 @@ class ThemeNotifier extends StateNotifier<ThemeMode> {
   }
 
   bool isDarkMode() {
+    if (state == ThemeMode.system) {
+      return WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+          Brightness.dark;
+    }
     return state == ThemeMode.dark;
   }
 
   bool isSystemMode() {
-    return getCurrentThemeOption() == ThemeOption.system;
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.platformDispatcher.onPlatformBrightnessChanged = null;
-    super.dispose();
+    return state == ThemeMode.system;
   }
 }
 
-// Provider for the preferences service
+// Provider for SharedPreferences instance - initialized once at app startup
+final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
+  throw UnimplementedError('SharedPreferences must be overridden in main()');
+});
+
+// Provider for the preferences service with initialized SharedPreferences
 final preferencesServiceProvider = Provider<PreferencesService>((ref) {
-  return PreferencesService();
+  final prefs = ref.watch(sharedPreferencesProvider);
+  return PreferencesService(prefs: prefs);
 });
 
 // Provider for the theme notifier
@@ -114,9 +96,10 @@ final themeProvider = StateNotifierProvider<ThemeNotifier, ThemeMode>((ref) {
   return ThemeNotifier(preferences, ref);
 });
 
-// Provider for the current theme option
+// Provider for the current theme option - watches actual saved preference
 final currentThemeOptionProvider = Provider<ThemeOption>((ref) {
-  final themeNotifier = ref.watch(themeProvider.notifier);
-  return themeNotifier.getCurrentThemeOption();
+  // Watch the theme provider to trigger rebuilds when theme changes
+  ref.watch(themeProvider);
+  final preferences = ref.watch(preferencesServiceProvider);
+  return preferences.getThemeOptionSync();
 });
-

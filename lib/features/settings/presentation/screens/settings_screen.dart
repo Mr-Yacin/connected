@@ -20,7 +20,9 @@ class SettingsScreen extends ConsumerWidget {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? AppColors.darkSurface : AppColors.lightSurface,
+      backgroundColor:
+          Colors.transparent, // Transparent to show animated container behind
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
           'الإعدادات',
@@ -34,10 +36,14 @@ class SettingsScreen extends ConsumerWidget {
         elevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: isDarkMode ? Brightness.light : Brightness.dark,
+          statusBarIconBrightness: isDarkMode
+              ? Brightness.light
+              : Brightness.dark,
         ),
       ),
-      body: Container(
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -47,172 +53,184 @@ class SettingsScreen extends ConsumerWidget {
                 : [AppColors.lightSurface, const Color(0xFFF8F9FA)],
           ),
         ),
-        child: settingsState.isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Error message
-                          if (settingsState.error != null)
-                            Container(
-                              margin: const EdgeInsets.only(bottom: 20),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                color: Colors.red.withOpacity(0.1),
-                                border: Border.all(
-                                  color: Colors.red.withOpacity(0.3),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.error_outline,
-                                    color: Colors.red.shade400,
-                                    size: 20,
+        child: SafeArea(
+          child: settingsState.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Error message
+                            if (settingsState.error != null)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 20),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  color: Colors.red.withOpacity(0.1),
+                                  border: Border.all(
+                                    color: Colors.red.withOpacity(0.3),
                                   ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      settingsState.error!,
-                                      style: TextStyle(
-                                        color: Colors.red.shade400,
-                                        fontSize: 14,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.error_outline,
+                                      color: Colors.red.shade400,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        settingsState.error!,
+                                        style: TextStyle(
+                                          color: Colors.red.shade400,
+                                          fontSize: 14,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  GestureDetector(
-                                    onTap: () => settingsNotifier.clearError(),
-                                    child: Icon(
-                                      Icons.close,
-                                      color: Colors.red.shade400,
-                                      size: 18,
+                                    GestureDetector(
+                                      onTap: () =>
+                                          settingsNotifier.clearError(),
+                                      child: Icon(
+                                        Icons.close,
+                                        color: Colors.red.shade400,
+                                        size: 18,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
+
+                            // Appearance Section
+                            _buildSectionHeader('المظهر', isDarkMode),
+                            _buildSettingsCard(
+                              children: [
+                                _buildThemeSelector(context, ref, isDarkMode),
+                              ],
+                              isDarkMode: isDarkMode,
                             ),
 
-                          // Appearance Section
-                          _buildSectionHeader('المظهر', isDarkMode),
-                          _buildSettingsCard(
-                            children: [
-                              _buildThemeSelector(context, ref, isDarkMode),
-                            ],
-                            isDarkMode: isDarkMode,
-                          ),
+                            const SizedBox(height: 24),
 
-                          const SizedBox(height: 24),
-
-                          // Account Section
-                          _buildSectionHeader('الحساب', isDarkMode),
-                          _buildSettingsCard(
-                            children: [
-                              _buildNavigationTile(
-                                title: 'المستخدمين المحظورين',
-                                subtitle: 'إدارة قائمة الحظر',
-                                icon: Icons.block,
-                                iconColor: Colors.orange,
-                                onTap: () => context.push('/blocked-users'),
-                                isDarkMode: isDarkMode,
-                              ),
-                              _buildDivider(isDarkMode),
-                              _buildNavigationTile(
-                                title: 'حذف الحساب',
-                                subtitle: 'حذف حسابك وجميع بياناتك نهائياً',
-                                icon: Icons.delete_forever,
-                                iconColor: Colors.red,
-                                textColor: Colors.red,
-                                onTap: () => _showDeleteAccountDialog(
-                                  context,
-                                  currentUser?.uid ?? '',
-                                  settingsNotifier,
+                            // Account Section
+                            _buildSectionHeader('الحساب', isDarkMode),
+                            _buildSettingsCard(
+                              children: [
+                                _buildNavigationTile(
+                                  title: 'المستخدمين المحظورين',
+                                  subtitle: 'إدارة قائمة الحظر',
+                                  icon: Icons.block,
+                                  iconColor: Colors.orange,
+                                  onTap: () => context.push('/blocked-users'),
+                                  isDarkMode: isDarkMode,
                                 ),
-                                isDarkMode: isDarkMode,
-                              ),
-                            ],
-                            isDarkMode: isDarkMode,
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // About Section
-                          _buildSectionHeader('حول التطبيق', isDarkMode),
-                          _buildSettingsCard(
-                            children: [
-                              ListTile(
-                                leading: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(8),
-                                    color: AppColors.primary.withOpacity(0.1),
+                                _buildDivider(isDarkMode),
+                                _buildNavigationTile(
+                                  title: 'حذف الحساب',
+                                  subtitle: 'حذف حسابك وجميع بياناتك نهائياً',
+                                  icon: Icons.delete_forever,
+                                  iconColor: Colors.red,
+                                  textColor: Colors.red,
+                                  onTap: () => _showDeleteAccountDialog(
+                                    context,
+                                    currentUser?.uid ?? '',
+                                    settingsNotifier,
                                   ),
-                                  child: Icon(
-                                    Icons.info_outline,
-                                    color: AppColors.primary,
-                                    size: 20,
-                                  ),
+                                  isDarkMode: isDarkMode,
                                 ),
-                                title: Text(
-                                  'الإصدار',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
-                                    color: isDarkMode ? Colors.white : Colors.black87,
+                              ],
+                              isDarkMode: isDarkMode,
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // About Section
+                            _buildSectionHeader('حول التطبيق', isDarkMode),
+                            _buildSettingsCard(
+                              children: [
+                                ListTile(
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                      color: AppColors.primary.withOpacity(0.1),
+                                    ),
+                                    child: Icon(
+                                      Icons.info_outline,
+                                      color: AppColors.primary,
+                                      size: 20,
+                                    ),
                                   ),
-                                ),
-                                subtitle: Text(
-                                  '1.0.0',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                                  title: Text(
+                                    'الإصدار',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w500,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black87,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    '1.0.0',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: isDarkMode
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              _buildDivider(isDarkMode),
-                              _buildNavigationTile(
-                                title: 'سياسة الخصوصية',
-                                subtitle: 'عرض سياسة الخصوصية',
-                                icon: Icons.privacy_tip_outlined,
-                                onTap: () => context.push('/settings/privacy'),
-                                isDarkMode: isDarkMode,
-                              ),
-                              _buildDivider(isDarkMode),
-                              _buildNavigationTile(
-                                title: 'شروط الاستخدام',
-                                subtitle: 'عرض شروط الخدمة',
-                                icon: Icons.description_outlined,
-                                onTap: () => context.push('/settings/terms'),
-                                isDarkMode: isDarkMode,
-                              ),
-                            ],
-                            isDarkMode: isDarkMode,
-                          ),
+                                _buildDivider(isDarkMode),
+                                _buildNavigationTile(
+                                  title: 'سياسة الخصوصية',
+                                  subtitle: 'عرض سياسة الخصوصية',
+                                  icon: Icons.privacy_tip_outlined,
+                                  onTap: () =>
+                                      context.push('/settings/privacy'),
+                                  isDarkMode: isDarkMode,
+                                ),
+                                _buildDivider(isDarkMode),
+                                _buildNavigationTile(
+                                  title: 'شروط الاستخدام',
+                                  subtitle: 'عرض شروط الخدمة',
+                                  icon: Icons.description_outlined,
+                                  onTap: () => context.push('/settings/terms'),
+                                  isDarkMode: isDarkMode,
+                                ),
+                              ],
+                              isDarkMode: isDarkMode,
+                            ),
 
-                          const SizedBox(height: 32),
+                            const SizedBox(height: 32),
 
-                          // Sign Out Button
-                          _buildSignOutButton(context, isDarkMode),
-                          
-                          // Bottom padding to avoid conflicts with mobile navigation
-                          const SizedBox(height: 100),
-                        ],
+                            // Sign Out Button
+                            _buildSignOutButton(context, isDarkMode),
+
+                            // Bottom padding to avoid conflicts with mobile navigation
+                            const SizedBox(height: 100),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+        ),
       ),
     );
   }
 
   // Theme selector widget
-  Widget _buildThemeSelector(BuildContext context, WidgetRef ref, bool isDarkMode) {
+  Widget _buildThemeSelector(
+    BuildContext context,
+    WidgetRef ref,
+    bool isDarkMode,
+  ) {
     final currentThemeOption = ref.watch(currentThemeOptionProvider);
     final themeNotifier = ref.read(themeProvider.notifier);
 
@@ -229,11 +247,7 @@ class SettingsScreen extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                   color: AppColors.primary.withOpacity(0.1),
                 ),
-                child: Icon(
-                  Icons.palette,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
+                child: Icon(Icons.palette, color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -268,8 +282,9 @@ class SettingsScreen extends ConsumerWidget {
               final isSelected = currentThemeOption == option;
               return Expanded(
                 child: GestureDetector(
-                  onTap: () async {
-                    await themeNotifier.setThemeOption(option);
+                  onTap: () {
+                    // Don't await to prevent navigation disruption
+                    themeNotifier.setThemeOption(option);
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 300),
@@ -283,14 +298,14 @@ class SettingsScreen extends ConsumerWidget {
                       color: isSelected
                           ? AppColors.primary
                           : isDarkMode
-                              ? Colors.white.withOpacity(0.05)
-                              : Colors.grey.withOpacity(0.1),
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.grey.withOpacity(0.1),
                       border: Border.all(
                         color: isSelected
                             ? AppColors.primary
                             : isDarkMode
-                                ? Colors.white.withOpacity(0.1)
-                                : Colors.grey.withOpacity(0.3),
+                            ? Colors.white.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.3),
                       ),
                     ),
                     child: Column(
@@ -300,8 +315,8 @@ class SettingsScreen extends ConsumerWidget {
                           color: isSelected
                               ? Colors.white
                               : isDarkMode
-                                  ? Colors.white70
-                                  : Colors.black54,
+                              ? Colors.white70
+                              : Colors.black54,
                           size: 20,
                         ),
                         const SizedBox(height: 4),
@@ -309,12 +324,14 @@ class SettingsScreen extends ConsumerWidget {
                           _getThemeLabel(option),
                           style: TextStyle(
                             fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.w500,
                             color: isSelected
                                 ? Colors.white
                                 : isDarkMode
-                                    ? Colors.white70
-                                    : Colors.black54,
+                                ? Colors.white70
+                                : Colors.black54,
                           ),
                         ),
                         if (isSelected)
@@ -406,27 +423,25 @@ class SettingsScreen extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: isDarkMode 
-            ? Colors.white.withOpacity(0.05) 
+        color: isDarkMode
+            ? Colors.white.withOpacity(0.05)
             : Colors.white.withOpacity(0.8),
         boxShadow: [
           BoxShadow(
-            color: isDarkMode 
-                ? Colors.black.withOpacity(0.3) 
+            color: isDarkMode
+                ? Colors.black.withOpacity(0.3)
                 : Colors.black.withOpacity(0.08),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
-          color: isDarkMode 
-              ? Colors.white.withOpacity(0.1) 
+          color: isDarkMode
+              ? Colors.white.withOpacity(0.1)
               : Colors.black.withOpacity(0.05),
         ),
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -443,13 +458,9 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-                                    color: AppColors.primary.withOpacity(0.1),
-                                  ),
-                                  child: Icon(
-                                    icon,
-                                    color: AppColors.primary,
-          size: 20,
+          color: AppColors.primary.withOpacity(0.1),
         ),
+        child: Icon(icon, color: AppColors.primary, size: 20),
       ),
       title: Text(
         title,
@@ -494,11 +505,7 @@ class SettingsScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(8),
           color: (iconColor ?? AppColors.primary).withOpacity(0.1),
         ),
-        child: Icon(
-          icon,
-          color: iconColor ?? AppColors.primary,
-          size: 20,
-        ),
+        child: Icon(icon, color: iconColor ?? AppColors.primary, size: 20),
       ),
       title: Text(
         title,
@@ -530,8 +537,8 @@ class SettingsScreen extends ConsumerWidget {
       height: 1,
       indent: 16,
       endIndent: 16,
-      color: isDarkMode 
-          ? Colors.white.withOpacity(0.1) 
+      color: isDarkMode
+          ? Colors.white.withOpacity(0.1)
           : Colors.black.withOpacity(0.1),
     );
   }
@@ -575,7 +582,7 @@ class SettingsScreen extends ConsumerWidget {
             ElevatedButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                
+
                 // Show loading dialog
                 showDialog(
                   context: context,
@@ -592,7 +599,9 @@ class SettingsScreen extends ConsumerWidget {
                             Text(
                               'جاري تسجيل الخروج...',
                               style: TextStyle(
-                                color: Theme.of(context).brightness == Brightness.dark
+                                color:
+                                    Theme.of(context).brightness ==
+                                        Brightness.dark
                                     ? Colors.white
                                     : Colors.black87,
                               ),
@@ -608,10 +617,10 @@ class SettingsScreen extends ConsumerWidget {
                   // ✅ Use proper AuthNotifier signOut method
                   final authNotifier = ref.read(authNotifierProvider.notifier);
                   await authNotifier.signOut();
-                  
+
                   // Add delay to ensure auth state is fully settled
                   await Future.delayed(const Duration(milliseconds: 300));
-                  
+
                   if (context.mounted) {
                     Navigator.of(context).pop(); // Close loading dialog
                     context.go('/auth/phone');
@@ -683,7 +692,9 @@ class SettingsScreen extends ConsumerWidget {
                           Text(
                             'جاري حذف الحساب...',
                             style: TextStyle(
-                              color: Theme.of(context).brightness == Brightness.dark
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
                                   ? Colors.white
                                   : Colors.black87,
                             ),

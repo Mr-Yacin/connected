@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:async';
 import '../../features/auth/presentation/screens/phone_input_screen.dart';
 import '../../features/auth/presentation/screens/otp_verification_screen.dart';
@@ -20,12 +21,16 @@ import '../../features/discovery/presentation/screens/likes_list_screen.dart';
 import '../../features/discovery/presentation/screens/followers_list_screen.dart';
 import '../../features/discovery/presentation/screens/following_list_screen.dart';
 
+final routerProvider = Provider<GoRouter>((ref) {
+  return AppRouter.createRouter(ref);
+});
+
 /// Application router using go_router
 class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
   static final _profileRepository = FirestoreProfileRepository();
 
-  static GoRouter createRouter() {
+  static GoRouter createRouter(Ref ref) {
     return GoRouter(
       navigatorKey: _rootNavigatorKey,
       initialLocation: '/',
@@ -58,7 +63,9 @@ class AppRouter {
           }
 
           // Check if profile is complete
-          final isComplete = await _profileRepository.isProfileComplete(user.uid);
+          final isComplete = await _profileRepository.isProfileComplete(
+            user.uid,
+          );
 
           // If profile is incomplete, redirect to profile setup
           if (!isComplete) {
@@ -181,36 +188,32 @@ class AppRouter {
               path: 'users',
               builder: (context, state) => const UsersListScreen(),
             ),
-            
+
             // Likes route
             GoRoute(
               path: 'likes',
               builder: (context, state) => const LikesListScreen(),
             ),
-            
+
             // Followers route
             GoRoute(
               path: 'followers/:userId',
               builder: (context, state) {
                 final userId = state.pathParameters['userId']!;
-                final userName = state.uri.queryParameters['userName'] ?? 'المستخدم';
-                return FollowersListScreen(
-                  userId: userId,
-                  userName: userName,
-                );
+                final userName =
+                    state.uri.queryParameters['userName'] ?? 'المستخدم';
+                return FollowersListScreen(userId: userId, userName: userName);
               },
             ),
-            
+
             // Following route
             GoRoute(
               path: 'following/:userId',
               builder: (context, state) {
                 final userId = state.pathParameters['userId']!;
-                final userName = state.uri.queryParameters['userName'] ?? 'المستخدم';
-                return FollowingListScreen(
-                  userId: userId,
-                  userName: userName,
-                );
+                final userName =
+                    state.uri.queryParameters['userName'] ?? 'المستخدم';
+                return FollowingListScreen(userId: userId, userName: userName);
               },
             ),
           ],

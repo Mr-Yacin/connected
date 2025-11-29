@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_connect_app/core/theme/app_theme.dart';
 import 'package:social_connect_app/core/theme/theme_provider.dart';
 import 'package:social_connect_app/core/navigation/app_router.dart';
@@ -13,6 +14,9 @@ import 'package:social_connect_app/services/crashlytics_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize SharedPreferences first
+  final sharedPreferences = await SharedPreferences.getInstance();
 
   // Initialize Firebase
   await FirebaseService.initialize();
@@ -35,6 +39,7 @@ void main() async {
   runApp(
     ProviderScope(
       overrides: [
+        sharedPreferencesProvider.overrideWithValue(sharedPreferences),
         firebasePerformanceProvider.overrideWithValue(performance),
         firebaseAnalyticsProvider.overrideWithValue(analytics),
         firebaseCrashlyticsProvider.overrideWithValue(crashlytics),
@@ -49,7 +54,7 @@ class MyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final router = AppRouter.createRouter();
+    final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
       routerConfig: router,
@@ -60,6 +65,8 @@ class MyApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ref.watch(themeProvider), // Dynamic theme from provider
+      themeAnimationDuration:
+          Duration.zero, // Disable global theme animation to prevent crash
       // RTL Support
       locale: const Locale('ar', 'SA'),
       supportedLocales: const [Locale('ar', 'SA'), Locale('en', 'US')],
