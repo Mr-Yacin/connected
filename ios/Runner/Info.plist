@@ -49,5 +49,11 @@
 	<string>نحتاج إلى موقعك لتحديد بلدك تلقائياً</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>نحتاج إلى موقعك لتحديد بلدك تلقائياً</string>
+	<key>NSCameraUsageDescription</key>
+	<string>نحتاج إلى الكاميرا لالتقاط الصور والفيديوهات للقصص</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>نحتاج إلى الميكروفون لتسجيل الصوت في الفيديوهات</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>نحتاج للوصول إلى معرض الصور لمشاركة الصور والفيديوهات</string>
 </dict>
 </plist>

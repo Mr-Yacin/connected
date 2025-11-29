@@ -161,11 +161,10 @@ class _ChatListTile extends StatelessWidget {
         chat.lastMessage ?? 'لا توجد رسائل',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: chat.unreadCount > 0 ? Colors.black87 : Colors.grey[600],
-          fontWeight:
-              chat.unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight:
+                  chat.unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+            ),
       ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -174,26 +173,26 @@ class _ChatListTile extends StatelessWidget {
           if (chat.lastMessageTime != null)
             Text(
               _formatTime(chat.lastMessageTime!),
-              style: TextStyle(
-                fontSize: 12,
-                color: chat.unreadCount > 0 ? Colors.blue : Colors.grey[600],
-              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: chat.unreadCount > 0
+                        ? Theme.of(context).colorScheme.primary
+                        : null,
+                  ),
             ),
           if (chat.unreadCount > 0) ...[
             const SizedBox(height: 4),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.blue,
+                color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 chat.unreadCount.toString(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
               ),
             ),
           ],

@@ -43,15 +43,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   void initState() {
     super.initState();
     _lastViewedUserId = widget.viewedUserId;
-    
+
     // Track screen view
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final isOwnProfile = widget.viewedUserId == null;
-      ref.read(analyticsEventsProvider).trackScreenView(
-        isOwnProfile ? 'own_profile_screen' : 'user_profile_screen',
-      );
+      ref
+          .read(analyticsEventsProvider)
+          .trackScreenView(
+            isOwnProfile ? 'own_profile_screen' : 'user_profile_screen',
+          );
     });
-    
+
     // Listen for user changes to load profile once user is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndLoadProfile(forceReload: true);
@@ -63,7 +65,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     super.didUpdateWidget(oldWidget);
     // This is called when widget is rebuilt with different parameters
     if (oldWidget.viewedUserId != widget.viewedUserId) {
-      debugPrint("DEBUG: didUpdateWidget - viewedUserId changed from ${oldWidget.viewedUserId} to ${widget.viewedUserId}");
+      debugPrint(
+        "DEBUG: didUpdateWidget - viewedUserId changed from ${oldWidget.viewedUserId} to ${widget.viewedUserId}",
+      );
       _lastViewedUserId = widget.viewedUserId;
       _hasLoadedProfile = false;
       _profileFetchInProgress = false; // Reset fetch flag
@@ -76,18 +80,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // Check if viewedUserId has changed
     final currentViewedUserId = widget.viewedUserId;
     bool userIdChanged = false;
     if (_lastViewedUserId != currentViewedUserId) {
-      debugPrint("DEBUG: didChangeDependencies - viewedUserId changed from $_lastViewedUserId to $currentViewedUserId");
+      debugPrint(
+        "DEBUG: didChangeDependencies - viewedUserId changed from $_lastViewedUserId to $currentViewedUserId",
+      );
       _lastViewedUserId = currentViewedUserId;
       userIdChanged = true;
       // Reset loaded flag to force reload when user changes
       _hasLoadedProfile = false;
     }
-    
+
     if (!_hasLoadedProfile &&
         !_profileFetchInProgress &&
         !_profileLoadScheduled) {
@@ -99,7 +105,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     }
   }
 
-  Future<void> _checkAndLoadProfile({String? userId, bool forceReload = false}) async {
+  Future<void> _checkAndLoadProfile({
+    String? userId,
+    bool forceReload = false,
+  }) async {
     if (_profileFetchInProgress) return;
 
     final resolvedUserId =
@@ -108,15 +117,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ref.read(currentUserProvider).value?.uid ??
         FirebaseAuth.instance.currentUser?.uid;
 
-    debugPrint("DEBUG: _checkAndLoadProfile called. userId: $resolvedUserId, forceReload: $forceReload");
-    
+    debugPrint(
+      "DEBUG: _checkAndLoadProfile called. userId: $resolvedUserId, forceReload: $forceReload",
+    );
+
     // Determine which provider to use based on whether viewing own profile
     final isOwnProfile = widget.viewedUserId == null;
-    
+
     if (isOwnProfile) {
-      debugPrint("DEBUG: Current state loadedUserId: ${ref.read(currentUserProfileProvider).loadedUserId}");
+      debugPrint(
+        "DEBUG: Current state loadedUserId: ${ref.read(currentUserProfileProvider).loadedUserId}",
+      );
     } else {
-      debugPrint("DEBUG: Current state loadedUserId: ${ref.read(viewedProfileProvider).loadedUserId}");
+      debugPrint(
+        "DEBUG: Current state loadedUserId: ${ref.read(viewedProfileProvider).loadedUserId}",
+      );
     }
 
     if (resolvedUserId == null) {
@@ -147,16 +162,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       debugPrint("DEBUG: Profile loaded successfully");
     } catch (e, stackTrace) {
       debugPrint("ERROR: Failed to load profile: $e");
-      await ref.read(crashlyticsServiceProvider).logError(
-        e,
-        stackTrace,
-        reason: 'Failed to load profile',
-        information: [
-          'screen: profile_screen',
-          'userId: $resolvedUserId',
-          'isOwnProfile: ${isOwnProfile.toString()}',
-        ],
-      );
+      await ref
+          .read(crashlyticsServiceProvider)
+          .logError(
+            e,
+            stackTrace,
+            reason: 'Failed to load profile',
+            information: [
+              'screen: profile_screen',
+              'userId: $resolvedUserId',
+              'isOwnProfile: ${isOwnProfile.toString()}',
+            ],
+          );
     } finally {
       _profileFetchInProgress = false;
     }
@@ -203,9 +220,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             .blockUser(currentUserId, viewedUserId);
 
         // Log block action
-        await ref.read(crashlyticsServiceProvider).log(
-          'User blocked: $currentUserId blocked $viewedUserId',
-        );
+        await ref
+            .read(crashlyticsServiceProvider)
+            .log('User blocked: $currentUserId blocked $viewedUserId');
 
         if (mounted) {
           ScaffoldMessenger.of(
@@ -214,17 +231,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           Navigator.of(context).pop();
         }
       } catch (e, stackTrace) {
-        await ref.read(crashlyticsServiceProvider).logError(
-          e,
-          stackTrace,
-          reason: 'Failed to block user from profile',
-          information: [
-            'screen: profile_screen',
-            'currentUserId: $currentUserId',
-            'viewedUserId: $viewedUserId',
-          ],
-        );
-        
+        await ref
+            .read(crashlyticsServiceProvider)
+            .logError(
+              e,
+              stackTrace,
+              reason: 'Failed to block user from profile',
+              information: [
+                'screen: profile_screen',
+                'currentUserId: $currentUserId',
+                'viewedUserId: $viewedUserId',
+              ],
+            );
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -285,9 +304,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (e) {
       debugPrint("ERROR: Failed to copy link: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في نسخ الرابط: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('فشل في نسخ الرابط: $e')));
       }
     }
   }
@@ -302,9 +321,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (e) {
       debugPrint("ERROR: Failed to share link: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في مشاركة الرابط: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('فشل في مشاركة الرابط: $e')));
       }
     }
   }
@@ -329,9 +348,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (e) {
       debugPrint("ERROR: Failed to generate anonymous link: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في توليد الرابط: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('فشل في توليد الرابط: $e')));
       }
     }
   }
@@ -346,163 +365,161 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   Widget build(BuildContext context) {
     // Use DIFFERENT providers based on whether viewing own profile or another's
     final profileState = widget.viewedUserId == null
-        ? ref.watch(currentUserProfileProvider)  // Own profile
-        : ref.watch(viewedProfileProvider);       // Other user's profile
-    
+        ? ref.watch(currentUserProfileProvider) // Own profile
+        : ref.watch(viewedProfileProvider); // Other user's profile
+
     final profile = profileState.profile;
-    
-    debugPrint("DEBUG: ProfileScreen build - viewedUserId: ${widget.viewedUserId}, loadedUserId: ${profileState.loadedUserId}, hasProfile: ${profile != null}");
+
+    debugPrint(
+      "DEBUG: ProfileScreen build - viewedUserId: ${widget.viewedUserId}, loadedUserId: ${profileState.loadedUserId}, hasProfile: ${profile != null}",
+    );
 
     return Scaffold(
       body: profileState.isLoading && profile == null
           ? const Center(child: CircularProgressIndicator())
           : profile == null
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.person_off, size: 64, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      Text(
-                        'لم يتم العثور على الملف الشخصي',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      if (profileState.error != null)
-                        Text(
-                          profileState.error!,
-                          style: const TextStyle(color: Colors.red),
-                          textAlign: TextAlign.center,
-                        ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.person_off, size: 64, color: Colors.grey),
+                  const SizedBox(height: 16),
+                  Text(
+                    'لم يتم العثور على الملف الشخصي',
+                    style: Theme.of(context).textTheme.titleLarge,
                   ),
-                )
-              : CustomScrollView(
-                  slivers: [
-                    // Gradient Header with Profile Image
-                    SliverAppBar(
-                      expandedHeight: 185,
-                      pinned: true,
-                      flexibleSpace: FlexibleSpaceBar(
-                        background: _buildProfileHeader(profile),
-                      ),
-                      actions: [
-                        if (_isViewingOwnProfile)
-                          IconButton(
-                            icon: const Icon(Icons.settings_outlined),
-                            onPressed: () => context.push('/settings'),
-                            tooltip: 'الإعدادات',
-                          )
-                        else
-                          PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'block') {
-                                _blockUser();
-                              } else if (value == 'report') {
-                                _reportUser();
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'block',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.block, color: Colors.red),
-                                    SizedBox(width: 8),
-                                    Text('حظر المستخدم'),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuItem(
-                                value: 'report',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.flag, color: Colors.orange),
-                                    SizedBox(width: 8),
-                                    Text('الإبلاغ عن المستخدم'),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                      ],
+                  const SizedBox(height: 8),
+                  if (profileState.error != null)
+                    Text(
+                      profileState.error!,
+                      style: const TextStyle(color: Colors.red),
+                      textAlign: TextAlign.center,
                     ),
-
-                    // Content
-                    SliverToBoxAdapter(
-                      child: Column(
-                        children: [
-                          const SizedBox(height: 16),
-
-                          // Bio Card (if available)
-                          if (profile.bio != null && profile.bio!.isNotEmpty)
-                            _buildBioCard(profile),
-
-                          if (profile.bio != null && profile.bio!.isNotEmpty)
-                            const SizedBox(height: 16),
-
-                          // Follow/Message buttons for other users' profiles
-                          if (!_isViewingOwnProfile)
-                            _buildOtherUserActions(profile),
-
-                          if (!_isViewingOwnProfile)
-                            const SizedBox(height: 24),
-
-                          // Quick Actions (only for own profile)
-                          if (_isViewingOwnProfile)
-                            _buildQuickActions(profile),
-
-                          const SizedBox(height: 24),
-
-                          // Profile Information Grid
-                          _buildInformationGrid(profile),
-
-                          const SizedBox(height: 24),
-                          
-                          // View Likes Button (only for own profile)
-                          if (_isViewingOwnProfile && profile.likesCount > 0)
-                            _buildViewLikesButton(profile),
-
-                          if (_isViewingOwnProfile && profile.likesCount > 0)
-                            const SizedBox(height: 24),
-
-                          // Anonymous Link Card
-                          if (_isViewingOwnProfile && profile.anonymousLink != null)
-                            _buildAnonymousLinkCard(profile),
-
-                          if (profileState.error != null) ...[
-                            const SizedBox(height: 16),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  profileState.error!,
-                                  style: const TextStyle(color: Colors.red),
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
+                ],
+              ),
+            )
+          : CustomScrollView(
+              slivers: [
+                // Gradient Header with Profile Image
+                SliverAppBar(
+                  expandedHeight: 185,
+                  pinned: true,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: _buildProfileHeader(profile),
+                  ),
+                  actions: [
+                    if (_isViewingOwnProfile)
+                      IconButton(
+                        icon: const Icon(Icons.settings_outlined),
+                        onPressed: () => context.push('/settings'),
+                        tooltip: 'الإعدادات',
+                      )
+                    else
+                      PopupMenuButton<String>(
+                        onSelected: (value) {
+                          if (value == 'block') {
+                            _blockUser();
+                          } else if (value == 'report') {
+                            _reportUser();
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'block',
+                            child: Row(
+                              children: [
+                                Icon(Icons.block, color: Colors.red),
+                                SizedBox(width: 8),
+                                Text('حظر المستخدم'),
+                              ],
                             ),
-                          ],
-
-                          const SizedBox(height: 32),
+                          ),
+                          const PopupMenuItem(
+                            value: 'report',
+                            child: Row(
+                              children: [
+                                Icon(Icons.flag, color: Colors.orange),
+                                SizedBox(width: 8),
+                                Text('الإبلاغ عن المستخدم'),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                    ),
                   ],
                 ),
+
+                // Content
+                SliverToBoxAdapter(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 16),
+
+                      // Bio Card (if available)
+                      if (profile.bio != null && profile.bio!.isNotEmpty)
+                        _buildBioCard(profile),
+
+                      if (profile.bio != null && profile.bio!.isNotEmpty)
+                        const SizedBox(height: 16),
+
+                      // Follow/Message buttons for other users' profiles
+                      if (!_isViewingOwnProfile)
+                        _buildOtherUserActions(profile),
+
+                      if (!_isViewingOwnProfile) const SizedBox(height: 24),
+
+                      // Quick Actions (only for own profile)
+                      if (_isViewingOwnProfile) _buildQuickActions(profile),
+
+                      const SizedBox(height: 24),
+
+                      // Profile Information Grid
+                      _buildInformationGrid(profile),
+
+                      const SizedBox(height: 24),
+
+                      // View Likes Button (only for own profile)
+                      if (_isViewingOwnProfile && profile.likesCount > 0)
+                        _buildViewLikesButton(profile),
+
+                      if (_isViewingOwnProfile && profile.likesCount > 0)
+                        const SizedBox(height: 24),
+
+                      // Anonymous Link Card
+                      if (_isViewingOwnProfile && profile.anonymousLink != null)
+                        _buildAnonymousLinkCard(profile),
+
+                      if (profileState.error != null) ...[
+                        const SizedBox(height: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              profileState.error!,
+                              style: const TextStyle(color: Colors.red),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
   Widget _buildProfileHeader(dynamic profile) {
     return Container(
-      decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-      ),
+      decoration: BoxDecoration(gradient: AppColors.primaryGradient),
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -515,10 +532,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 padding: const EdgeInsets.all(2.5),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white,
-                    width: 2.5,
-                  ),
+                  border: Border.all(color: Colors.white, width: 2.5),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.15),
@@ -536,7 +550,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ? NetworkImage(profile.profileImageUrl!)
                           : null,
                       child: profile.profileImageUrl == null
-                          ? Icon(Icons.person, size: 38, color: Colors.grey[400])
+                          ? Icon(
+                              Icons.person,
+                              size: 38,
+                              color: Colors.grey[400],
+                            )
                           : null,
                     ),
                     if (profile.isImageBlurred)
@@ -577,8 +595,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (profile.age != null) ...[ 
-                        Icon(Icons.cake_outlined, size: 12.5, color: Colors.white.withValues(alpha: 0.85)),
+                      if (profile.age != null) ...[
+                        Icon(
+                          Icons.cake_outlined,
+                          size: 12.5,
+                          color: Colors.white.withValues(alpha: 0.85),
+                        ),
                         const SizedBox(width: 3),
                         Text(
                           '${profile.age}',
@@ -602,7 +624,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                         ),
                       if (profile.country != null) ...[
-                        Icon(Icons.location_on_outlined, size: 12.5, color: Colors.white.withValues(alpha: 0.85)),
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 12.5,
+                          color: Colors.white.withValues(alpha: 0.85),
+                        ),
                         const SizedBox(width: 3),
                         Flexible(
                           child: Text(
@@ -633,18 +659,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (currentUserId == null) return const SizedBox.shrink();
 
     final followState = ref.watch(followProvider);
-    
+
     // Load follow status from Firestore if not in cache
     final isFollowing = followState.followingStatus[profile.id];
-    
+
     // If we don't have the follow status cached, load it
     if (isFollowing == null) {
       // Load asynchronously without blocking the UI
       Future.microtask(() {
-        ref.read(followProvider.notifier).checkFollowStatus(
-          currentUserId,
-          profile.id,
-        );
+        ref
+            .read(followProvider.notifier)
+            .checkFollowStatus(currentUserId, profile.id);
       });
     }
 
@@ -654,31 +679,46 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         children: [
           Expanded(
             child: _buildActionButton(
-              icon: (isFollowing ?? false) ? Icons.person_remove_outlined : Icons.person_add_outlined,
+              icon: (isFollowing ?? false)
+                  ? Icons.person_remove_outlined
+                  : Icons.person_add_outlined,
               label: (isFollowing ?? false) ? 'إلغاء المتابعة' : 'متابعة',
               gradient: (isFollowing ?? false)
-                  ? LinearGradient(colors: [Colors.grey.shade600, Colors.grey.shade700])
+                  ? LinearGradient(
+                      colors: [Colors.grey.shade600, Colors.grey.shade700],
+                    )
                   : AppColors.primaryGradient,
               onTap: () async {
                 try {
-                  await ref.read(followProvider.notifier).toggleFollow(
-                        currentUserId,
-                        profile.id,
-                      );
+                  await ref
+                      .read(followProvider.notifier)
+                      .toggleFollow(currentUserId, profile.id);
 
-                  final newStatus = ref.read(followProvider).followingStatus[profile.id] ?? false;
+                  final newStatus =
+                      ref.read(followProvider).followingStatus[profile.id] ??
+                      false;
 
                   // Refresh the viewed profile to get updated counts
-                  await ref.read(viewedProfileProvider.notifier).refreshProfile(profile.id);
-                  
+                  await ref
+                      .read(viewedProfileProvider.notifier)
+                      .refreshProfile(profile.id);
+
                   // Also refresh current user's profile to update their following count
-                  await ref.read(currentUserProfileProvider.notifier).refreshProfile(currentUserId);
+                  await ref
+                      .read(currentUserProfileProvider.notifier)
+                      .refreshProfile(currentUserId);
 
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(newStatus ? 'تمت المتابعة بنجاح!' : 'تم إلغاء المتابعة'),
-                        backgroundColor: newStatus ? Colors.green : Colors.orange,
+                        content: Text(
+                          newStatus
+                              ? 'تمت المتابعة بنجاح!'
+                              : 'تم إلغاء المتابعة',
+                        ),
+                        backgroundColor: newStatus
+                            ? Colors.green
+                            : Colors.orange,
                       ),
                     );
                   }
@@ -731,14 +771,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: _buildActionButton(
-              icon: profile.anonymousLink != null ? Icons.share : Icons.add_link,
+              icon: profile.anonymousLink != null
+                  ? Icons.share
+                  : Icons.add_link,
               label: profile.anonymousLink != null ? 'مشاركة' : 'رابط',
               gradient: LinearGradient(
                 colors: [Colors.blue.shade400, Colors.blue.shade600],
               ),
               onTap: () {
                 if (profile.anonymousLink != null) {
-                  final fullUrl = _buildFullAnonymousUrl(profile.anonymousLink!);
+                  final fullUrl = _buildFullAnonymousUrl(
+                    profile.anonymousLink!,
+                  );
                   _shareAnonymousLink(fullUrl);
                 } else {
                   _generateAnonymousLink();
@@ -798,11 +842,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardTheme.color,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color:
+                  Theme.of(context).cardTheme.shadowColor ??
+                  Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -819,34 +865,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ? () => context.push('/likes')
                   : null,
             ),
-            Container(
-              width: 1,
-              height: 40,
-              color: Colors.grey.shade200,
-            ),
+            Container(width: 1, height: 40, color: Colors.grey.shade200),
             _buildStatItem(
               icon: Icons.people,
               value: '${profile.followerCount ?? 0}',
               color: AppColors.primary,
               onTap: (profile.followerCount ?? 0) > 0
                   ? () => context.push(
-                        '/followers/${profile.id}?userName=${Uri.encodeComponent(profile.name ?? "المستخدم")}',
-                      )
+                      '/followers/${profile.id}?userName=${Uri.encodeComponent(profile.name ?? "المستخدم")}',
+                    )
                   : null,
             ),
-            Container(
-              width: 1,
-              height: 40,
-              color: Colors.grey.shade200,
-            ),
+            Container(width: 1, height: 40, color: Colors.grey.shade200),
             _buildStatItem(
               icon: Icons.person_add,
               value: '${profile.followingCount ?? 0}',
               color: AppColors.secondary,
               onTap: (profile.followingCount ?? 0) > 0
                   ? () => context.push(
-                        '/following/${profile.id}?userName=${Uri.encodeComponent(profile.name ?? "المستخدم")}',
-                      )
+                      '/following/${profile.id}?userName=${Uri.encodeComponent(profile.name ?? "المستخدم")}',
+                    )
                   : null,
             ),
           ],
@@ -877,7 +915,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.grey[800],
+            color: Theme.of(context).textTheme.bodyLarge?.color,
           ),
         ),
       ],
@@ -887,10 +925,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       return InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: child,
-        ),
+        child: Padding(padding: const EdgeInsets.all(8), child: child),
       );
     }
 
@@ -904,11 +939,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardTheme.color,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color:
+                  Theme.of(context).cardTheme.shadowColor ??
+                  Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -935,7 +972,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 profile.bio!,
                 style: TextStyle(
                   fontSize: 14,
-                  color: Colors.grey[700],
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
                   height: 1.5,
                 ),
               ),
@@ -995,11 +1032,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).cardTheme.color,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
+              color:
+                  Theme.of(context).cardTheme.shadowColor ??
+                  Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1013,11 +1052,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 gradient: AppColors.primaryGradient,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.link,
-                color: Colors.white,
-                size: 20,
-              ),
+              child: const Icon(Icons.link, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(

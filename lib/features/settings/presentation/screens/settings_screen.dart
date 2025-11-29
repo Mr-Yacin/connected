@@ -17,7 +17,6 @@ class SettingsScreen extends ConsumerWidget {
     final settingsState = ref.watch(settingsProvider);
     final settingsNotifier = ref.read(settingsProvider.notifier);
     final currentUser = FirebaseAuth.instance.currentUser;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor:
@@ -29,16 +28,17 @@ class SettingsScreen extends ConsumerWidget {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
-            color: isDarkMode ? Colors.white : Colors.black87,
+            color: Theme.of(context).appBarTheme.foregroundColor,
           ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
-          statusBarIconBrightness: isDarkMode
-              ? Brightness.light
-              : Brightness.dark,
+          statusBarIconBrightness:
+              Theme.of(context).brightness == Brightness.dark
+                  ? Brightness.light
+                  : Brightness.dark,
         ),
       ),
       body: AnimatedContainer(
@@ -48,9 +48,10 @@ class SettingsScreen extends ConsumerWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: isDarkMode
-                ? [AppColors.darkSurface, const Color(0xFF1a1a1a)]
-                : [AppColors.lightSurface, const Color(0xFFF8F9FA)],
+            colors: [
+              Theme.of(context).scaffoldBackgroundColor,
+              Theme.of(context).scaffoldBackgroundColor,
+            ],
           ),
         ),
         child: SafeArea(
@@ -107,30 +108,32 @@ class SettingsScreen extends ConsumerWidget {
                               ),
 
                             // Appearance Section
-                            _buildSectionHeader('المظهر', isDarkMode),
+                            _buildSectionHeader(context, 'المظهر'),
                             _buildSettingsCard(
+                              context: context,
                               children: [
-                                _buildThemeSelector(context, ref, isDarkMode),
+                                _buildThemeSelector(context, ref),
                               ],
-                              isDarkMode: isDarkMode,
                             ),
 
                             const SizedBox(height: 24),
 
                             // Account Section
-                            _buildSectionHeader('الحساب', isDarkMode),
+                            _buildSectionHeader(context, 'الحساب'),
                             _buildSettingsCard(
+                              context: context,
                               children: [
                                 _buildNavigationTile(
+                                  context: context,
                                   title: 'المستخدمين المحظورين',
                                   subtitle: 'إدارة قائمة الحظر',
                                   icon: Icons.block,
                                   iconColor: Colors.orange,
                                   onTap: () => context.push('/blocked-users'),
-                                  isDarkMode: isDarkMode,
                                 ),
-                                _buildDivider(isDarkMode),
+                                _buildDivider(context),
                                 _buildNavigationTile(
+                                  context: context,
                                   title: 'حذف الحساب',
                                   subtitle: 'حذف حسابك وجميع بياناتك نهائياً',
                                   icon: Icons.delete_forever,
@@ -141,76 +144,66 @@ class SettingsScreen extends ConsumerWidget {
                                     currentUser?.uid ?? '',
                                     settingsNotifier,
                                   ),
-                                  isDarkMode: isDarkMode,
                                 ),
                               ],
-                              isDarkMode: isDarkMode,
                             ),
 
                             const SizedBox(height: 24),
 
                             // About Section
-                            _buildSectionHeader('حول التطبيق', isDarkMode),
+                            _buildSectionHeader(context, 'حول التطبيق'),
                             _buildSettingsCard(
+                              context: context,
                               children: [
                                 ListTile(
                                   leading: Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(8),
-                                      color: AppColors.primary.withOpacity(0.1),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary
+                                          .withOpacity(0.1),
                                     ),
                                     child: Icon(
                                       Icons.info_outline,
-                                      color: AppColors.primary,
+                                      color: Theme.of(context).colorScheme.primary,
                                       size: 20,
                                     ),
                                   ),
                                   title: Text(
                                     'الإصدار',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                      color: isDarkMode
-                                          ? Colors.white
-                                          : Colors.black87,
-                                    ),
+                                    style: Theme.of(context).textTheme.titleMedium,
                                   ),
                                   subtitle: Text(
                                     '1.0.0',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: isDarkMode
-                                          ? Colors.white70
-                                          : Colors.black54,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodyMedium,
                                   ),
                                 ),
-                                _buildDivider(isDarkMode),
+                                _buildDivider(context),
                                 _buildNavigationTile(
+                                  context: context,
                                   title: 'سياسة الخصوصية',
                                   subtitle: 'عرض سياسة الخصوصية',
                                   icon: Icons.privacy_tip_outlined,
                                   onTap: () =>
                                       context.push('/settings/privacy'),
-                                  isDarkMode: isDarkMode,
                                 ),
-                                _buildDivider(isDarkMode),
+                                _buildDivider(context),
                                 _buildNavigationTile(
+                                  context: context,
                                   title: 'شروط الاستخدام',
                                   subtitle: 'عرض شروط الخدمة',
                                   icon: Icons.description_outlined,
                                   onTap: () => context.push('/settings/terms'),
-                                  isDarkMode: isDarkMode,
                                 ),
                               ],
-                              isDarkMode: isDarkMode,
                             ),
 
                             const SizedBox(height: 32),
 
                             // Sign Out Button
-                            _buildSignOutButton(context, isDarkMode),
+                            _buildSignOutButton(context),
 
                             // Bottom padding to avoid conflicts with mobile navigation
                             const SizedBox(height: 100),
@@ -229,7 +222,6 @@ class SettingsScreen extends ConsumerWidget {
   Widget _buildThemeSelector(
     BuildContext context,
     WidgetRef ref,
-    bool isDarkMode,
   ) {
     final currentThemeOption = ref.watch(currentThemeOptionProvider);
     final themeNotifier = ref.read(themeProvider.notifier);
@@ -245,9 +237,13 @@ class SettingsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                 ),
-                child: Icon(Icons.palette, color: AppColors.primary, size: 20),
+                child: Icon(
+                  Icons.palette,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -256,18 +252,11 @@ class SettingsScreen extends ConsumerWidget {
                   children: [
                     Text(
                       'وضع المظهر',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: isDarkMode ? Colors.white : Colors.black87,
-                      ),
+                      style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text(
                       'اختر شكل تطبيقك المفضل',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDarkMode ? Colors.white70 : Colors.black54,
-                      ),
+                      style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
                 ),
@@ -296,16 +285,12 @@ class SettingsScreen extends ConsumerWidget {
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
                       color: isSelected
-                          ? AppColors.primary
-                          : isDarkMode
-                          ? Colors.white.withOpacity(0.05)
-                          : Colors.grey.withOpacity(0.1),
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).cardTheme.color,
                       border: Border.all(
                         color: isSelected
-                            ? AppColors.primary
-                            : isDarkMode
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.grey.withOpacity(0.3),
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).dividerColor.withOpacity(0.1),
                       ),
                     ),
                     child: Column(
@@ -314,9 +299,9 @@ class SettingsScreen extends ConsumerWidget {
                           _getThemeIcon(option),
                           color: isSelected
                               ? Colors.white
-                              : isDarkMode
-                              ? Colors.white70
-                              : Colors.black54,
+                              : Theme.of(
+                                  context,
+                                ).iconTheme.color?.withOpacity(0.7),
                           size: 20,
                         ),
                         const SizedBox(height: 4),
@@ -329,9 +314,7 @@ class SettingsScreen extends ConsumerWidget {
                                 : FontWeight.w500,
                             color: isSelected
                                 ? Colors.white
-                                : isDarkMode
-                                ? Colors.white70
-                                : Colors.black54,
+                                : Theme.of(context).textTheme.bodyMedium?.color,
                           ),
                         ),
                         if (isSelected)
@@ -360,7 +343,7 @@ class SettingsScreen extends ConsumerWidget {
                 Icon(
                   Icons.info_outline,
                   size: 14,
-                  color: isDarkMode ? Colors.white70 : Colors.black54,
+                  color: Theme.of(context).textTheme.bodyMedium?.color,
                 ),
                 const SizedBox(width: 6),
                 Expanded(
@@ -368,7 +351,7 @@ class SettingsScreen extends ConsumerWidget {
                     'سيتم تبديل المظهر تلقائياً حسب إعدادات جهازك',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                      color: Theme.of(context).textTheme.bodyMedium?.color,
                     ),
                   ),
                 ),
@@ -402,43 +385,35 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   // Helper methods for modern UI components
-  Widget _buildSectionHeader(String title, bool isDarkMode) {
+  Widget _buildSectionHeader(BuildContext context, String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12, right: 4),
       child: Text(
         title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: isDarkMode ? Colors.white70 : Colors.black54,
-        ),
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }
 
   Widget _buildSettingsCard({
+    required BuildContext context,
     required List<Widget> children,
-    required bool isDarkMode,
   }) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
-        color: isDarkMode
-            ? Colors.white.withOpacity(0.05)
-            : Colors.white.withOpacity(0.8),
+        color: Theme.of(context).cardTheme.color,
         boxShadow: [
           BoxShadow(
-            color: isDarkMode
-                ? Colors.black.withOpacity(0.3)
-                : Colors.black.withOpacity(0.08),
+            color: Theme.of(context).shadowColor.withOpacity(0.08),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
-          color: isDarkMode
-              ? Colors.white.withOpacity(0.1)
-              : Colors.black.withOpacity(0.05),
+          color: Theme.of(context).dividerColor.withOpacity(0.1),
         ),
       ),
       child: Column(children: children),
@@ -446,42 +421,40 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildSwitchTile({
+    required BuildContext context,
     required String title,
     required String subtitle,
     required bool value,
     required Function(bool) onChanged,
     required IconData icon,
-    required bool isDarkMode,
   }) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: AppColors.primary.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
         ),
-        child: Icon(icon, color: AppColors.primary, size: 20),
+        child: Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 20,
+        ),
       ),
       title: Text(
         title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: isDarkMode ? Colors.white : Colors.black87,
-        ),
+        style: Theme.of(context).textTheme.titleMedium,
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(
-          fontSize: 14,
-          color: isDarkMode ? Colors.white70 : Colors.black54,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium,
       ),
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: AppColors.primary,
-        activeTrackColor: AppColors.primary.withOpacity(0.3),
+        activeColor: Theme.of(context).colorScheme.primary,
+        activeTrackColor:
+            Theme.of(context).colorScheme.primary.withOpacity(0.3),
         inactiveThumbColor: Colors.grey.shade400,
         inactiveTrackColor: Colors.grey.shade300,
       ),
@@ -490,60 +463,58 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildNavigationTile({
+    required BuildContext context,
     required String title,
     required String subtitle,
     required IconData icon,
     required Function() onTap,
     Color? iconColor,
     Color? textColor,
-    required bool isDarkMode,
   }) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: (iconColor ?? AppColors.primary).withOpacity(0.1),
+          color: (iconColor ?? Theme.of(context).colorScheme.primary)
+              .withOpacity(0.1),
         ),
-        child: Icon(icon, color: iconColor ?? AppColors.primary, size: 20),
+        child: Icon(
+          icon,
+          color: iconColor ?? Theme.of(context).colorScheme.primary,
+          size: 20,
+        ),
       ),
       title: Text(
         title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: textColor ?? (isDarkMode ? Colors.white : Colors.black87),
-        ),
+        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: textColor,
+            ),
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(
-          fontSize: 14,
-          color: isDarkMode ? Colors.white70 : Colors.black54,
-        ),
+        style: Theme.of(context).textTheme.bodyMedium,
       ),
       trailing: Icon(
         Icons.arrow_back_ios,
         size: 16,
-        color: isDarkMode ? Colors.white54 : Colors.black54,
+        color: Theme.of(context).iconTheme.color?.withOpacity(0.5),
       ),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
   }
 
-  Widget _buildDivider(bool isDarkMode) {
+  Widget _buildDivider(BuildContext context) {
     return Divider(
       height: 1,
       indent: 16,
       endIndent: 16,
-      color: isDarkMode
-          ? Colors.white.withOpacity(0.1)
-          : Colors.black.withOpacity(0.1),
+      color: Theme.of(context).dividerColor,
     );
   }
 
-  Widget _buildSignOutButton(BuildContext context, bool isDarkMode) {
+  Widget _buildSignOutButton(BuildContext context) {
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 4),

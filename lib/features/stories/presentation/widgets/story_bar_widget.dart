@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/story.dart';
 import '../providers/story_provider.dart';
 import '../screens/story_view_screen.dart';
-import '../screens/story_creation_screen.dart';
+import '../screens/story_camera_screen.dart';
 
 /// Horizontal bar widget displaying active stories
 class StoryBarWidget extends ConsumerWidget {
@@ -138,7 +138,7 @@ class _AddStoryButton extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => StoryCreationScreen(userId: userId),
+            builder: (context) => StoryCameraScreen(userId: userId),
           ),
         );
       },
