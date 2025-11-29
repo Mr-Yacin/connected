@@ -3,7 +3,6 @@ import 'app_colors.dart';
 
 class AppTheme {
   // Light Theme
-  // Light Theme
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
