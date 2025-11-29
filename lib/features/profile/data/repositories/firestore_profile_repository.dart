@@ -5,7 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/profile_repository.dart';
-import '../../../../services/error_logging_service.dart';
+
 import '../../../../core/data/base_firestore_repository.dart';
 
 /// Firestore implementation of ProfileRepository

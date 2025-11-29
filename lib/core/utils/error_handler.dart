@@ -1,10 +1,9 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../exceptions/app_exceptions.dart';
 import '../../services/error_logging_service.dart';
 
 /// Centralized error handling utility for the application.
-/// 
+///
 /// Provides consistent error handling, logging, and user-friendly messages.
 class ErrorHandler {
   /// Handle Firebase Auth errors with proper Arabic messages

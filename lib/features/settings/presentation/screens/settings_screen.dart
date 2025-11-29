@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/settings_provider.dart';
-import '../../../../core/theme/app_colors.dart';
+
 import '../../../../core/theme/theme_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
@@ -37,8 +37,8 @@ class SettingsScreen extends ConsumerWidget {
           statusBarColor: Colors.transparent,
           statusBarIconBrightness:
               Theme.of(context).brightness == Brightness.dark
-                  ? Brightness.light
-                  : Brightness.dark,
+              ? Brightness.light
+              : Brightness.dark,
         ),
       ),
       body: AnimatedContainer(
@@ -111,9 +111,7 @@ class SettingsScreen extends ConsumerWidget {
                             _buildSectionHeader(context, 'المظهر'),
                             _buildSettingsCard(
                               context: context,
-                              children: [
-                                _buildThemeSelector(context, ref),
-                              ],
+                              children: [_buildThemeSelector(context, ref)],
                             ),
 
                             const SizedBox(height: 24),
@@ -167,17 +165,23 @@ class SettingsScreen extends ConsumerWidget {
                                     ),
                                     child: Icon(
                                       Icons.info_outline,
-                                      color: Theme.of(context).colorScheme.primary,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
                                       size: 20,
                                     ),
                                   ),
                                   title: Text(
                                     'الإصدار',
-                                    style: Theme.of(context).textTheme.titleMedium,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.titleMedium,
                                   ),
                                   subtitle: Text(
                                     '1.0.0',
-                                    style: Theme.of(context).textTheme.bodyMedium,
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodyMedium,
                                   ),
                                 ),
                                 _buildDivider(context),
@@ -219,10 +223,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   // Theme selector widget
-  Widget _buildThemeSelector(
-    BuildContext context,
-    WidgetRef ref,
-  ) {
+  Widget _buildThemeSelector(BuildContext context, WidgetRef ref) {
     final currentThemeOption = ref.watch(currentThemeOptionProvider);
     final themeNotifier = ref.read(themeProvider.notifier);
 
@@ -237,7 +238,9 @@ class SettingsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.1),
                 ),
                 child: Icon(
                   Icons.palette,
@@ -290,7 +293,9 @@ class SettingsScreen extends ConsumerWidget {
                       border: Border.all(
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).dividerColor.withValues(alpha: 0.1),
+                            : Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: 0.1),
                       ),
                     ),
                     child: Column(
@@ -390,9 +395,9 @@ class SettingsScreen extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 12, right: 4),
       child: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -441,20 +446,15 @@ class SettingsScreen extends ConsumerWidget {
           size: 20,
         ),
       ),
-      title: Text(
-        title,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      subtitle: Text(
-        subtitle,
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
+      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+      subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
       trailing: Switch(
         value: value,
         onChanged: onChanged,
         activeColor: Theme.of(context).colorScheme.primary,
-        activeTrackColor:
-            Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+        activeTrackColor: Theme.of(
+          context,
+        ).colorScheme.primary.withValues(alpha: 0.3),
         inactiveThumbColor: Colors.grey.shade400,
         inactiveTrackColor: Colors.grey.shade300,
       ),
@@ -487,14 +487,11 @@ class SettingsScreen extends ConsumerWidget {
       ),
       title: Text(
         title,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              color: textColor,
-            ),
+        style: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(color: textColor),
       ),
-      subtitle: Text(
-        subtitle,
-        style: Theme.of(context).textTheme.bodyMedium,
-      ),
+      subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
       trailing: Icon(
         Icons.arrow_back_ios,
         size: 16,
