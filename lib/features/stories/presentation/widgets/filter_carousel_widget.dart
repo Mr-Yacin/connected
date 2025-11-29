@@ -96,13 +96,13 @@ class _FilterThumbnail extends StatelessWidget {
               border: Border.all(
                 color: isSelected
                     ? Colors.white
-                    : Colors.white.withOpacity(0.3),
+                    : Colors.white.withValues(alpha: 0.3),
                 width: isSelected ? 3 : 1.5,
               ),
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: Colors.white.withOpacity(0.4),
+                        color: Colors.white.withValues(alpha: 0.4),
                         blurRadius: 10,
                         spreadRadius: 2,
                       ),
@@ -158,7 +158,7 @@ class _FilterThumbnail extends StatelessWidget {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.2),
+                          Colors.black.withValues(alpha: 0.2),
                         ],
                       ),
                     ),

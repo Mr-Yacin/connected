@@ -38,10 +38,10 @@ class AppTheme {
     cardTheme: CardThemeData(
       color: AppColors.lightSurface,
       elevation: 2,
-      shadowColor: Colors.black.withOpacity(0.05),
+      shadowColor: Colors.black.withValues(alpha: 0.05),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.withOpacity(0.1), width: 1),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.1), width: 1),
       ),
     ),
 
@@ -52,11 +52,11 @@ class AppTheme {
       hintStyle: const TextStyle(color: AppColors.textSecondary),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.grey.withOpacity(0.2)),
+        borderSide: BorderSide(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),

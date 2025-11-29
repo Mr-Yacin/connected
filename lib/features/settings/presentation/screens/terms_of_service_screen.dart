@@ -64,12 +64,12 @@ class TermsOfServiceScreen extends StatelessWidget {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              AppColors.primary.withOpacity(0.1),
-                              AppColors.primary.withOpacity(0.05),
+                              AppColors.primary.withValues(alpha: 0.1),
+                              AppColors.primary.withValues(alpha: 0.05),
                             ],
                           ),
                           border: Border.all(
-                            color: AppColors.primary.withOpacity(0.2),
+                            color: AppColors.primary.withValues(alpha: 0.2),
                             width: 1,
                           ),
                         ),
@@ -217,12 +217,12 @@ class TermsOfServiceScreen extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               color: isDarkMode 
-                  ? Colors.white.withOpacity(0.05) 
-                  : Colors.black.withOpacity(0.03),
+                  ? Colors.white.withValues(alpha: 0.05) 
+                  : Colors.black.withValues(alpha: 0.03),
               border: Border.all(
                 color: isDarkMode 
-                    ? Colors.white.withOpacity(0.1) 
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.1) 
+                    : Colors.black.withValues(alpha: 0.1),
               ),
             ),
             child: Text(

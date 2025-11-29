@@ -22,10 +22,10 @@ class FilterIntensitySlider extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.5),
+            color: Colors.black.withValues(alpha: 0.5),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1,
             ),
           ),
@@ -63,9 +63,9 @@ class FilterIntensitySlider extends StatelessWidget {
               SliderTheme(
                 data: SliderThemeData(
                   activeTrackColor: AppColors.primary,
-                  inactiveTrackColor: Colors.white.withOpacity(0.3),
+                  inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
                   thumbColor: Colors.white,
-                  overlayColor: AppColors.primary.withOpacity(0.2),
+                  overlayColor: AppColors.primary.withValues(alpha: 0.2),
                   trackHeight: 4,
                   thumbShape: const RoundSliderThumbShape(
                     enabledThumbRadius: 8,

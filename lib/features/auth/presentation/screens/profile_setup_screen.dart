@@ -172,7 +172,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               Text(
                 'يرجى إكمال معلوماتك الشخصية للمتابعة',
                 style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -317,7 +317,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               Text(
                 'جميع الحقول المميزة بـ (*) مطلوبة',
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
                 textAlign: TextAlign.center,
               ),

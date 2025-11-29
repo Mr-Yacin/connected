@@ -848,7 +848,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             BoxShadow(
               color:
                   Theme.of(context).cardTheme.shadowColor ??
-                  Colors.black.withOpacity(0.05),
+                  Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -945,7 +945,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             BoxShadow(
               color:
                   Theme.of(context).cardTheme.shadowColor ??
-                  Colors.black.withOpacity(0.05),
+                  Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -1038,7 +1038,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             BoxShadow(
               color:
                   Theme.of(context).cardTheme.shadowColor ??
-                  Colors.black.withOpacity(0.05),
+                  Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

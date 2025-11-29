@@ -72,9 +72,9 @@ class SettingsScreen extends ConsumerWidget {
                                 padding: const EdgeInsets.all(16),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
-                                  color: Colors.red.withOpacity(0.1),
+                                  color: Colors.red.withValues(alpha: 0.1),
                                   border: Border.all(
-                                    color: Colors.red.withOpacity(0.3),
+                                    color: Colors.red.withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: Row(
@@ -163,7 +163,7 @@ class SettingsScreen extends ConsumerWidget {
                                       color: Theme.of(context)
                                           .colorScheme
                                           .primary
-                                          .withOpacity(0.1),
+                                          .withValues(alpha: 0.1),
                                     ),
                                     child: Icon(
                                       Icons.info_outline,
@@ -237,7 +237,7 @@ class SettingsScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 ),
                 child: Icon(
                   Icons.palette,
@@ -290,7 +290,7 @@ class SettingsScreen extends ConsumerWidget {
                       border: Border.all(
                         color: isSelected
                             ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).dividerColor.withOpacity(0.1),
+                            : Theme.of(context).dividerColor.withValues(alpha: 0.1),
                       ),
                     ),
                     child: Column(
@@ -301,7 +301,7 @@ class SettingsScreen extends ConsumerWidget {
                               ? Colors.white
                               : Theme.of(
                                   context,
-                                ).iconTheme.color?.withOpacity(0.7),
+                                ).iconTheme.color?.withValues(alpha: 0.7),
                           size: 20,
                         ),
                         const SizedBox(height: 4),
@@ -407,13 +407,13 @@ class SettingsScreen extends ConsumerWidget {
         color: Theme.of(context).cardTheme.color,
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).shadowColor.withOpacity(0.08),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
         ],
         border: Border.all(
-          color: Theme.of(context).dividerColor.withOpacity(0.1),
+          color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
         ),
       ),
       child: Column(children: children),
@@ -433,7 +433,7 @@ class SettingsScreen extends ConsumerWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         ),
         child: Icon(
           icon,
@@ -454,7 +454,7 @@ class SettingsScreen extends ConsumerWidget {
         onChanged: onChanged,
         activeColor: Theme.of(context).colorScheme.primary,
         activeTrackColor:
-            Theme.of(context).colorScheme.primary.withOpacity(0.3),
+            Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
         inactiveThumbColor: Colors.grey.shade400,
         inactiveTrackColor: Colors.grey.shade300,
       ),
@@ -477,7 +477,7 @@ class SettingsScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8),
           color: (iconColor ?? Theme.of(context).colorScheme.primary)
-              .withOpacity(0.1),
+              .withValues(alpha: 0.1),
         ),
         child: Icon(
           icon,
@@ -498,7 +498,7 @@ class SettingsScreen extends ConsumerWidget {
       trailing: Icon(
         Icons.arrow_back_ios,
         size: 16,
-        color: Theme.of(context).iconTheme.color?.withOpacity(0.5),
+        color: Theme.of(context).iconTheme.color?.withValues(alpha: 0.5),
       ),
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

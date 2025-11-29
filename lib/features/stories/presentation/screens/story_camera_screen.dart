@@ -538,7 +538,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withOpacity(0.6),
+                  Colors.black.withValues(alpha: 0.6),
                   Colors.transparent,
                 ],
               ),
@@ -557,7 +557,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                 begin: Alignment.bottomCenter,
                 end: Alignment.topCenter,
                 colors: [
-                  Colors.black.withOpacity(0.8),
+                  Colors.black.withValues(alpha: 0.8),
                   Colors.transparent,
                 ],
               ),
@@ -665,7 +665,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.red.withOpacity(0.5),
+                      color: Colors.red.withValues(alpha: 0.5),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),
@@ -706,10 +706,10 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         width: 1,
                       ),
                     ),
@@ -744,11 +744,11 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
           height: 48,
           decoration: BoxDecoration(
             color: isActive
-                ? AppColors.primary.withOpacity(0.3)
-                : Colors.white.withOpacity(0.2),
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: Colors.white.withOpacity(0.3),
+              color: Colors.white.withValues(alpha: 0.3),
               width: 1,
             ),
           ),
@@ -783,19 +783,19 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
           height: 56,
           decoration: BoxDecoration(
             color: isActive
-                ? AppColors.primary.withOpacity(0.3)
-                : Colors.white.withOpacity(0.15),
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
               color: isActive
-                  ? Colors.white.withOpacity(0.5)
-                  : Colors.white.withOpacity(0.3),
+                  ? Colors.white.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.3),
               width: isActive ? 2 : 1.5,
             ),
             boxShadow: isActive
                 ? [
                     BoxShadow(
-                      color: AppColors.primary.withOpacity(0.3),
+                      color: AppColors.primary.withValues(alpha: 0.3),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),
@@ -841,8 +841,8 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                 boxShadow: [
                   BoxShadow(
                     color: _isRecording
-                        ? Colors.red.withOpacity(0.5)
-                        : AppColors.primary.withOpacity(0.3),
+                        ? Colors.red.withValues(alpha: 0.5)
+                        : AppColors.primary.withValues(alpha: 0.3),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
@@ -935,7 +935,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withOpacity(0.6),
+                    Colors.black.withValues(alpha: 0.6),
                     Colors.transparent,
                   ],
                 ),
@@ -954,7 +954,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                   begin: Alignment.bottomCenter,
                   end: Alignment.topCenter,
                   colors: [
-                    Colors.black.withOpacity(0.8),
+                    Colors.black.withValues(alpha: 0.8),
                     Colors.transparent,
                   ],
                 ),
@@ -1018,10 +1018,10 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
+                    color: Colors.black.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha: 0.3),
                       width: 2,
                     ),
                   ),
@@ -1095,12 +1095,12 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
             color: isDisabled ? Colors.grey.shade800 : null,
             borderRadius: BorderRadius.circular(30),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               width: 1,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 20,
                 spreadRadius: 0,
                 offset: const Offset(0, 4),
