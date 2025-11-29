@@ -70,9 +70,56 @@ class StoryBarWidget extends ConsumerWidget {
           );
         },
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
-          child: Text('خطأ في تحميل القصص: $error'),
-        ),
+        error: (error, stack) {
+          // ✅ Handle permission-denied errors gracefully with retry
+          if (error.toString().contains('permission-denied') || 
+              error.toString().contains('PERMISSION_DENIED')) {
+            // Auto-retry after a short delay
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (context.mounted) {
+                ref.refresh(activeStoriesProvider);
+              }
+            });
+            
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 8),
+                  Text(
+                    'جاري تحميل القصص...',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.white70
+                          : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 32, color: Colors.red),
+                const SizedBox(height: 8),
+                Text(
+                  'خطأ في تحميل القصص',
+                  style: TextStyle(fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                TextButton(
+                  onPressed: () => ref.refresh(activeStoriesProvider),
+                  child: const Text('إعادة المحاولة', style: TextStyle(fontSize: 12)),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

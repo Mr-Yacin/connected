@@ -6,6 +6,7 @@ import '../../../../core/models/enums.dart';
 import '../../data/repositories/firestore_story_repository.dart';
 import '../../data/services/story_expiration_service.dart';
 import '../../domain/repositories/story_repository.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 /// Provider for StoryRepository
 final storyRepositoryProvider = Provider<StoryRepository>((ref) {
@@ -28,16 +29,42 @@ final storyExpirationServiceProvider = Provider<StoryExpirationService>((ref) {
   return service;
 });
 
-/// Provider for active stories stream
+/// Provider for active stories stream with auth state validation
 final activeStoriesProvider = StreamProvider<List<Story>>((ref) {
-  final repository = ref.watch(storyRepositoryProvider);
-  return repository.getActiveStories();
+  // ✅ Watch auth state to ensure user is authenticated
+  final authState = ref.watch(currentUserProvider);
+  
+  return authState.when(
+    data: (user) {
+      if (user == null) {
+        // Return empty stream when no authenticated user
+        return Stream.value([]);
+      }
+      final repository = ref.watch(storyRepositoryProvider);
+      return repository.getActiveStories();
+    },
+    loading: () => Stream.value([]),
+    error: (_, __) => Stream.value([]),
+  );
 });
 
-/// Provider for user-specific stories stream
+/// Provider for user-specific stories stream with auth state validation
 final userStoriesProvider = StreamProvider.family<List<Story>, String>((ref, userId) {
-  final repository = ref.watch(storyRepositoryProvider);
-  return repository.getUserStories(userId);
+  // ✅ Watch auth state to ensure user is authenticated
+  final authState = ref.watch(currentUserProvider);
+  
+  return authState.when(
+    data: (user) {
+      if (user == null) {
+        // Return empty stream when no authenticated user
+        return Stream.value([]);
+      }
+      final repository = ref.watch(storyRepositoryProvider);
+      return repository.getUserStories(userId);
+    },
+    loading: () => Stream.value([]),
+    error: (_, __) => Stream.value([]),
+  );
 });
 
 /// State for story creation

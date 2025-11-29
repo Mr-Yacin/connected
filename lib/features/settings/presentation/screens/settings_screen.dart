@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/settings_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/theme_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 /// Settings screen for managing user preferences and account
 class SettingsScreen extends ConsumerWidget {
@@ -562,29 +563,79 @@ class SettingsScreen extends ConsumerWidget {
   void _showSignOutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('تأكيد تسجيل الخروج'),
-        content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج؟'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('إلغاء'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.of(context).pop();
-              await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
-                context.go('/auth/phone');
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.grey.shade700,
-              foregroundColor: Colors.white,
+      builder: (context) => Consumer(
+        builder: (context, ref, child) => AlertDialog(
+          title: const Text('تأكيد تسجيل الخروج'),
+          content: const Text('هل أنت متأكد من رغبتك في تسجيل الخروج؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('إلغاء'),
             ),
-            child: const Text('تسجيل الخروج'),
-          ),
-        ],
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                
+                // Show loading dialog
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => Center(
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const CircularProgressIndicator(),
+                            const SizedBox(height: 16),
+                            Text(
+                              'جاري تسجيل الخروج...',
+                              style: TextStyle(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.white
+                                    : Colors.black87,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+
+                try {
+                  // ✅ Use proper AuthNotifier signOut method
+                  final authNotifier = ref.read(authNotifierProvider.notifier);
+                  await authNotifier.signOut();
+                  
+                  // Add delay to ensure auth state is fully settled
+                  await Future.delayed(const Duration(milliseconds: 300));
+                  
+                  if (context.mounted) {
+                    Navigator.of(context).pop(); // Close loading dialog
+                    context.go('/auth/phone');
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    Navigator.of(context).pop(); // Close loading dialog
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('فشل تسجيل الخروج: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.grey.shade700,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('تسجيل الخروج'),
+            ),
+          ],
+        ),
       ),
     );
   }
