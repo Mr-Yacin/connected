@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../services/location_service.dart';
-import '../../../profile/data/repositories/user_repository.dart';
+import '../../../profile/data/repositories/firestore_profile_repository.dart';
 
 /// Screen for new users to complete their profile after OTP verification
 class ProfileSetupScreen extends StatefulWidget {
@@ -17,7 +17,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _locationService = LocationService();
-  final _userRepository = UserRepository();
+  final _profileRepository = FirestoreProfileRepository();
 
   int? _selectedAge;
   String? _selectedGender;
@@ -111,7 +111,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         isImageBlurred: false,
       );
 
-      await _userRepository.createUserProfile(profile);
+      await _profileRepository.createProfile(profile);
 
       if (mounted) {
         // Navigate to home screen

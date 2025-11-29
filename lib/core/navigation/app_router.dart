@@ -9,7 +9,7 @@ import '../../features/home/presentation/screens/home_screen.dart';
 import '../../features/chat/presentation/screens/chat_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../features/profile/presentation/screens/profile_edit_screen.dart';
-import '../../features/profile/data/repositories/user_repository.dart';
+import '../../features/profile/data/repositories/firestore_profile_repository.dart';
 import '../../features/stories/presentation/screens/story_creation_screen.dart';
 import '../../features/moderation/presentation/screens/blocked_users_screen.dart';
 import '../../features/settings/presentation/screens/settings_screen.dart';
@@ -23,7 +23,7 @@ import '../../features/discovery/presentation/screens/following_list_screen.dart
 /// Application router using go_router
 class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>();
-  static final _userRepository = UserRepository();
+  static final _profileRepository = FirestoreProfileRepository();
 
   static GoRouter createRouter() {
     return GoRouter(
@@ -58,7 +58,7 @@ class AppRouter {
           }
 
           // Check if profile is complete
-          final isComplete = await _userRepository.isProfileComplete(user.uid);
+          final isComplete = await _profileRepository.isProfileComplete(user.uid);
 
           // If profile is incomplete, redirect to profile setup
           if (!isComplete) {
