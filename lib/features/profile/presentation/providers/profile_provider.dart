@@ -5,10 +5,12 @@ import '../../../../core/models/user_profile.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../data/repositories/firestore_profile_repository.dart';
 import '../../data/services/image_blur_service.dart';
+import '../../../../services/media/image_compression_service.dart';
 
 /// Provider for ProfileRepository
 final profileRepositoryProvider = Provider<FirestoreProfileRepository>((ref) {
-  return FirestoreProfileRepository();
+  final imageCompression = ref.watch(imageCompressionServiceProvider);
+  return FirestoreProfileRepository(imageCompression: imageCompression);
 });
 
 /// Provider for ImageBlurService
@@ -64,28 +66,39 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   /// Load user profile
   Future<void> loadProfile(String userId, {bool forceReload = false}) async {
     // Check if we already have this user's profile loaded
-    if (!forceReload && state.loadedUserId == userId && state.profile != null && !state.isLoading) {
+    if (!forceReload &&
+        state.loadedUserId == userId &&
+        state.profile != null &&
+        !state.isLoading) {
       // Profile for this user is already loaded, no need to reload
       return;
     }
-    
+
     state = state.copyWith(isLoading: true, error: null);
-    
+
     try {
       final profile = await _repository.getProfile(userId);
-      state = state.copyWith(profile: profile, isLoading: false, loadedUserId: userId);
+      state = state.copyWith(
+        profile: profile,
+        isLoading: false,
+        loadedUserId: userId,
+      );
     } on AppException catch (e) {
       state = state.copyWith(error: e.message, isLoading: false);
     } catch (e) {
       state = state.copyWith(error: 'حدث خطأ غير متوقع', isLoading: false);
     }
   }
-  
+
   /// Reload profile silently (without showing loading indicator)
   Future<void> refreshProfile(String userId) async {
     try {
       final profile = await _repository.getProfile(userId);
-      state = state.copyWith(profile: profile, loadedUserId: userId, error: null);
+      state = state.copyWith(
+        profile: profile,
+        loadedUserId: userId,
+        error: null,
+      );
     } on AppException catch (e) {
       // Silent failure - don't update error state
       debugPrint('ERROR: Failed to refresh profile: ${e.message}');
@@ -97,7 +110,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   /// Update profile
   Future<void> updateProfile(UserProfile profile) async {
     state = state.copyWith(isLoading: true, error: null);
-    
+
     try {
       await _repository.updateProfile(profile);
       state = state.copyWith(profile: profile, isLoading: false);
@@ -113,7 +126,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   /// Upload profile image
   Future<String> uploadProfileImage(String userId, File image) async {
     state = state.copyWith(isUploading: true, error: null);
-    
+
     try {
       final imageUrl = await _repository.uploadProfileImage(userId, image);
       state = state.copyWith(isUploading: false);
@@ -154,14 +167,14 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       }
 
       final link = await _repository.generateAnonymousLink(userId);
-      
+
       // Update profile with the new link
       if (state.profile != null) {
         final updatedProfile = state.profile!.copyWith(anonymousLink: link);
         await _repository.updateProfile(updatedProfile);
         state = state.copyWith(profile: updatedProfile);
       }
-      
+
       return link;
     } on AppException catch (e) {
       state = state.copyWith(error: e.message);
@@ -185,7 +198,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
   /// Toggle blur setting
   Future<void> toggleBlur(bool isBlurred) async {
     if (state.profile == null) return;
-    
+
     final updatedProfile = state.profile!.copyWith(isImageBlurred: isBlurred);
     await updateProfile(updatedProfile);
   }
@@ -193,8 +206,9 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
 /// Provider for viewing OTHER users' profiles (not your own)
 /// For your own profile, use currentUserProfileProvider
-final viewedProfileProvider = StateNotifierProvider<ProfileNotifier, ProfileState>((ref) {
-  final repository = ref.watch(profileRepositoryProvider);
-  final blurService = ref.watch(imageBlurServiceProvider);
-  return ProfileNotifier(repository, blurService);
-});
+final viewedProfileProvider =
+    StateNotifierProvider<ProfileNotifier, ProfileState>((ref) {
+      final repository = ref.watch(profileRepositoryProvider);
+      final blurService = ref.watch(imageBlurServiceProvider);
+      return ProfileNotifier(repository, blurService);
+    });

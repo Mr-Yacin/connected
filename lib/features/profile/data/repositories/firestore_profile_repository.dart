@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/profile_repository.dart';
+import '../../../../services/media/image_compression_service.dart';
 
 import '../../../../core/data/base_firestore_repository.dart';
 
@@ -14,14 +15,17 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
   final Uuid _uuid;
+  final ImageCompressionService? _imageCompression;
 
   FirestoreProfileRepository({
     FirebaseFirestore? firestore,
     FirebaseStorage? storage,
     Uuid? uuid,
+    ImageCompressionService? imageCompression,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
        _storage = storage ?? FirebaseStorage.instance,
-       _uuid = uuid ?? const Uuid();
+       _uuid = uuid ?? const Uuid(),
+       _imageCompression = imageCompression;
 
   @override
   Future<UserProfile> getProfile(String userId) async {
@@ -77,8 +81,14 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
   Future<String> uploadProfileImage(String userId, File image) async {
     return handleFirestoreOperation(
       operation: () async {
+        // Compress image before upload if compression service is available
+        File imageToUpload = image;
+        if (_imageCompression != null) {
+          imageToUpload = await _imageCompression.compressImage(image);
+        }
+
         final ref = _storage.ref().child('profile_images/$userId/profile.jpg');
-        final uploadTask = await ref.putFile(image);
+        final uploadTask = await ref.putFile(imageToUpload);
         final downloadUrl = await uploadTask.ref.getDownloadURL();
         return downloadUrl;
       },

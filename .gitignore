@@ -78,6 +78,8 @@ firebase-debug.*.log
 # Sensitive Firebase configuration files
 google-services.json
 GoogleService-Info.plist
+firebase_options.dart
+lib/firebase_options.dart
 # Firebase emulator data
 firebase-export-*/
 firestore-debug.log
