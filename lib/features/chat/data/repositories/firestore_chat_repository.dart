@@ -7,10 +7,10 @@ import '../../../../core/models/enums.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../../../core/data/base_firestore_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
-import '../../../../services/error_logging_service.dart';
+import '../../../../services/monitoring/error_logging_service.dart';
 
 /// Firestore implementation of ChatRepository
-class FirestoreChatRepository extends BaseFirestoreRepository 
+class FirestoreChatRepository extends BaseFirestoreRepository
     implements ChatRepository {
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
@@ -20,9 +20,9 @@ class FirestoreChatRepository extends BaseFirestoreRepository
     FirebaseFirestore? firestore,
     FirebaseStorage? storage,
     Uuid? uuid,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _storage = storage ?? FirebaseStorage.instance,
-        _uuid = uuid ?? const Uuid();
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _storage = storage ?? FirebaseStorage.instance,
+       _uuid = uuid ?? const Uuid();
 
   @override
   Stream<List<Message>> getMessages(String chatId) {
@@ -34,36 +34,36 @@ class FirestoreChatRepository extends BaseFirestoreRepository
           .orderBy('timestamp', descending: false)
           .snapshots()
           .map((snapshot) {
-        try {
-          return snapshot.docs
-              .map((doc) {
-                try {
-                  return Message.fromJson(doc.data());
-                } catch (e) {
-                  // Log individual message parsing errors
-                  ErrorLoggingService.logGeneralError(
-                    e,
-                    stackTrace: StackTrace.current,
-                    context: 'Failed to parse message: ${doc.id}',
-                    screen: 'ChatScreen',
-                    operation: 'getMessages',
-                  );
-                  return null;
-                }
-              })
-              .whereType<Message>() // Filter out null values
-              .toList();
-        } catch (e, stackTrace) {
-          ErrorLoggingService.logGeneralError(
-            e,
-            stackTrace: stackTrace,
-            context: 'Failed to map messages snapshot',
-            screen: 'ChatScreen',
-            operation: 'getMessages',
-          );
-          return <Message>[]; // Return empty list on error
-        }
-      });
+            try {
+              return snapshot.docs
+                  .map((doc) {
+                    try {
+                      return Message.fromJson(doc.data());
+                    } catch (e) {
+                      // Log individual message parsing errors
+                      ErrorLoggingService.logGeneralError(
+                        e,
+                        stackTrace: StackTrace.current,
+                        context: 'Failed to parse message: ${doc.id}',
+                        screen: 'ChatScreen',
+                        operation: 'getMessages',
+                      );
+                      return null;
+                    }
+                  })
+                  .whereType<Message>() // Filter out null values
+                  .toList();
+            } catch (e, stackTrace) {
+              ErrorLoggingService.logGeneralError(
+                e,
+                stackTrace: stackTrace,
+                context: 'Failed to map messages snapshot',
+                screen: 'ChatScreen',
+                operation: 'getMessages',
+              );
+              return <Message>[]; // Return empty list on error
+            }
+          });
     } catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
         e,
@@ -293,40 +293,49 @@ class FirestoreChatRepository extends BaseFirestoreRepository
           .orderBy('lastMessageTime', descending: true)
           .snapshots()
           .asyncMap((chatsSnapshot) async {
-        final chatPreviews = <ChatPreview>[];
+            final chatPreviews = <ChatPreview>[];
 
-        for (final doc in chatsSnapshot.docs) {
-          final data = doc.data();
-          final participants = List<String>.from(data['participants'] as List);
-          final otherUserId =
-              participants.firstWhere((id) => id != userId, orElse: () => '');
+            for (final doc in chatsSnapshot.docs) {
+              final data = doc.data();
+              final participants = List<String>.from(
+                data['participants'] as List,
+              );
+              final otherUserId = participants.firstWhere(
+                (id) => id != userId,
+                orElse: () => '',
+              );
 
-          if (otherUserId.isEmpty) continue;
+              if (otherUserId.isEmpty) continue;
 
-          // Get other user's profile
-          final userDoc =
-              await _firestore.collection('users').doc(otherUserId).get();
-          final userData = userDoc.data();
+              // Get other user's profile
+              final userDoc = await _firestore
+                  .collection('users')
+                  .doc(otherUserId)
+                  .get();
+              final userData = userDoc.data();
 
-          // OPTIMIZED: Read unread count directly from denormalized field
-          final unreadCountMap = data['unreadCount'] as Map<String, dynamic>?;
-          final unreadCount = unreadCountMap?[userId] as int? ?? 0;
+              // OPTIMIZED: Read unread count directly from denormalized field
+              final unreadCountMap =
+                  data['unreadCount'] as Map<String, dynamic>?;
+              final unreadCount = unreadCountMap?[userId] as int? ?? 0;
 
-          chatPreviews.add(ChatPreview(
-            chatId: doc.id,
-            otherUserId: otherUserId,
-            otherUserName: userData?['name'] as String?,
-            otherUserImageUrl: userData?['profileImageUrl'] as String?,
-            lastMessage: data['lastMessage'] as String?,
-            lastMessageTime: data['lastMessageTime'] != null
-                ? (data['lastMessageTime'] as Timestamp).toDate()
-                : null,
-            unreadCount: unreadCount,
-          ));
-        }
+              chatPreviews.add(
+                ChatPreview(
+                  chatId: doc.id,
+                  otherUserId: otherUserId,
+                  otherUserName: userData?['name'] as String?,
+                  otherUserImageUrl: userData?['profileImageUrl'] as String?,
+                  lastMessage: data['lastMessage'] as String?,
+                  lastMessageTime: data['lastMessageTime'] != null
+                      ? (data['lastMessageTime'] as Timestamp).toDate()
+                      : null,
+                  unreadCount: unreadCount,
+                ),
+              );
+            }
 
-        return chatPreviews;
-      });
+            return chatPreviews;
+          });
     } catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
         e,
@@ -350,29 +359,35 @@ class FirestoreChatRepository extends BaseFirestoreRepository
     for (final doc in chatsSnapshot.docs) {
       final data = doc.data() as Map<String, dynamic>;
       final participants = List<String>.from(data['participants'] as List);
-      final otherUserId =
-          participants.firstWhere((id) => id != userId, orElse: () => '');
+      final otherUserId = participants.firstWhere(
+        (id) => id != userId,
+        orElse: () => '',
+      );
 
       if (otherUserId.isEmpty) continue;
 
-      final userDoc =
-          await _firestore.collection('users').doc(otherUserId).get();
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(otherUserId)
+          .get();
       final userData = userDoc.data();
 
       final unreadCountMap = data['unreadCount'] as Map<String, dynamic>?;
       final unreadCount = unreadCountMap?[userId] as int? ?? 0;
 
-      chatPreviews.add(ChatPreview(
-        chatId: doc.id,
-        otherUserId: otherUserId,
-        otherUserName: userData?['name'] as String?,
-        otherUserImageUrl: userData?['profileImageUrl'] as String?,
-        lastMessage: data['lastMessage'] as String?,
-        lastMessageTime: data['lastMessageTime'] != null
-            ? (data['lastMessageTime'] as Timestamp).toDate()
-            : null,
-        unreadCount: unreadCount,
-      ));
+      chatPreviews.add(
+        ChatPreview(
+          chatId: doc.id,
+          otherUserId: otherUserId,
+          otherUserName: userData?['name'] as String?,
+          otherUserImageUrl: userData?['profileImageUrl'] as String?,
+          lastMessage: data['lastMessage'] as String?,
+          lastMessageTime: data['lastMessageTime'] != null
+              ? (data['lastMessageTime'] as Timestamp).toDate()
+              : null,
+          unreadCount: unreadCount,
+        ),
+      );
     }
 
     return chatPreviews;

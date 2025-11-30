@@ -1,14 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../exceptions/app_exceptions.dart';
-import '../../services/error_logging_service.dart';
+import '../../services/monitoring/error_logging_service.dart';
 
 /// Base repository class that provides common error handling for Firestore operations.
 /// All repository classes should extend this to avoid code duplication.
 abstract class BaseFirestoreRepository {
   /// Handles Firestore operations with standardized error handling and logging.
-  /// 
+  ///
   /// Type parameter [T] is the return type of the operation.
-  /// 
+  ///
   /// Parameters:
   /// - [operation]: The async operation to execute
   /// - [operationName]: Name of the operation for logging (e.g., 'fetch user profile')
@@ -69,7 +69,7 @@ abstract class BaseFirestoreRepository {
   }
 
   /// Maps Firestore QuerySnapshot to a list of domain models.
-  /// 
+  ///
   /// Parameters:
   /// - [snapshot]: The QuerySnapshot from Firestore
   /// - [fromJson]: Function to convert Map to domain model
@@ -84,7 +84,7 @@ abstract class BaseFirestoreRepository {
 
   /// Maps Firestore DocumentSnapshot to a domain model.
   /// Returns null if document doesn't exist.
-  /// 
+  ///
   /// Parameters:
   /// - [snapshot]: The DocumentSnapshot from Firestore
   /// - [fromJson]: Function to convert Map to domain model

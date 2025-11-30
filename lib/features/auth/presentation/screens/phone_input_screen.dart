@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../../../core/models/country_code.dart';
-import '../../../../services/analytics_events.dart';
+import '../../../../services/analytics/analytics_events.dart';
 import '../providers/auth_provider.dart';
 import 'otp_verification_screen.dart';
 

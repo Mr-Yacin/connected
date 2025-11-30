@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../../../../services/error_logging_service.dart';
+import '../../../../services/monitoring/error_logging_service.dart';
 
 class FirebaseAuthRepository implements AuthRepository {
   final FirebaseAuth _firebaseAuth;

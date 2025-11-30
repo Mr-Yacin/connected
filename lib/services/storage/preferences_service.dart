@@ -1,22 +1,16 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import '../core/exceptions/app_exceptions.dart';
-import '../core/theme/theme_provider.dart';
+import '../../core/exceptions/app_exceptions.dart';
+import '../../core/theme/theme_option.dart';
 
 /// User preferences model
 class UserPreferences {
   final String language;
   final bool isDarkMode;
 
-  UserPreferences({
-    required this.language,
-    required this.isDarkMode,
-  });
+  UserPreferences({required this.language, required this.isDarkMode});
 
   Map<String, dynamic> toJson() {
-    return {
-      'language': language,
-      'isDarkMode': isDarkMode,
-    };
+    return {'language': language, 'isDarkMode': isDarkMode};
   }
 
   factory UserPreferences.fromJson(Map<String, dynamic> json) {
@@ -26,10 +20,7 @@ class UserPreferences {
     );
   }
 
-  UserPreferences copyWith({
-    String? language,
-    bool? isDarkMode,
-  }) {
+  UserPreferences copyWith({String? language, bool? isDarkMode}) {
     return UserPreferences(
       language: language ?? this.language,
       isDarkMode: isDarkMode ?? this.isDarkMode,
@@ -85,10 +76,7 @@ class PreferencesService {
       final language = prefs.getString(_languageKey) ?? 'ar';
       final isDarkMode = prefs.getBool(_darkModeKey) ?? true;
 
-      return UserPreferences(
-        language: language,
-        isDarkMode: isDarkMode,
-      );
+      return UserPreferences(language: language, isDarkMode: isDarkMode);
     } catch (e) {
       throw AppException('فشل جلب الإعدادات: $e');
     }

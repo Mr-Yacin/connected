@@ -22,9 +22,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:social_connect_app/services/analytics_events.dart';
-import 'package:social_connect_app/services/performance_service.dart';
-import 'package:social_connect_app/services/crashlytics_service.dart';
+import 'package:social_connect_app/services/analytics/analytics_events.dart';
+import 'package:social_connect_app/services/monitoring/performance_service.dart';
+import 'package:social_connect_app/services/monitoring/crashlytics_service.dart';
 
 /// Example 1: Track screen views
 class ExampleScreenTracking extends ConsumerStatefulWidget {

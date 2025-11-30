@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import '../exceptions/app_exceptions.dart';
-import '../../services/error_logging_service.dart';
+import '../../services/monitoring/error_logging_service.dart';
 
 /// Centralized error handling utility for the application.
 ///

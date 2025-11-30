@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/utils/snackbar_helper.dart';
-import '../../../../services/analytics_events.dart';
-import '../../../../services/crashlytics_service.dart';
+import '../../../../services/analytics/analytics_events.dart';
+import '../../../../services/monitoring/crashlytics_service.dart';
 import '../providers/story_provider.dart';
 
 /// Screen for creating a new story

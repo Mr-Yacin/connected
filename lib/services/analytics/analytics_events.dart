@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:social_connect_app/services/performance_service.dart';
-import 'package:social_connect_app/services/crashlytics_service.dart';
+import 'package:social_connect_app/services/monitoring/performance_service.dart';
+import 'package:social_connect_app/services/monitoring/crashlytics_service.dart';
 
 /// Centralized analytics events service that combines Performance and Crashlytics
 final analyticsEventsProvider = Provider<AnalyticsEvents>((ref) {

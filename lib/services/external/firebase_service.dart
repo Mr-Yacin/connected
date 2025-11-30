@@ -1,6 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
-import '../firebase_options.dart';
-import 'error_logging_service.dart';
+import '../../firebase_options.dart';
+import '../monitoring/error_logging_service.dart';
 
 class FirebaseService {
   static Future<void> initialize() async {

@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
-import '../../../../services/analytics_events.dart';
-import '../../../../services/crashlytics_service.dart';
+import '../../../../services/analytics/analytics_events.dart';
+import '../../../../services/monitoring/crashlytics_service.dart';
 import '../providers/story_provider.dart';
 
 /// Screen for viewing stories in fullscreen mode

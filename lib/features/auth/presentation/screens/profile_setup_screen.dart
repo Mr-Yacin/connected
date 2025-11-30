@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/models/user_profile.dart';
-import '../../../../services/location_service.dart';
+import '../../../../services/external/location_service.dart';
 import '../../../profile/data/repositories/firestore_profile_repository.dart';
 
 /// Screen for new users to complete their profile after OTP verification

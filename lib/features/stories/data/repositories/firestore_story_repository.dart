@@ -5,7 +5,7 @@ import '../../../../core/models/story.dart';
 import '../../../../core/models/story_reply.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/story_repository.dart';
-import '../../../../services/error_logging_service.dart';
+import '../../../../services/monitoring/error_logging_service.dart';
 
 /// Firestore implementation of StoryRepository
 class FirestoreStoryRepository implements StoryRepository {
@@ -17,9 +17,9 @@ class FirestoreStoryRepository implements StoryRepository {
     FirebaseFirestore? firestore,
     FirebaseStorage? storage,
     Uuid? uuid,
-  })  : _firestore = firestore ?? FirebaseFirestore.instance,
-        _storage = storage ?? FirebaseStorage.instance,
-        _uuid = uuid ?? const Uuid();
+  }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _storage = storage ?? FirebaseStorage.instance,
+       _uuid = uuid ?? const Uuid();
 
   @override
   Future<Story> createStory(Story story) async {
@@ -32,7 +32,7 @@ class FirestoreStoryRepository implements StoryRepository {
           .collection('stories')
           .doc(storyId)
           .set(storyPayload.toJson());
-      
+
       return storyPayload;
     } on FirebaseException catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
@@ -64,14 +64,17 @@ class FirestoreStoryRepository implements StoryRepository {
 
       return _firestore
           .collection('stories')
-          .where('createdAt', isGreaterThan: twentyFourHoursAgo.toIso8601String())
+          .where(
+            'createdAt',
+            isGreaterThan: twentyFourHoursAgo.toIso8601String(),
+          )
           .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs
-            .map((doc) => Story.fromJson(doc.data()))
-            .toList();
-      });
+            return snapshot.docs
+                .map((doc) => Story.fromJson(doc.data()))
+                .toList();
+          });
     } catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
         e,
@@ -96,7 +99,10 @@ class FirestoreStoryRepository implements StoryRepository {
 
       var query = _firestore
           .collection('stories')
-          .where('createdAt', isGreaterThan: twentyFourHoursAgo.toIso8601String())
+          .where(
+            'createdAt',
+            isGreaterThan: twentyFourHoursAgo.toIso8601String(),
+          )
           .orderBy('createdAt', descending: true)
           .limit(limit);
 
@@ -105,9 +111,7 @@ class FirestoreStoryRepository implements StoryRepository {
       }
 
       return query.snapshots().map((snapshot) {
-        return snapshot.docs
-            .map((doc) => Story.fromJson(doc.data()))
-            .toList();
+        return snapshot.docs.map((doc) => Story.fromJson(doc.data())).toList();
       });
     } catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
@@ -136,7 +140,7 @@ class FirestoreStoryRepository implements StoryRepository {
       int deletedCount = 0;
       for (final doc in snapshot.docs) {
         final story = Story.fromJson(doc.data());
-        
+
         // Delete media from storage
         try {
           final ref = _storage.refFromURL(story.mediaUrl);
@@ -144,7 +148,7 @@ class FirestoreStoryRepository implements StoryRepository {
         } catch (e) {
           // Media might already be deleted, continue
         }
-        
+
         // Delete story document
         await doc.reference.delete();
         deletedCount++;
@@ -180,13 +184,13 @@ class FirestoreStoryRepository implements StoryRepository {
       await _firestore.runTransaction((transaction) async {
         final storyRef = _firestore.collection('stories').doc(storyId);
         final storySnapshot = await transaction.get(storyRef);
-        
+
         if (!storySnapshot.exists) {
           return; // Story doesn't exist, skip
         }
-        
+
         final story = Story.fromJson(storySnapshot.data()!);
-        
+
         // Only add view if not already viewed
         if (!story.viewerIds.contains(viewerId)) {
           transaction.update(storyRef, {
@@ -226,14 +230,17 @@ class FirestoreStoryRepository implements StoryRepository {
       return _firestore
           .collection('stories')
           .where('userId', isEqualTo: userId)
-          .where('createdAt', isGreaterThan: twentyFourHoursAgo.toIso8601String())
+          .where(
+            'createdAt',
+            isGreaterThan: twentyFourHoursAgo.toIso8601String(),
+          )
           .orderBy('createdAt', descending: true)
           .snapshots()
           .map((snapshot) {
-        return snapshot.docs
-            .map((doc) => Story.fromJson(doc.data()))
-            .toList();
-      });
+            return snapshot.docs
+                .map((doc) => Story.fromJson(doc.data()))
+                .toList();
+          });
     } catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
         e,
@@ -251,10 +258,13 @@ class FirestoreStoryRepository implements StoryRepository {
   Future<void> deleteStory(String storyId) async {
     try {
       // Get story to find media URL
-      final storyDoc = await _firestore.collection('stories').doc(storyId).get();
+      final storyDoc = await _firestore
+          .collection('stories')
+          .doc(storyId)
+          .get();
       if (storyDoc.exists) {
         final story = Story.fromJson(storyDoc.data()!);
-        
+
         // Delete media from storage
         try {
           final ref = _storage.refFromURL(story.mediaUrl);
@@ -263,7 +273,8 @@ class FirestoreStoryRepository implements StoryRepository {
           // Media might already be deleted, continue with story deletion
           ErrorLoggingService.logStorageError(
             e,
-            context: 'Failed to delete story media (continuing with story deletion)',
+            context:
+                'Failed to delete story media (continuing with story deletion)',
             screen: 'StoryViewScreen',
             operation: 'deleteStory',
             filePath: story.mediaUrl,

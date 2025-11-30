@@ -5,7 +5,7 @@ import '../../data/repositories/firebase_auth_repository.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../profile/domain/repositories/profile_repository.dart';
 import '../../../profile/presentation/providers/profile_provider.dart';
-import '../../../../services/notification_service.dart';
+import '../../../../services/external/notification_service.dart';
 
 // Provider for AuthRepository
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -48,7 +48,9 @@ class AuthState {
 }
 
 // Provider for AuthNotifier
-final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((
+  ref,
+) {
   final authRepository = ref.watch(authRepositoryProvider);
   final profileRepository = ref.watch(profileRepositoryProvider);
   final notificationService = ref.watch(notificationServiceProvider);
@@ -77,10 +79,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         phoneNumber: phoneNumber,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;
     }
   }
@@ -102,7 +101,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (userCredential.user != null) {
         final user = userCredential.user!;
         final exists = await _profileRepository.profileExists(user.uid);
-        
+
         if (!exists) {
           final newProfile = UserProfile(
             id: user.uid,
@@ -112,7 +111,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
           );
           await _profileRepository.createProfile(newProfile);
         }
-        
+
         // ✅ CRITICAL: Save FCM token after successful login
         await _notificationService.refreshAndSaveToken();
       }
@@ -120,10 +119,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: false);
       return userCredential;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;
     }
   }
@@ -134,14 +130,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       // ✅ Delete FCM token before logout (so user won't get notifications)
       await _notificationService.deleteToken();
-      
+
       await _authRepository.signOut();
       state = AuthState(); // Reset state
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;
     }
   }

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../services/preferences_service.dart';
-import '../../../../services/user_data_service.dart';
+import '../../../../services/storage/preferences_service.dart';
+import '../../../../services/external/user_data_service.dart';
 
 /// Provider for PreferencesService
 final preferencesServiceProvider = Provider<PreferencesService>((ref) {
@@ -43,9 +43,11 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   final UserDataService _userDataService;
 
   SettingsNotifier(this._preferencesService, this._userDataService)
-      : super(SettingsState(
+    : super(
+        SettingsState(
           preferences: UserPreferences(language: 'ar', isDarkMode: true),
-        )) {
+        ),
+      ) {
     _loadPreferences();
   }
 
@@ -96,10 +98,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       state = state.copyWith(isLoading: false);
       return data;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'فشل تصدير البيانات: $e',
-      );
+      state = state.copyWith(isLoading: false, error: 'فشل تصدير البيانات: $e');
       rethrow;
     }
   }
@@ -111,10 +110,7 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
       await _userDataService.deleteUserAccount(userId);
       state = state.copyWith(isLoading: false);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: 'فشل حذف الحساب: $e',
-      );
+      state = state.copyWith(isLoading: false, error: 'فشل حذف الحساب: $e');
       rethrow;
     }
   }
@@ -126,9 +122,10 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 }
 
 /// Provider for settings notifier
-final settingsProvider =
-    StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {
-  final preferencesService = ref.watch(preferencesServiceProvider);
-  final userDataService = ref.watch(userDataServiceProvider);
-  return SettingsNotifier(preferencesService, userDataService);
-});
+final settingsProvider = StateNotifierProvider<SettingsNotifier, SettingsState>(
+  (ref) {
+    final preferencesService = ref.watch(preferencesServiceProvider);
+    final userDataService = ref.watch(userDataServiceProvider);
+    return SettingsNotifier(preferencesService, userDataService);
+  },
+);

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../services/analytics_events.dart';
+import '../../../../services/analytics/analytics_events.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
 import '../../../discovery/presentation/screens/shuffle_screen.dart';

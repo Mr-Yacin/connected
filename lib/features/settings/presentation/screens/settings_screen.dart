@@ -7,6 +7,7 @@ import '../../../../core/utils/snackbar_helper.dart';
 import '../providers/settings_provider.dart';
 
 import '../../../../core/theme/theme_provider.dart';
+import '../../../../core/theme/theme_option.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 /// Settings screen for managing user preferences and account
@@ -423,43 +424,6 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
       child: Column(children: children),
-    );
-  }
-
-  Widget _buildSwitchTile({
-    required BuildContext context,
-    required String title,
-    required String subtitle,
-    required bool value,
-    required Function(bool) onChanged,
-    required IconData icon,
-  }) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
-        ),
-        child: Icon(
-          icon,
-          color: Theme.of(context).colorScheme.primary,
-          size: 20,
-        ),
-      ),
-      title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-      subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeColor: Theme.of(context).colorScheme.primary,
-        activeTrackColor: Theme.of(
-          context,
-        ).colorScheme.primary.withValues(alpha: 0.3),
-        inactiveThumbColor: Colors.grey.shade400,
-        inactiveTrackColor: Colors.grey.shade300,
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
     );
   }
 

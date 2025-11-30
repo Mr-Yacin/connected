@@ -8,9 +8,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:social_connect_app/core/theme/app_theme.dart';
 import 'package:social_connect_app/core/theme/theme_provider.dart';
 import 'package:social_connect_app/core/navigation/app_router.dart';
-import 'package:social_connect_app/services/firebase_service.dart';
-import 'package:social_connect_app/services/performance_service.dart';
-import 'package:social_connect_app/services/crashlytics_service.dart';
+import 'package:social_connect_app/services/external/firebase_service.dart';
+import 'package:social_connect_app/services/monitoring/performance_service.dart';
+import 'package:social_connect_app/services/monitoring/crashlytics_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
