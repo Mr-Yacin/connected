@@ -11,6 +11,7 @@ import 'package:social_connect_app/core/navigation/app_router.dart';
 import 'package:social_connect_app/services/external/firebase_service.dart';
 import 'package:social_connect_app/services/monitoring/performance_service.dart';
 import 'package:social_connect_app/services/monitoring/crashlytics_service.dart';
+import 'package:social_connect_app/services/external/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +37,10 @@ void main() async {
   final crashlytics = FirebaseCrashlytics.instance;
   await crashlytics.setCrashlyticsCollectionEnabled(true);
 
+  // Initialize Notification Service
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+
   runApp(
     ProviderScope(
       overrides: [
@@ -43,6 +48,7 @@ void main() async {
         firebasePerformanceProvider.overrideWithValue(performance),
         firebaseAnalyticsProvider.overrideWithValue(analytics),
         firebaseCrashlyticsProvider.overrideWithValue(crashlytics),
+        notificationServiceProvider.overrideWithValue(notificationService),
       ],
       child: const MyApp(),
     ),

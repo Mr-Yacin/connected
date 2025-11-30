@@ -83,6 +83,8 @@ dependencies:
   geolocator: ^11.0.0
   geocoding: ^3.0.0
   permission_handler: ^11.3.1
+  flutter_image_compress: ^2.4.0
+  video_compress: ^3.1.4
 
 dev_dependencies:
   flutter_test:

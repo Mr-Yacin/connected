@@ -3,6 +3,7 @@
 
 import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 /// Centralized error logging service for Firebase operations
 /// Provides detailed error tracking with categorization and colored console output
@@ -145,62 +146,95 @@ class ErrorLoggingService {
     String? operation,
     Map<String, String?>? additionalInfo,
   }) {
-    if (!kDebugMode) return;
+    // In debug mode, print to console
+    if (kDebugMode) {
+      final timestamp = DateTime.now().toString().split('.')[0];
+      final errorMessage = _extractErrorMessage(error);
+      final errorCode = _extractErrorCode(error);
 
-    final timestamp = DateTime.now().toString().split('.')[0];
-    final errorMessage = _extractErrorMessage(error);
-    final errorCode = _extractErrorCode(error);
+      // Print header
+      print('$_red$_bold🔴 [FIREBASE ERROR] $timestamp$_reset');
+      print('$_red━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$_reset');
 
-    // Print header
-    print('$_red$_bold🔴 [FIREBASE ERROR] $timestamp$_reset');
-    print('$_red━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$_reset');
+      // Print category
+      print('${_yellow}Category: $_bold$category$_reset');
 
-    // Print category
-    print('${_yellow}Category: $_bold$category$_reset');
+      // Print screen if provided
+      if (screen != null) {
+        print('${_blue}Screen: $_bold$screen$_reset');
+      }
 
-    // Print screen if provided
-    if (screen != null) {
-      print('${_blue}Screen: $_bold$screen$_reset');
-    }
+      // Print operation if provided
+      if (operation != null) {
+        print('${_blue}Operation: $_bold$operation$_reset');
+      }
 
-    // Print operation if provided
-    if (operation != null) {
-      print('${_blue}Operation: $_bold$operation$_reset');
-    }
+      // Print context if provided
+      if (context != null) {
+        print('${_blue}Context: $context$_reset');
+      }
 
-    // Print context if provided
-    if (context != null) {
-      print('${_blue}Context: $context$_reset');
-    }
+      // Print error code if available
+      if (errorCode != null) {
+        print('${_red}Error Code: $_bold$errorCode$_reset');
+      }
 
-    // Print error code if available
-    if (errorCode != null) {
-      print('${_red}Error Code: $_bold$errorCode$_reset');
-    }
+      // Print error message
+      print('${_red}Error: $errorMessage$_reset');
 
-    // Print error message
-    print('${_red}Error: $errorMessage$_reset');
+      // Print additional info
+      if (additionalInfo != null && additionalInfo.isNotEmpty) {
+        additionalInfo.forEach((key, value) {
+          if (value != null) {
+            print('$_blue$key: $value$_reset');
+          }
+        });
+      }
 
-    // Print additional info
-    if (additionalInfo != null && additionalInfo.isNotEmpty) {
-      additionalInfo.forEach((key, value) {
-        if (value != null) {
-          print('$_blue$key: $value$_reset');
+      // Print stack trace if available
+      if (stackTrace != null) {
+        print('${_yellow}Stack Trace:$_reset');
+        final stackLines = stackTrace.toString().split('\n').take(5);
+        for (final line in stackLines) {
+          print('  $line');
         }
-      });
-    }
+      }
 
-    // Print stack trace if available
-    if (stackTrace != null) {
-      print('${_yellow}Stack Trace:$_reset');
-      final stackLines = stackTrace.toString().split('\n').take(5);
-      for (final line in stackLines) {
-        print('  $line');
+      // Print footer
+      print('$_red━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$_reset\n');
+    } else {
+      // In production, report to Crashlytics
+      try {
+        final crashlytics = FirebaseCrashlytics.instance;
+
+        final keys = <String, dynamic>{'category': category};
+
+        if (screen != null) keys['screen'] = screen;
+        if (operation != null) keys['operation'] = operation;
+        if (context != null) keys['context'] = context;
+        if (additionalInfo != null) {
+          additionalInfo.forEach((k, v) {
+            if (v != null) keys[k] = v;
+          });
+        }
+
+        // Set custom keys
+        keys.forEach((key, value) {
+          crashlytics.setCustomKey(key, value);
+        });
+
+        // Record error
+        crashlytics.recordError(
+          error,
+          stackTrace,
+          reason: context ?? 'Error in $category',
+          fatal: false,
+        );
+      } catch (e) {
+        // Fallback if Crashlytics fails
+        print('Failed to report to Crashlytics: $e');
       }
     }
-
-    // Print footer
-    print('$_red━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━$_reset\n');
   }
 
   /// Extract error message from various error types
