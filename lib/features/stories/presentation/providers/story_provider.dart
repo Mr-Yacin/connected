@@ -7,6 +7,8 @@ import '../../data/repositories/firestore_story_repository.dart';
 import '../../data/services/story_expiration_service.dart';
 import '../../domain/repositories/story_repository.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../../services/media/image_compression_service.dart';
+import '../../../../services/media/video_compression_service.dart';
 
 /// Provider for StoryRepository
 final storyRepositoryProvider = Provider<StoryRepository>((ref) {
@@ -17,15 +19,15 @@ final storyRepositoryProvider = Provider<StoryRepository>((ref) {
 final storyExpirationServiceProvider = Provider<StoryExpirationService>((ref) {
   final repository = ref.watch(storyRepositoryProvider);
   final service = StoryExpirationService(repository);
-  
+
   // Start the service when created
   service.start();
-  
+
   // Cleanup when disposed
   ref.onDispose(() {
     service.dispose();
   });
-  
+
   return service;
 });
 
@@ -33,7 +35,7 @@ final storyExpirationServiceProvider = Provider<StoryExpirationService>((ref) {
 final activeStoriesProvider = StreamProvider<List<Story>>((ref) {
   // ✅ Watch auth state to ensure user is authenticated
   final authState = ref.watch(currentUserProvider);
-  
+
   return authState.when(
     data: (user) {
       if (user == null) {
@@ -49,10 +51,13 @@ final activeStoriesProvider = StreamProvider<List<Story>>((ref) {
 });
 
 /// Provider for user-specific stories stream with auth state validation
-final userStoriesProvider = StreamProvider.family<List<Story>, String>((ref, userId) {
+final userStoriesProvider = StreamProvider.family<List<Story>, String>((
+  ref,
+  userId,
+) {
   // ✅ Watch auth state to ensure user is authenticated
   final authState = ref.watch(currentUserProvider);
-  
+
   return authState.when(
     data: (user) {
       if (user == null) {
@@ -73,11 +78,7 @@ class StoryCreationState {
   final String? error;
   final Story? createdStory;
 
-  StoryCreationState({
-    this.isLoading = false,
-    this.error,
-    this.createdStory,
-  });
+  StoryCreationState({this.isLoading = false, this.error, this.createdStory});
 
   StoryCreationState copyWith({
     bool? isLoading,
@@ -96,9 +97,15 @@ class StoryCreationState {
 class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
   final StoryRepository _repository;
   final FirebaseStorage _storage;
+  final ImageCompressionService _imageCompression;
+  final VideoCompressionService _videoCompression;
 
-  StoryCreationNotifier(this._repository, this._storage)
-      : super(StoryCreationState());
+  StoryCreationNotifier(
+    this._repository,
+    this._storage,
+    this._imageCompression,
+    this._videoCompression,
+  ) : super(StoryCreationState());
 
   /// Create a new story with media file
   Future<void> createStory({
@@ -124,10 +131,7 @@ class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
 
       final createdStory = await _repository.createStory(story);
 
-      state = state.copyWith(
-        isLoading: false,
-        createdStory: createdStory,
-      );
+      state = state.copyWith(isLoading: false, createdStory: createdStory);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -139,12 +143,21 @@ class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
   /// Upload media file to Firebase Storage
   Future<String> _uploadMedia(String userId, File file, StoryType type) async {
     try {
+      // Compress media before upload
+      File fileToUpload = file;
+
+      if (type == StoryType.image) {
+        fileToUpload = await _imageCompression.compressImage(file);
+      } else if (type == StoryType.video) {
+        fileToUpload = await _videoCompression.compressVideo(file);
+      }
+
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final extension = type == StoryType.image ? 'jpg' : 'mp4';
       final path = 'stories/$userId/$timestamp.$extension';
 
       final ref = _storage.ref().child(path);
-      final uploadTask = await ref.putFile(file);
+      final uploadTask = await ref.putFile(fileToUpload);
       final downloadUrl = await uploadTask.ref.getDownloadURL();
 
       return downloadUrl;
@@ -168,9 +181,7 @@ class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
     try {
       await _repository.deleteStory(storyId);
     } catch (e) {
-      state = state.copyWith(
-        error: 'فشل في حذف القصة: ${e.toString()}',
-      );
+      state = state.copyWith(error: 'فشل في حذف القصة: ${e.toString()}');
     }
   }
 
@@ -183,7 +194,14 @@ class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
 /// Provider for story creation notifier
 final storyCreationProvider =
     StateNotifierProvider<StoryCreationNotifier, StoryCreationState>((ref) {
-  final repository = ref.watch(storyRepositoryProvider);
-  final storage = FirebaseStorage.instance;
-  return StoryCreationNotifier(repository, storage);
-});
+      final repository = ref.watch(storyRepositoryProvider);
+      final storage = FirebaseStorage.instance;
+      final imageCompression = ref.watch(imageCompressionServiceProvider);
+      final videoCompression = ref.watch(videoCompressionServiceProvider);
+      return StoryCreationNotifier(
+        repository,
+        storage,
+        imageCompression,
+        videoCompression,
+      );
+    });
