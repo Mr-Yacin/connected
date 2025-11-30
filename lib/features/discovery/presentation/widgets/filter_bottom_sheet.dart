@@ -265,7 +265,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               ),
             ),
           ),
-          SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
+          SizedBox(
+            height: MediaQuery.of(context).viewInsets.bottom +
+                MediaQuery.of(context).padding.bottom,
+          ),
         ],
       ),
     );

@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:video_player/video_player.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../../../../services/analytics_events.dart';
 import '../../../../services/crashlytics_service.dart';
 import '../providers/story_provider.dart';
@@ -130,7 +131,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
       _cameras = await availableCameras();
 
       if (_cameras == null || _cameras!.isEmpty) {
-        _showError('No camera available');
+        _showError('الكاميرا غير متاحة');
         return;
       }
 
@@ -232,7 +233,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
           );
     } catch (e) {
       setState(() => _isProcessing = false);
-      _showError('Failed to capture photo');
+      _showError('فشل في التقاط الصورة');
     }
   }
 
@@ -295,7 +296,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
         _isRecording = false;
         _isProcessing = false;
       });
-      _showError('Failed to stop recording');
+      _showError('فشل في إيقاف التسجيل');
     }
   }
 
@@ -321,7 +322,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
             );
       }
     } catch (e) {
-      _showError('Failed to select media');
+      _showError('فشل في اختيار الوسائط');
     }
   }
 
@@ -348,16 +349,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
 
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Story published successfully'),
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: Colors.green.shade900,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
+          SnackbarHelper.showSuccess(context, 'Story published successfully');
         }
       } else if (state.error != null) {
         setState(() => _isProcessing = false);
@@ -370,22 +362,13 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
             stackTrace,
             reason: 'Failed to create story',
           );
-      _showError('Failed to create story');
+      _showError('فشل في إنشاء القصة');
     }
   }
 
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.red.shade900,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
+      SnackbarHelper.showError(context, message);
     }
   }
 
@@ -466,7 +449,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
             ),
             const SizedBox(height: 24),
             const Text(
-              'Initializing Camera...',
+              'جاري تهيئة الكاميرا...',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
@@ -677,7 +660,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                     Icon(Icons.fiber_manual_record, color: Colors.white, size: 16),
                     SizedBox(width: 8),
                     Text(
-                      'Recording...',
+                      'جاري التسجيل...',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -714,7 +697,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                       ),
                     ),
                     child: const Text(
-                      'Tap for photo • Hold for video',
+                      'اضغط للصورة • اضغط مع الاستمرار للفيديو',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12,
@@ -910,7 +893,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                                 CircularProgressIndicator(color: Colors.white),
                                 SizedBox(height: 16),
                                 Text(
-                                  'Loading video...',
+                                  'جاري تحميل الفيديو...',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 16,
@@ -1046,7 +1029,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                 Expanded(
                   child: _buildFloatingActionButton(
                     icon: Icons.close_rounded,
-                    label: 'Discard',
+                    label: 'تجاهل',
                     gradient: const LinearGradient(
                       colors: [Color(0xFF6B7280), Color(0xFF4B5563)],
                     ),
@@ -1061,7 +1044,7 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
                 Expanded(
                   child: _buildFloatingActionButton(
                     icon: Icons.check_rounded,
-                    label: state.isLoading ? 'Publishing...' : 'Publish',
+                    label: state.isLoading ? 'جاري النشر...' : 'نشر',
                     gradient: AppColors.primaryGradient,
                     onPressed: state.isLoading ? () {} : _createStory,
                     isLoading: state.isLoading,

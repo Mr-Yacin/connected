@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../profile/data/repositories/firestore_profile_repository.dart';
 import '../providers/moderation_provider.dart';
@@ -129,9 +130,7 @@ class _BlockedUserTile extends ConsumerWidget {
                 if (context.mounted) {
                   // Refresh the list
                   ref.invalidate(blockedUsersProvider(userId));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تم إلغاء الحظر')),
-                  );
+                  SnackbarHelper.showSuccess(context, 'تم إلغاء الحظر');
                 }
               }
             },

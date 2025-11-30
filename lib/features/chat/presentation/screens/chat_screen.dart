@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../../../../services/analytics_events.dart';
 import '../../../../services/crashlytics_service.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
@@ -173,22 +174,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
 
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle_rounded, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('تم حظر المستخدم بنجاح'),
-                ],
-              ),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
+          SnackbarHelper.showSuccess(context, 'تم حظر المستخدم بنجاح');
           Navigator.of(context).pop();
         }
       } catch (e, stackTrace) {
@@ -204,12 +190,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         );
         
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('فشل في حظر المستخدم'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          SnackbarHelper.showError(context, 'فشل في حظر المستخدم');
         }
       }
     }

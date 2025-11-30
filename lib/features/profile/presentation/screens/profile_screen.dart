@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/models/enums.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../../../../services/analytics_events.dart';
 import '../../../../services/crashlytics_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -245,12 +246,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             );
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('فشل في حظر المستخدم'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          SnackbarHelper.showError(context, 'فشل في حظر المستخدم');
         }
       }
     }
@@ -283,30 +279,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     try {
       await Clipboard.setData(ClipboardData(text: link));
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('تم نسخ الرابط'),
-              ],
-            ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
+        SnackbarHelper.showSuccess(context, 'تم نسخ الرابط');
       }
       debugPrint("DEBUG: Link copied to clipboard: $link");
     } catch (e) {
       debugPrint("ERROR: Failed to copy link: $e");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('فشل في نسخ الرابط: $e')));
+        SnackbarHelper.showError(context, 'فشل في نسخ الرابط: $e');
       }
     }
   }
@@ -321,9 +300,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     } catch (e) {
       debugPrint("ERROR: Failed to share link: $e");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('فشل في مشاركة الرابط: $e')));
+        SnackbarHelper.showError(context, 'فشل في مشاركة الرابط: $e');
       }
     }
   }
@@ -341,16 +318,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       debugPrint("DEBUG: Anonymous link generated: $link");
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم توليد الرابط المجهول')),
-        );
+        SnackbarHelper.showSuccess(context, 'تم توليد الرابط المجهول');
       }
     } catch (e) {
       debugPrint("ERROR: Failed to generate anonymous link: $e");
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('فشل في توليد الرابط: $e')));
+        SnackbarHelper.showError(context, 'فشل في توليد الرابط: $e');
       }
     }
   }
@@ -724,9 +697,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('فشل في المتابعة: $e')),
-                    );
+                    SnackbarHelper.showError(context, 'فشل في المتابعة: $e');
                   }
                 }
               },

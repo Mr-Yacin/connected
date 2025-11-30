@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/models/enums.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../../../../services/analytics_events.dart';
 import '../../../../services/crashlytics_service.dart';
 import '../providers/story_provider.dart';
@@ -123,9 +124,7 @@ class _StoryCreationScreenState extends ConsumerState<StoryCreationScreen> {
         
         if (mounted) {
           Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('تم نشر القصة بنجاح')),
-          );
+          SnackbarHelper.showSuccess(context, 'تم نشر القصة بنجاح');
         }
       } else if (state.error != null) {
         _showError(state.error!);
@@ -147,12 +146,7 @@ class _StoryCreationScreenState extends ConsumerState<StoryCreationScreen> {
 
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: Colors.red,
-        ),
-      );
+      SnackbarHelper.showError(context, message);
     }
   }
 

@@ -209,6 +209,22 @@ class AppTheme {
       iconColor: AppColors.textPrimary,
       tileColor: AppColors.lightSurface,
     ),
+
+    // Snack Bar Theme
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: AppColors.darkSurface,
+      contentTextStyle: const TextStyle(
+        color: Colors.white,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      behavior: SnackBarBehavior.floating,
+      elevation: 6,
+      actionTextColor: AppColors.accent,
+    ),
   );
 
   // Dark Theme - نبض (Nabd) - Desert Sunset Theme
@@ -415,6 +431,22 @@ class AppTheme {
       unselectedLabelColor: AppColors.textSecondaryDark,
       indicatorColor: AppColors.primary,
       indicatorSize: TabBarIndicatorSize.label,
+    ),
+
+    // Snack Bar Theme
+    snackBarTheme: SnackBarThemeData(
+      backgroundColor: AppColors.darkCard,
+      contentTextStyle: const TextStyle(
+        color: AppColors.textPrimaryDark,
+        fontSize: 14,
+        fontWeight: FontWeight.w500,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      behavior: SnackBarBehavior.floating,
+      elevation: 6,
+      actionTextColor: AppColors.accent,
     ),
   );
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../../../../services/analytics_events.dart';
 import '../../../../services/crashlytics_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -77,12 +78,12 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
         }
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(isLiked ? 'تم الإعجاب!' : 'تم إلغاء الإعجاب'),
-              backgroundColor: isLiked ? Colors.green : Colors.orange,
-            ),
-          );
+          final message = isLiked ? 'تم الإعجاب!' : 'تم إلغاء الإعجاب';
+          if (isLiked) {
+            SnackbarHelper.showSuccess(context, message);
+          } else {
+            SnackbarHelper.showInfo(context, message);
+          }
         }
 
         // Auto-shuffle to next user only if liked
@@ -102,9 +103,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
         );
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('فشل في الإعجاب: $e')),
-          );
+          SnackbarHelper.showError(context, 'فشل في الإعجاب: $e');
         }
       }
     }
@@ -159,9 +158,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
         );
         
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('فشل في المتابعة: $e')),
-          );
+          SnackbarHelper.showError(context, 'فشل في المتابعة: $e');
         }
       }
     }

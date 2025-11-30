@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../providers/auth_provider.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
@@ -118,12 +119,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       
       if (mounted) {
         _startTimer();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إرسال رمز التحقق مرة أخرى'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        SnackbarHelper.showSuccess(context, 'تم إرسال رمز التحقق مرة أخرى');
       }
     } on RateLimitException catch (e) {
       if (mounted) {

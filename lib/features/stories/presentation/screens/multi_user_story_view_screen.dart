@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/models/story_reply.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../providers/story_provider.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
@@ -383,23 +384,14 @@ class _MultiUserStoryViewScreenState
           .blockUser(widget.currentUserId, userId);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم حظر المستخدم بنجاح'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        SnackbarHelper.showSuccess(context, 'تم حظر المستخدم بنجاح');
+        Navigator.of(context).pop();
         // Close the story view as we blocked the user
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('فشل في حظر المستخدم: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        SnackbarHelper.showError(context, 'فشل في حظر المستخدم: $e');
       }
     }
   }
@@ -417,9 +409,7 @@ class _MultiUserStoryViewScreenState
       ref.invalidate(activeStoriesProvider);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('فشل في الإعجاب: $e')));
+        SnackbarHelper.showError(context, 'فشل في الإعجاب: $e');
       }
     }
   }
@@ -449,20 +439,17 @@ class _MultiUserStoryViewScreenState
       _messageFocusNode.unfocus();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('تم إرسال الرسالة!'),
-            duration: Duration(seconds: 1),
-          ),
+        SnackbarHelper.showSuccess(
+          context,
+          'تم إرسال الرسالة!',
+          duration: const Duration(seconds: 1),
         );
       }
 
       _resumeStory();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('فشل في إرسال الرسالة: $e')));
+        SnackbarHelper.showError(context, 'فشل في إرسال الرسالة: $e');
       }
     }
   }

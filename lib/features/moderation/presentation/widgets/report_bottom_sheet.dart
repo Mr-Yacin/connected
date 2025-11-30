@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/models/report.dart';
+import '../../../../core/utils/snackbar_helper.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../providers/moderation_provider.dart';
 
 /// Bottom sheet for reporting content
@@ -44,18 +46,14 @@ class _ReportBottomSheetState extends ConsumerState<ReportBottomSheet> {
 
   void _submitReport() async {
     if (_selectedReason == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('الرجاء اختيار سبب البلاغ')),
-      );
+      SnackbarHelper.showWarning(context, 'الرجاء اختيار سبب البلاغ');
       return;
     }
 
     String reason = _selectedReason!;
     if (_selectedReason == 'أخرى') {
       if (_customReasonController.text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('الرجاء كتابة سبب البلاغ')),
-        );
+        SnackbarHelper.showWarning(context, 'الرجاء كتابة سبب البلاغ');
         return;
       }
       reason = _customReasonController.text.trim();
@@ -75,19 +73,19 @@ class _ReportBottomSheetState extends ConsumerState<ReportBottomSheet> {
 
     if (mounted) {
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم إرسال البلاغ بنجاح')),
-      );
+      SnackbarHelper.showSuccess(context, 'تم إرسال البلاغ بنجاح');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -97,12 +95,11 @@ class _ReportBottomSheetState extends ConsumerState<ReportBottomSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'الإبلاغ عن محتوى',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
               IconButton(
                 icon: const Icon(Icons.close),
@@ -146,12 +143,23 @@ class _ReportBottomSheetState extends ConsumerState<ReportBottomSheet> {
             onPressed: _submitReport,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 15),
-              backgroundColor: Colors.red,
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: const Text(
               'إرسال البلاغ',
-              style: TextStyle(fontSize: 16, color: Colors.white),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+          ),
+          SizedBox(
+            height: MediaQuery.of(context).viewInsets.bottom +
+                MediaQuery.of(context).padding.bottom,
           ),
         ],
       ),

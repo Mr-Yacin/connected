@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../providers/settings_provider.dart';
 
 import '../../../../core/theme/theme_provider.dart';
@@ -684,12 +685,7 @@ class SettingsScreen extends ConsumerWidget {
               } catch (e) {
                 if (context.mounted) {
                   Navigator.of(context).pop(); // Close loading dialog
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('فشل حذف الحساب: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  SnackbarHelper.showError(context, 'فشل حذف الحساب: $e');
                 }
               }
             },

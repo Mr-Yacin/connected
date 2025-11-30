@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/snackbar_helper.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/current_user_profile_provider.dart';
 
@@ -120,16 +121,12 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
           _selectedImage = null;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم رفع الصورة بنجاح')),
-        );
+        SnackbarHelper.showSuccess(context, 'تم رفع الصورة بنجاح');
       }
     } catch (e) {
       debugPrint('ERROR: Failed to upload image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في رفع الصورة: $e')),
-        );
+        SnackbarHelper.showError(context, 'فشل في رفع الصورة: $e');
       }
     }
   }
@@ -161,17 +158,13 @@ class _ProfileEditScreenState extends ConsumerState<ProfileEditScreen> {
       debugPrint('DEBUG: Profile saved successfully');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم حفظ البيانات بنجاح')),
-        );
+        SnackbarHelper.showSuccess(context, 'تم حفظ البيانات بنجاح');
         context.pop(); // Go back to profile screen
       }
     } catch (e) {
       debugPrint('ERROR: Failed to save profile: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('فشل في حفظ البيانات: $e')),
-        );
+        SnackbarHelper.showError(context, 'فشل في حفظ البيانات: $e');
       }
     }
   }
