@@ -7,6 +7,8 @@ import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/models/story_reply.dart';
 import '../providers/story_provider.dart';
+import '../../../moderation/presentation/providers/moderation_provider.dart';
+import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
 
 /// Screen for viewing stories with automatic progression between users
 class MultiUserStoryViewScreen extends ConsumerStatefulWidget {
@@ -357,23 +359,49 @@ class _MultiUserStoryViewScreenState
   }
 
   void _reportStory(Story story) {
-    // TODO: Implement report functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('تم الإبلاغ عن القصة'),
-        duration: Duration(seconds: 2),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: ReportBottomSheet(
+          reporterId: widget.currentUserId,
+          reportedUserId: story.userId,
+          reportedContentId: story.id,
+          reportType: ReportType.story,
+        ),
       ),
     );
   }
 
-  void _blockUser(String userId) {
-    // TODO: Implement block functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('تم حظر المستخدم ${userId.substring(0, 8)}'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  Future<void> _blockUser(String userId) async {
+    try {
+      await ref
+          .read(moderationProvider.notifier)
+          .blockUser(widget.currentUserId, userId);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('تم حظر المستخدم بنجاح'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Close the story view as we blocked the user
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('فشل في حظر المستخدم: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _toggleLike(Story story) async {

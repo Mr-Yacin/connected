@@ -356,7 +356,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   String _buildFullAnonymousUrl(String linkHash) {
-    // TODO: Replace with your actual domain
+    // Domain for anonymous links
     const domain = 'https://connected.app';
     return '$domain/profile/link/$linkHash';
   }
