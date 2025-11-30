@@ -11,7 +11,8 @@ class OtpVerificationScreen extends ConsumerStatefulWidget {
   const OtpVerificationScreen({super.key});
 
   @override
-  ConsumerState<OtpVerificationScreen> createState() => _OtpVerificationScreenState();
+  ConsumerState<OtpVerificationScreen> createState() =>
+      _OtpVerificationScreenState();
 }
 
 class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
@@ -36,7 +37,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   void _startTimer() {
     _remainingSeconds = 60;
     _canResend = false;
-    
+
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_remainingSeconds > 0) {
@@ -77,10 +78,10 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
             duration: Duration(seconds: 1),
           ),
         );
-        
+
         // Small delay to ensure auth state is updated
         await Future.delayed(const Duration(milliseconds: 500));
-        
+
         if (mounted) {
           // Navigate to home - router will handle redirection
           context.go('/');
@@ -103,7 +104,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
 
   Future<void> _resendOtp() async {
     final authState = ref.read(authNotifierProvider);
-    
+
     if (authState.phoneNumber == null) {
       _showErrorDialog('رقم الهاتف غير موجود');
       return;
@@ -115,8 +116,10 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     }
 
     try {
-      await ref.read(authNotifierProvider.notifier).sendOtp(authState.phoneNumber!);
-      
+      await ref
+          .read(authNotifierProvider.notifier)
+          .sendOtp(authState.phoneNumber!);
+
       if (mounted) {
         _startTimer();
         SnackbarHelper.showSuccess(context, 'تم إرسال رمز التحقق مرة أخرى');
@@ -159,45 +162,44 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('التحقق من الرمز'),
-          centerTitle: true,
-        ),
+        appBar: AppBar(title: const Text('التحقق من الرمز'), centerTitle: true),
         body: SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 40),
-                
+
                 // Icon
                 Icon(
                   Icons.message,
                   size: 80,
                   color: Theme.of(context).colorScheme.primary,
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Title
                 Text(
                   'أدخل رمز التحقق',
                   style: Theme.of(context).textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
-                
+
                 const SizedBox(height: 8),
-                
+
                 // Subtitle
                 Text(
                   'تم إرسال رمز التحقق إلى رقم هاتفك',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
                   ),
                   textAlign: TextAlign.center,
                 ),
-                
+
                 if (authState.phoneNumber != null) ...[
                   const SizedBox(height: 4),
                   Text(
@@ -210,18 +212,18 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                     textDirection: TextDirection.ltr,
                   ),
                 ],
-                
+
                 const SizedBox(height: 40),
-                
+
                 // OTP input
                 TextField(
                   controller: _otpController,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
                   textDirection: TextDirection.ltr,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    letterSpacing: 16,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.headlineMedium?.copyWith(letterSpacing: 16),
                   inputFormatters: [
                     FilteringTextInputFormatter.digitsOnly,
                     LengthLimitingTextInputFormatter(6),
@@ -230,7 +232,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                     hintText: '000000',
                     hintStyle: TextStyle(
                       letterSpacing: 16,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.3),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.3),
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -242,9 +246,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                     }
                   },
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Timer and resend
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -253,13 +257,17 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                       Icon(
                         Icons.timer,
                         size: 16,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'إعادة الإرسال بعد $_remainingSeconds ثانية',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.6),
                         ),
                       ),
                     ] else ...[
@@ -271,9 +279,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                     ],
                   ],
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // Verify button
                 FilledButton(
                   onPressed: authState.isLoading ? null : _verifyOtp,
@@ -292,13 +300,8 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text(
-                          'تحقق',
-                          style: TextStyle(fontSize: 16),
-                        ),
+                      : const Text('تحقق', style: TextStyle(fontSize: 16)),
                 ),
-                
-                const Spacer(),
               ],
             ),
           ),
@@ -307,5 +310,3 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     );
   }
 }
-
-
