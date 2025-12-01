@@ -264,7 +264,7 @@ For issues and questions:
 
 ## 🗺️ Roadmap
 
-- [ ] Push notifications
+- [x] ~~Push notifications~~ ✅ Implemented
 - [ ] Group chat support
 - [ ] Video calls
 - [ ] Advanced profile verification

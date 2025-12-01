@@ -9,10 +9,14 @@ docs/
 ├── branding/           # Brand guidelines, assets, and design documentation
 ├── changelog/          # Version history and release notes
 ├── deployment/         # Deployment instructions and checklists
-├── fixes/              # Historical fix documentation and implementation plans
 ├── guides/             # Setup, configuration, and how-to guides
 ├── project-management/ # Project planning, organization, and roadmaps
-└── references/         # API docs, architecture, and technical references
+├── references/         # API docs, architecture, and technical references
+├── social-connect-app/ # Project specifications and requirements
+└── archive/            # Historical documentation and completed milestones
+    ├── deployment/     # Completed deployment milestones
+    ├── changelog/      # Historical week-based milestones
+    └── fixes/          # Completed bug fix documentation
 ```
 
 ## 🗂️ Documentation Categories
@@ -28,31 +32,17 @@ Brand identity, design guidelines, and asset references:
 - **ICON_DESIGN_GUIDE.md** - App icon design guidelines
 
 ### 📝 Changelog
-Version history and milestone completion:
+Version history and release tracking:
 - **CHANGELOG.md** - Complete version history
-- **WEEK3_COMPLETE.md** - Week 3 milestone completion
 
 ### 🚀 Deployment
 Production deployment and release documentation:
 - **DEPLOYMENT_INSTRUCTIONS.md** - Step-by-step deployment guide
 - **DEPLOYMENT_READY.md** - Pre-deployment checklist
-- **DEPLOYMENT_SUCCESS.md** - Deployment success summary
-- **DEPLOYMENT_GUIDE_WEEK3.md** - Week 3 specific deployment guide
-- **WEEK3_IMPLEMENTATION.md** - Week 3 implementation details
-- **QUICK_START_WEEK3.md** - Week 3 quick start guide
-- **IMPLEMENTATION_COMPLETE.md** - Complete implementation summary
-- **IMPLEMENTATION_SUMMARY.md** - Technical implementation details
-
-### 🔧 Fixes
-Historical documentation of bug fixes and improvements:
-- **WEEK1_FIXES_COMPLETE.md** - Week 1 critical fixes summary
-- **Week-1-Critical-Fixes-Implementation-Plan.md** - Detailed implementation plan
-- **FIX2_*** - Fix 2 implementation details
-- **FIX3_*** - Fix 3 implementation details
-- **FIX4_*** - Fix 4 pagination implementation
 
 ### 📖 Guides
 Setup instructions, troubleshooting guides, and best practices:
+- **PUSH_NOTIFICATIONS_GUIDE.md** - 🆕 Complete push notifications implementation
 - **FIREBASE_SETUP.md** - Complete Firebase configuration guide
 - **SETUP_COMPLETE.md** - Initial setup checklist
 - **PHONE_AUTH_TROUBLESHOOTING.md** - Phone authentication debugging
@@ -61,6 +51,9 @@ Setup instructions, troubleshooting guides, and best practices:
 - **COMPOSITE_INDEXES_GUIDE.md** - Firestore indexes configuration
 - **FCM_COMPLETE_GUIDE.md** - Firebase Cloud Messaging complete guide
 - **FCM_QUICK_ANSWER.md** - FCM quick reference
+- **CAMERA_SETUP_GUIDE.md** - Camera implementation guide
+- **PROJECT_STRUCTURE_GUIDE.md** - Project structure overview
+- **SCRIPTS_AND_TOOLS_GUIDE.md** - Development tools guide
 
 ### 📊 Project Management
 Project planning, organization, and roadmaps:
@@ -77,8 +70,20 @@ Technical documentation and API references:
 - **SECURITY_RULES_OPTIMIZATION.md** - Security rules and best practices
 - **INDEX_VERIFICATION.md** - Firestore index verification guide
 - **PAGINATION_FEATURES.md** - Pagination implementation details
+- **MONITORING_QUICK_REFERENCE.md** - Monitoring quick reference
 - **Analysis-o- Your-Social-Connect-App.md** - Comprehensive app analysis
 - **QUICK_REFERENCE.md** - Quick technical reference
+
+### 🔐 Security
+Security documentation and incident reports:
+- **SECURITY_INCIDENT_2025_11_30.md** - 🆕 Firebase API key exposure incident (resolved)
+
+### 📦 Archive
+Historical documentation and completed milestones:
+- **archive/deployment/** - Completed deployment milestones and week-specific guides
+- **archive/changelog/** - Historical week-based milestones
+- **archive/fixes/** - Completed bug fix documentation
+- **archive/** - Implementation summaries and refactoring logs
 
 ## 🔍 Quick Links
 
@@ -87,6 +92,12 @@ Technical documentation and API references:
 2. Follow [SETUP_COMPLETE.md](guides/SETUP_COMPLETE.md)
 3. Review [PROJECT_STRUCTURE.md](references/PROJECT_STRUCTURE.md)
 4. Check [PROJECT_SUMMARY.md](project-management/PROJECT_SUMMARY.md)
+
+### For Feature Implementation
+1. **Push Notifications** → [PUSH_NOTIFICATIONS_GUIDE.md](guides/PUSH_NOTIFICATIONS_GUIDE.md) 🆕
+2. **Chat Optimization** → [CHAT_OPTIMIZATION_GUIDE.md](guides/CHAT_OPTIMIZATION_GUIDE.md)
+3. **Camera Setup** → [CAMERA_SETUP_GUIDE.md](guides/CAMERA_SETUP_GUIDE.md)
+4. **Indexes** → [COMPOSITE_INDEXES_GUIDE.md](guides/COMPOSITE_INDEXES_GUIDE.md)
 
 ### For Branding & Design
 1. Review [BRAND_GUIDE.md](branding/BRAND_GUIDE.md)
@@ -104,6 +115,11 @@ Technical documentation and API references:
 2. Performance issues → [CHAT_OPTIMIZATION_GUIDE.md](guides/CHAT_OPTIMIZATION_GUIDE.md)
 3. Database issues → [COMPOSITE_INDEXES_GUIDE.md](guides/COMPOSITE_INDEXES_GUIDE.md)
 4. FCM issues → [FCM_COMPLETE_GUIDE.md](guides/FCM_COMPLETE_GUIDE.md)
+5. Push notifications → [PUSH_NOTIFICATIONS_GUIDE.md](guides/PUSH_NOTIFICATIONS_GUIDE.md) 🆕
+
+### For Security
+1. Security incident reference → [SECURITY_INCIDENT_2025_11_30.md](SECURITY_INCIDENT_2025_11_30.md)
+2. Security rules → [SECURITY_RULES_OPTIMIZATION.md](references/SECURITY_RULES_OPTIMIZATION.md)
 
 ## 📝 Contributing to Documentation
 

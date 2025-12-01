@@ -20,19 +20,19 @@ class AnalyticsEvents {
   });
 
   // ============ Authentication Events ============
-  
+
   Future<void> trackSignUp({
     required String method,
     required String userId,
   }) async {
     await performanceService.trackEvent(
       'sign_up',
-      parameters: {
-        'method': method,
-      },
+      parameters: {'method': method},
     );
     await crashlyticsService.setUserIdentifier(userId);
-    await crashlyticsService.log('User signed up: $userId with method: $method');
+    await crashlyticsService.log(
+      'User signed up: $userId with method: $method',
+    );
   }
 
   Future<void> trackLogin({
@@ -41,9 +41,7 @@ class AnalyticsEvents {
   }) async {
     await performanceService.trackEvent(
       'login',
-      parameters: {
-        'method': method,
-      },
+      parameters: {'method': method},
     );
     await crashlyticsService.setUserIdentifier(userId);
     await crashlyticsService.log('User logged in: $userId');
@@ -55,7 +53,7 @@ class AnalyticsEvents {
   }
 
   // ============ Post Events ============
-  
+
   Future<void> trackPostCreated({
     required String postId,
     required String contentType,
@@ -80,10 +78,7 @@ class AnalyticsEvents {
   }) async {
     await performanceService.trackEvent(
       'post_liked',
-      parameters: {
-        'post_id': postId,
-        'author_id': authorId,
-      },
+      parameters: {'post_id': postId, 'author_id': authorId},
     );
   }
 
@@ -93,10 +88,7 @@ class AnalyticsEvents {
   }) async {
     await performanceService.trackEvent(
       'post_shared',
-      parameters: {
-        'post_id': postId,
-        'share_method': shareMethod,
-      },
+      parameters: {'post_id': postId, 'share_method': shareMethod},
     );
   }
 
@@ -106,25 +98,19 @@ class AnalyticsEvents {
   }) async {
     await performanceService.trackEvent(
       'comment_added',
-      parameters: {
-        'post_id': postId,
-        'comment_id': commentId,
-      },
+      parameters: {'post_id': postId, 'comment_id': commentId},
     );
   }
 
   // ============ Story Events ============
-  
+
   Future<void> trackStoryViewed({
     required String storyId,
     required String authorId,
   }) async {
     await performanceService.trackEvent(
       'story_viewed',
-      parameters: {
-        'story_id': storyId,
-        'author_id': authorId,
-      },
+      parameters: {'story_id': storyId, 'author_id': authorId},
     );
   }
 
@@ -140,7 +126,7 @@ class AnalyticsEvents {
   }
 
   // ============ Chat Events ============
-  
+
   Future<void> trackMessageSent({
     required String chatId,
     required String messageType,
@@ -157,10 +143,7 @@ class AnalyticsEvents {
   }) async {
     await performanceService.trackEvent(
       'chat_opened',
-      parameters: {
-        'chat_id': chatId,
-        'recipient_id': recipientId,
-      },
+      parameters: {'chat_id': chatId, 'recipient_id': recipientId},
     );
     await crashlyticsService.log('Chat opened: $chatId');
   }
@@ -171,45 +154,32 @@ class AnalyticsEvents {
   }) async {
     await performanceService.trackEvent(
       'voice_message_recorded',
-      parameters: {
-        'chat_id': chatId,
-        'duration_seconds': durationSeconds,
-      },
+      parameters: {'chat_id': chatId, 'duration_seconds': durationSeconds},
     );
   }
 
   // ============ Social Events ============
-  
-  Future<void> trackUserFollowed({
-    required String followedUserId,
-  }) async {
+
+  Future<void> trackUserFollowed({required String followedUserId}) async {
     await performanceService.trackEvent(
       'user_followed',
-      parameters: {
-        'followed_user_id': followedUserId,
-      },
+      parameters: {'followed_user_id': followedUserId},
     );
   }
 
-  Future<void> trackUserUnfollowed({
-    required String unfollowedUserId,
-  }) async {
+  Future<void> trackUserUnfollowed({required String unfollowedUserId}) async {
     await performanceService.trackEvent(
       'user_unfollowed',
-      parameters: {
-        'unfollowed_user_id': unfollowedUserId,
-      },
+      parameters: {'unfollowed_user_id': unfollowedUserId},
     );
   }
 
-  Future<void> trackProfileViewed({
-    required String userId,
-  }) async {
+  Future<void> trackProfileViewed({required String userId}) async {
     await performanceService.trackProfileView(userId);
   }
 
   // ============ Search Events ============
-  
+
   Future<void> trackSearch({
     required String searchTerm,
     required int resultCount,
@@ -223,7 +193,7 @@ class AnalyticsEvents {
   }
 
   // ============ Media Events ============
-  
+
   Future<void> trackImageUpload({
     required String location,
     required int fileSizeBytes,
@@ -236,19 +206,15 @@ class AnalyticsEvents {
     );
   }
 
-  Future<void> trackImagePickerOpened({
-    required String source,
-  }) async {
+  Future<void> trackImagePickerOpened({required String source}) async {
     await performanceService.trackEvent(
       'image_picker_opened',
-      parameters: {
-        'source': source,
-      },
+      parameters: {'source': source},
     );
   }
 
   // ============ Navigation Events ============
-  
+
   Future<void> trackScreenView(String screenName) async {
     await performanceService.trackScreenView(screenName);
     await crashlyticsService.log('Screen viewed: $screenName');
@@ -260,52 +226,37 @@ class AnalyticsEvents {
   }) async {
     await performanceService.trackEvent(
       'tab_changed',
-      parameters: {
-        'from_tab': fromTab,
-        'to_tab': toTab,
-      },
+      parameters: {'from_tab': fromTab, 'to_tab': toTab},
     );
   }
 
   // ============ Settings Events ============
-  
-  Future<void> trackThemeChanged({
-    required String theme,
-  }) async {
+
+  Future<void> trackThemeChanged({required String theme}) async {
     await performanceService.trackEvent(
       'theme_changed',
-      parameters: {
-        'theme': theme,
-      },
+      parameters: {'theme': theme},
     );
     await crashlyticsService.setCustomKey('theme_preference', theme);
   }
 
-  Future<void> trackNotificationToggled({
-    required bool enabled,
-  }) async {
+  Future<void> trackNotificationToggled({required bool enabled}) async {
     await performanceService.trackEvent(
       'notification_toggled',
-      parameters: {
-        'enabled': enabled,
-      },
+      parameters: {'enabled': enabled},
     );
   }
 
-  Future<void> trackLanguageChanged({
-    required String language,
-  }) async {
+  Future<void> trackLanguageChanged({required String language}) async {
     await performanceService.trackEvent(
       'language_changed',
-      parameters: {
-        'language': language,
-      },
+      parameters: {'language': language},
     );
     await crashlyticsService.setCustomKey('language_preference', language);
   }
 
   // ============ Error Events ============
-  
+
   Future<void> trackError({
     required String errorType,
     required String errorMessage,
@@ -318,26 +269,19 @@ class AnalyticsEvents {
       reason: errorType,
       information: ['location: $location', 'error_type: $errorType'],
     );
-    
+
     await performanceService.trackEvent(
       'error_occurred',
-      parameters: {
-        'error_type': errorType,
-        'location': location,
-      },
+      parameters: {'error_type': errorType, 'location': location},
     );
   }
 
   // ============ Performance Events ============
-  
-  Future<void> trackAppStartup({
-    required Duration startupDuration,
-  }) async {
+
+  Future<void> trackAppStartup({required Duration startupDuration}) async {
     await performanceService.trackEvent(
       'app_startup',
-      parameters: {
-        'startup_duration_ms': startupDuration.inMilliseconds,
-      },
+      parameters: {'startup_duration_ms': startupDuration.inMilliseconds},
     );
   }
 
@@ -353,6 +297,42 @@ class AnalyticsEvents {
         'duration_ms': duration.inMilliseconds,
         'status_code': statusCode,
       },
+    );
+  }
+
+  // ============ Compression Events ============
+
+  Future<void> trackMediaCompression({
+    required String mediaType,
+    required int originalSizeBytes,
+    required int compressedSizeBytes,
+    required Duration compressionDuration,
+  }) async {
+    final compressionRatio =
+        ((originalSizeBytes - compressedSizeBytes) / originalSizeBytes * 100)
+            .toStringAsFixed(1);
+
+    await performanceService.trackEvent(
+      'media_compressed',
+      parameters: {
+        'media_type': mediaType,
+        'original_size_kb': (originalSizeBytes / 1024).round(),
+        'compressed_size_kb': (compressedSizeBytes / 1024).round(),
+        'compression_ratio': compressionRatio,
+        'duration_ms': compressionDuration.inMilliseconds,
+        'savings_kb': ((originalSizeBytes - compressedSizeBytes) / 1024)
+            .round(),
+      },
+    );
+  }
+
+  Future<void> trackCompressionFailed({
+    required String mediaType,
+    required String reason,
+  }) async {
+    await performanceService.trackEvent(
+      'compression_failed',
+      parameters: {'media_type': mediaType, 'reason': reason},
     );
   }
 }
