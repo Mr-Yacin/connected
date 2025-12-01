@@ -27,4 +27,15 @@ abstract class AuthRepository {
 
   /// Record OTP send attempt
   void recordOtpSent(String phoneNumber);
+
+  /// Sign in anonymously as a guest user
+  /// Returns UserCredential with anonymous user
+  /// Throws [AuthException] if sign-in fails
+  Future<UserCredential> signInAnonymously();
+
+  /// Link phone number to an existing anonymous account
+  /// Converts guest account to permanent account
+  /// Returns UserCredential with linked phone number
+  /// Throws [AuthException] if linking fails (e.g., phone number already in use)
+  Future<UserCredential> linkPhoneNumber(String verificationId, String otp);
 }

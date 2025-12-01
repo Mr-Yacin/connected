@@ -265,4 +265,109 @@ class FirebaseAuthRepository implements AuthRepository {
         return 'حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى';
     }
   }
+
+  @override
+  Future<UserCredential> signInAnonymously() async {
+    try {
+      final userCredential = await _firebaseAuth.signInAnonymously();
+      return userCredential;
+    } on FirebaseAuthException catch (e, stackTrace) {
+      ErrorLoggingService.logAuthError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Anonymous sign-in failed',
+        screen: 'PhoneInputScreen',
+        operation: 'signInAnonymously',
+      );
+      throw AuthException(_getArabicErrorMessage(e.code), code: e.code);
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logAuthError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error during anonymous sign-in',
+        screen: 'PhoneInputScreen',
+        operation: 'signInAnonymously',
+      );
+      throw AuthException('حدث خطأ أثناء تسجيل الدخول كزائر');
+    }
+  }
+
+  @override
+  Future<UserCredential> linkPhoneNumber(
+    String verificationId,
+    String otp,
+  ) async {
+    try {
+      final currentUser = _firebaseAuth.currentUser;
+
+      if (currentUser == null) {
+        throw AuthException('لا يوجد مستخدم مسجل الدخول');
+      }
+
+      if (!currentUser.isAnonymous) {
+        throw AuthException('المستخدم الحالي ليس زائراً');
+      }
+
+      // Validate OTP
+      if (otp.isEmpty) {
+        throw ValidationException('رمز التحقق مطلوب');
+      }
+
+      if (otp.length != 6) {
+        throw ValidationException('رمز التحقق يجب أن يكون 6 أرقام');
+      }
+
+      // Create phone credential
+      final credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: otp,
+      );
+
+      // Link the credential to the anonymous account
+      final userCredential = await currentUser.linkWithCredential(credential);
+
+      // Clear failed attempts on successful linking
+      if (userCredential.user != null) {
+        final phoneNumber = userCredential.user!.phoneNumber;
+        if (phoneNumber != null) {
+          _failedAttempts.remove(phoneNumber);
+        }
+      }
+
+      return userCredential;
+    } on FirebaseAuthException catch (e, stackTrace) {
+      ErrorLoggingService.logAuthError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Phone number linking failed',
+        screen: 'OtpVerificationScreen',
+        operation: 'linkPhoneNumber',
+      );
+
+      // Handle specific linking errors
+      if (e.code == 'credential-already-in-use') {
+        throw AuthException(
+          'رقم الهاتف مستخدم بالفعل من قبل حساب آخر',
+          code: e.code,
+        );
+      } else if (e.code == 'provider-already-linked') {
+        throw AuthException('الحساب مرتبط بالفعل برقم هاتف', code: e.code);
+      }
+
+      throw AuthException(_getArabicErrorMessage(e.code), code: e.code);
+    } on ValidationException {
+      rethrow;
+    } on AuthException {
+      rethrow;
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logAuthError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Unexpected error during phone linking',
+        screen: 'OtpVerificationScreen',
+        operation: 'linkPhoneNumber',
+      );
+      throw AuthException('حدث خطأ أثناء ربط رقم الهاتف');
+    }
+  }
 }

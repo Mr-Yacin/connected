@@ -12,6 +12,7 @@ class UserProfile {
   final String? bio;
   final bool isActive;
   final bool isImageBlurred;
+  final bool isGuest;
   final String? anonymousLink;
   final int followerCount;
   final int followingCount;
@@ -30,6 +31,7 @@ class UserProfile {
     this.bio,
     this.isActive = true,
     this.isImageBlurred = false,
+    this.isGuest = false,
     this.anonymousLink,
     this.followerCount = 0,
     this.followingCount = 0,
@@ -51,6 +53,7 @@ class UserProfile {
       'bio': bio,
       'isActive': isActive,
       'isImageBlurred': isImageBlurred,
+      'isGuest': isGuest,
       'anonymousLink': anonymousLink,
       'followerCount': followerCount,
       'followingCount': followingCount,
@@ -108,8 +111,11 @@ class UserProfile {
       profileImageUrl: json['profileImageUrl'] as String?,
       gender: json['gender'] as String?,
       bio: json['bio'] as String?,
-      isActive: json.containsKey('isActive') ? parseBool(json['isActive']) : true,
+      isActive: json.containsKey('isActive')
+          ? parseBool(json['isActive'])
+          : true,
       isImageBlurred: parseBool(json['isImageBlurred']),
+      isGuest: json.containsKey('isGuest') ? parseBool(json['isGuest']) : false,
       anonymousLink: json['anonymousLink'] as String?,
       followerCount: parseInt(json['followerCount']) ?? 0,
       followingCount: parseInt(json['followingCount']) ?? 0,
@@ -131,6 +137,7 @@ class UserProfile {
     String? bio,
     bool? isActive,
     bool? isImageBlurred,
+    bool? isGuest,
     String? anonymousLink,
     int? followerCount,
     int? followingCount,
@@ -149,6 +156,7 @@ class UserProfile {
       bio: bio ?? this.bio,
       isActive: isActive ?? this.isActive,
       isImageBlurred: isImageBlurred ?? this.isImageBlurred,
+      isGuest: isGuest ?? this.isGuest,
       anonymousLink: anonymousLink ?? this.anonymousLink,
       followerCount: followerCount ?? this.followerCount,
       followingCount: followingCount ?? this.followingCount,
@@ -173,6 +181,7 @@ class UserProfile {
         other.bio == bio &&
         other.isActive == isActive &&
         other.isImageBlurred == isImageBlurred &&
+        other.isGuest == isGuest &&
         other.anonymousLink == anonymousLink &&
         other.followerCount == followerCount &&
         other.followingCount == followingCount &&
@@ -194,6 +203,7 @@ class UserProfile {
       bio,
       isActive,
       isImageBlurred,
+      isGuest,
       anonymousLink,
       followerCount,
       followingCount,

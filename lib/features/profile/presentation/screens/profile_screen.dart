@@ -13,7 +13,7 @@ import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
 import '../../../discovery/presentation/providers/follow_provider.dart';
-
+import '../../../auth/presentation/widgets/guest_conversion_dialog.dart';
 import '../providers/profile_provider.dart';
 import '../providers/current_user_profile_provider.dart';
 
@@ -39,6 +39,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   bool _profileFetchInProgress = false;
   bool _profileLoadScheduled = false;
   String? _lastViewedUserId; // Track the last viewed user to detect changes
+
+  void _showGuestConversionDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const GuestConversionDialog(),
+    );
+  }
 
   @override
   void initState() {
@@ -427,6 +434,87 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 16),
+
+                      // Guest Conversion Card (only for own profile if guest)
+                      if (_isViewingOwnProfile && profile.isGuest)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: InkWell(
+                            onTap: _showGuestConversionDialog,
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF6A11CB),
+                                    Color(0xFF2575FC),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(
+                                      0xFF2575FC,
+                                    ).withValues(alpha: 0.3),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.save_as,
+                                      color: Colors.white,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  const Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'حفظ حسابك',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'بياناتك مؤقتة. اضغط هنا لحفظها.',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: Colors.white70,
+                                    size: 16,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
 
                       // Bio Card (if available)
                       if (profile.bio != null && profile.bio!.isNotEmpty)

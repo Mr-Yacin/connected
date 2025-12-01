@@ -24,12 +24,14 @@ class AuthState {
   final String? error;
   final String? verificationId;
   final String? phoneNumber;
+  final bool isGuest;
 
   AuthState({
     this.isLoading = false,
     this.error,
     this.verificationId,
     this.phoneNumber,
+    this.isGuest = false,
   });
 
   AuthState copyWith({
@@ -37,12 +39,14 @@ class AuthState {
     String? error,
     String? verificationId,
     String? phoneNumber,
+    bool? isGuest,
   }) {
     return AuthState(
       isLoading: isLoading ?? this.isLoading,
       error: error,
       verificationId: verificationId ?? this.verificationId,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      isGuest: isGuest ?? this.isGuest,
     );
   }
 }
@@ -146,5 +150,69 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   void clearError() {
     state = state.copyWith(error: null);
+  }
+
+  Future<void> signInAsGuest() async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      await _authRepository.signInAnonymously();
+      state = state.copyWith(isLoading: false, isGuest: true);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
+  }
+
+  Future<UserCredential> convertToPermamentAccount(String otp) async {
+    if (state.verificationId == null) {
+      throw Exception('معرف التحقق غير موجود');
+    }
+
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      // Link phone number to anonymous account
+      final userCredential = await _authRepository.linkPhoneNumber(
+        state.verificationId!,
+        otp,
+      );
+
+      // Create/update user profile
+      if (userCredential.user != null) {
+        final user = userCredential.user!;
+
+        // Check if profile exists (it should for guest users)
+        final exists = await _profileRepository.profileExists(user.uid);
+
+        if (exists) {
+          // Update existing guest profile with phone number
+          final profile = await _profileRepository.getProfile(user.uid);
+          final updatedProfile = profile.copyWith(
+            phoneNumber: user.phoneNumber ?? state.phoneNumber ?? '',
+            isGuest: false,
+          );
+          await _profileRepository.updateProfile(updatedProfile);
+        } else {
+          // This shouldn't happen, but create profile if it doesn't exist
+          final newProfile = UserProfile(
+            id: user.uid,
+            phoneNumber: user.phoneNumber ?? state.phoneNumber ?? '',
+            createdAt: DateTime.now(),
+            lastActive: DateTime.now(),
+          );
+          await _profileRepository.createProfile(newProfile);
+        }
+
+        // ✅ CRITICAL: Save FCM token after successful account conversion
+        await _notificationService.refreshAndSaveToken();
+      }
+
+      state = state.copyWith(isLoading: false, isGuest: false);
+      return userCredential;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
+    }
   }
 }

@@ -8,7 +8,9 @@ import '../../../../core/utils/snackbar_helper.dart';
 import '../providers/auth_provider.dart';
 
 class OtpVerificationScreen extends ConsumerStatefulWidget {
-  const OtpVerificationScreen({super.key});
+  final bool isConvertingAccount;
+
+  const OtpVerificationScreen({super.key, this.isConvertingAccount = false});
 
   @override
   ConsumerState<OtpVerificationScreen> createState() =>
@@ -67,7 +69,13 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     }
 
     try {
-      await ref.read(authNotifierProvider.notifier).verifyOtp(otp);
+      if (widget.isConvertingAccount) {
+        await ref
+            .read(authNotifierProvider.notifier)
+            .convertToPermamentAccount(otp);
+      } else {
+        await ref.read(authNotifierProvider.notifier).verifyOtp(otp);
+      }
 
       if (mounted) {
         // Show success message

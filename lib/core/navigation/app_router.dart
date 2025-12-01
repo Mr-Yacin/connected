@@ -40,6 +40,7 @@ class AppRouter {
       ),
 
       // Auth guard - redirect to login if not authenticated
+      // Guest users (anonymous auth) are allowed to access the app
       // Check profile completion after authentication
       redirect: (context, state) async {
         final user = FirebaseAuth.instance.currentUser;
@@ -93,7 +94,11 @@ class AppRouter {
         ),
         GoRoute(
           path: '/auth/profile-setup',
-          builder: (context, state) => const ProfileSetupScreen(),
+          builder: (context, state) {
+            final user = FirebaseAuth.instance.currentUser;
+            final isGuest = user?.isAnonymous ?? false;
+            return ProfileSetupScreen(isGuest: isGuest);
+          },
         ),
 
         // Main app routes

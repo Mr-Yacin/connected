@@ -7,7 +7,9 @@ import '../../../profile/data/repositories/firestore_profile_repository.dart';
 
 /// Screen for new users to complete their profile after OTP verification
 class ProfileSetupScreen extends StatefulWidget {
-  const ProfileSetupScreen({super.key});
+  final bool isGuest;
+
+  const ProfileSetupScreen({super.key, this.isGuest = false});
 
   @override
   State<ProfileSetupScreen> createState() => _ProfileSetupScreenState();
@@ -25,11 +27,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   bool _isLoadingLocation = false;
   bool _isSubmitting = false;
 
-  final List<String> _genderOptions = [
-    'ذكر',
-    'أنثى',
-    'أفضل عدم الإفصاح',
-  ];
+  final List<String> _genderOptions = ['ذكر', 'أنثى', 'أفضل عدم الإفصاح'];
 
   @override
   void initState() {
@@ -109,6 +107,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         lastActive: now,
         isActive: true,
         isImageBlurred: false,
+        isGuest: widget.isGuest,
       );
 
       await _profileRepository.createProfile(profile);
@@ -155,174 +154,227 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         automaticallyImplyLeading: false,
       ),
       body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(24),
-            children: [
-              // Welcome message
-              Text(
-                'مرحباً بك! 👋',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+        child: Column(
+          children: [
+            // Guest mode banner - sticky at top, always visible
+            if (widget.isGuest)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                    width: 2,
+                  ),
                 ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'يرجى إكمال معلوماتك الشخصية للمتابعة',
-                style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 32),
-
-              // Name field
-              TextFormField(
-                controller: _nameController,
-                textDirection: TextDirection.rtl,
-                decoration: const InputDecoration(
-                  labelText: 'الاسم *',
-                  hintText: 'أدخل اسمك',
-                  prefixIcon: Icon(Icons.person_outline),
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'الاسم مطلوب';
-                  }
-                  if (value.trim().length < 2) {
-                    return 'الاسم يجب أن يكون حرفين على الأقل';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Age dropdown
-              DropdownButtonFormField<int>(
-                value: _selectedAge,
-                decoration: const InputDecoration(
-                  labelText: 'العمر *',
-                  prefixIcon: Icon(Icons.cake_outlined),
-                  border: OutlineInputBorder(),
-                ),
-                hint: const Text('اختر العمر'),
-                items: List.generate(82, (index) => index + 18)
-                    .map((age) => DropdownMenuItem(
-                          value: age,
-                          child: Text('$age سنة'),
-                        ))
-                    .toList(),
-                onChanged: (value) => setState(() => _selectedAge = value),
-                validator: (value) {
-                  if (value == null) {
-                    return 'العمر مطلوب';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Gender selection
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                decoration: const InputDecoration(
-                  labelText: 'الجنس *',
-                  prefixIcon: Icon(Icons.wc_outlined),
-                  border: OutlineInputBorder(),
-                ),
-                hint: const Text('اختر الجنس'),
-                items: _genderOptions
-                    .map((gender) => DropdownMenuItem(
-                          value: gender,
-                          child: Text(gender),
-                        ))
-                    .toList(),
-                onChanged: (value) => setState(() => _selectedGender = value),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'الجنس مطلوب';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Country selection with loading indicator
-              if (_isLoadingLocation)
-                const Card(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(width: 16),
-                        Expanded(
-                          child: Text('جارٍ تحديد موقعك...'),
-                        ),
-                      ],
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      color: theme.colorScheme.primary,
+                      size: 28,
                     ),
-                  ),
-                )
-              else
-                DropdownButtonFormField<String>(
-                  value: _selectedCountry,
-                  decoration: const InputDecoration(
-                    labelText: 'الدولة *',
-                    prefixIcon: Icon(Icons.public_outlined),
-                    border: OutlineInputBorder(),
-                  ),
-                  hint: const Text('اختر الدولة'),
-                  items: LocationService.getCountryList()
-                      .map((country) => DropdownMenuItem(
-                            value: country,
-                            child: Text(country),
-                          ))
-                      .toList(),
-                  onChanged: (value) => setState(() => _selectedCountry = value),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'الدولة مطلوبة';
-                    }
-                    return null;
-                  },
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'أنت تستخدم وضع الزائر. بياناتك مؤقتة وستُحذف عند تسجيل الخروج. قم بالتسجيل لحفظ بياناتك.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onPrimaryContainer,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              const SizedBox(height: 32),
+              ),
 
-              // Submit button
-              FilledButton(
-                onPressed: _isSubmitting ? null : _submitProfile,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: _isSubmitting
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+            // Scrollable form
+            Expanded(
+              child: Form(
+                key: _formKey,
+                child: ListView(
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    // Welcome message
+                    Text(
+                      'مرحباً بك! 👋',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'يرجى إكمال معلوماتك الشخصية للمتابعة',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Name field
+                    TextFormField(
+                      controller: _nameController,
+                      textDirection: TextDirection.rtl,
+                      decoration: const InputDecoration(
+                        labelText: 'الاسم *',
+                        hintText: 'أدخل اسمك',
+                        prefixIcon: Icon(Icons.person_outline),
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'الاسم مطلوب';
+                        }
+                        if (value.trim().length < 2) {
+                          return 'الاسم يجب أن يكون حرفين على الأقل';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Age dropdown
+                    DropdownButtonFormField<int>(
+                      value: _selectedAge,
+                      decoration: const InputDecoration(
+                        labelText: 'العمر *',
+                        prefixIcon: Icon(Icons.cake_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      hint: const Text('اختر العمر'),
+                      items: List.generate(82, (index) => index + 18)
+                          .map(
+                            (age) => DropdownMenuItem(
+                              value: age,
+                              child: Text('$age سنة'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) =>
+                          setState(() => _selectedAge = value),
+                      validator: (value) {
+                        if (value == null) {
+                          return 'العمر مطلوب';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Gender selection
+                    DropdownButtonFormField<String>(
+                      value: _selectedGender,
+                      decoration: const InputDecoration(
+                        labelText: 'الجنس *',
+                        prefixIcon: Icon(Icons.wc_outlined),
+                        border: OutlineInputBorder(),
+                      ),
+                      hint: const Text('اختر الجنس'),
+                      items: _genderOptions
+                          .map(
+                            (gender) => DropdownMenuItem(
+                              value: gender,
+                              child: Text(gender),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) =>
+                          setState(() => _selectedGender = value),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'الجنس مطلوب';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Country selection with loading indicator
+                    if (_isLoadingLocation)
+                      const Card(
+                        child: Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(width: 16),
+                              Expanded(child: Text('جارٍ تحديد موقعك...')),
+                            ],
+                          ),
                         ),
                       )
-                    : const Text(
-                        'إنشاء الحساب',
-                        style: TextStyle(fontSize: 16),
+                    else
+                      DropdownButtonFormField<String>(
+                        value: _selectedCountry,
+                        decoration: const InputDecoration(
+                          labelText: 'الدولة *',
+                          prefixIcon: Icon(Icons.public_outlined),
+                          border: OutlineInputBorder(),
+                        ),
+                        hint: const Text('اختر الدولة'),
+                        items: LocationService.getCountryList()
+                            .map(
+                              (country) => DropdownMenuItem(
+                                value: country,
+                                child: Text(country),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) =>
+                            setState(() => _selectedCountry = value),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'الدولة مطلوبة';
+                          }
+                          return null;
+                        },
                       ),
-              ),
-              const SizedBox(height: 16),
+                    const SizedBox(height: 32),
 
-              // Info text
-              Text(
-                'جميع الحقول المميزة بـ (*) مطلوبة',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    // Submit button
+                    FilledButton(
+                      onPressed: _isSubmitting ? null : _submitProfile,
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'إنشاء الحساب',
+                              style: TextStyle(fontSize: 16),
+                            ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Info text
+                    Text(
+                      'جميع الحقول المميزة بـ (*) مطلوبة',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                textAlign: TextAlign.center,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
