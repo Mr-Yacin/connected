@@ -1,0 +1,130 @@
+# ===========================
+# Additional Security Patterns - RECOMMENDED
+# ===========================
+# Add these to your .gitignore for enhanced security
+
+# ===========================
+# Crash reports and detailed logs
+# ===========================
+hs_err_pid*.log
+replay_pid*.log
+*.log.*
+crash_*.log
+
+# ===========================
+# Release builds (uncomment if you don't want to track APKs/AABs)
+# ===========================
+# *.apk
+# *.aab
+# *.ipa
+# app-release.apk
+# app-release.aab
+
+# ===========================
+# Signing and Certificates (Android/iOS)
+# ===========================
+*.p12
+*.pem
+*.cert
+*.crt
+*.der
+upload-keystore.jks
+key.jks
+release.keystore
+debug.keystore
+# Keep key.properties already in main .gitignore
+
+# ===========================
+# Database files
+# ===========================
+*.db
+*.sqlite
+*.sqlite3
+*.realm
+
+# ===========================
+# Backup files
+# ===========================
+*.backup
+*_backup
+*~.nib
+backup/
+backups/
+
+# ===========================
+# Deployment and cleanup scripts with sensitive data
+# ===========================
+*-secret*.ps1
+*-prod*.ps1
+deploy-prod.sh
+deploy-prod.ps1
+
+# ===========================
+# Test data with sensitive info
+# ===========================
+test-data-prod/
+*.test.json
+
+# ===========================
+# API testing files
+# ===========================
+*.http
+rest-client.env.json
+
+# ===========================
+# Documentation with sensitive info
+# ===========================
+# Do NOT ignore regular docs, but watch for:
+# docs/internal/
+# docs/credentials/
+
+# ===========================
+# Cloud provider credentials
+# ===========================
+gcp-credentials.json
+aws-credentials.json
+azure-credentials.json
+
+# ===========================
+# Terraform state (if using infrastructure as code)
+# ===========================
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# ===========================
+# Kubernetes secrets
+# ===========================
+*-secret.yaml
+*-secrets.yaml
+
+# ===========================
+# Git cleanup artifacts
+# ===========================
+.git-rewrite/
+*.orig
+
+# ===========================
+# IDE and OS specific (additional)
+# ===========================
+# macOS
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows
+[Tt]humbs.db
+[Tt]humbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+Desktop.ini
+
+# Linux
+.fuse_hidden*
+.directory
+.Trash-*
+
+# ===========================
+# Temporary analysis files
+# ===========================
+analysis_output.txt
