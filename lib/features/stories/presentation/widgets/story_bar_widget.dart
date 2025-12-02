@@ -14,7 +14,7 @@ class StoryBarWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Use followingStoriesProvider to show only stories from followed users
+    // Use followingStoriesProvider to show stories from followed users + own stories
     final storiesAsync = ref.watch(followingStoriesProvider);
 
     return Container(
@@ -31,6 +31,11 @@ class StoryBarWidget extends ConsumerWidget {
             storiesByUser[story.userId]!.add(story);
           }
 
+          // Separate own stories from following stories
+          final ownStories = storiesByUser[currentUserId];
+          final followingStoriesMap = Map<String, List<Story>>.from(storiesByUser);
+          followingStoriesMap.remove(currentUserId);
+
           // Load user profiles for all story creators
           final userIds = storiesByUser.keys.toList();
           if (userIds.isNotEmpty) {
@@ -43,16 +48,37 @@ class StoryBarWidget extends ConsumerWidget {
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            itemCount: storiesByUser.length + 1, // +1 for "Add Story" button
+            itemCount: (ownStories != null ? 1 : 0) + followingStoriesMap.length,
             itemBuilder: (context, index) {
-              // First item is "Add Story" button
-              if (index == 0) {
-                return _AddStoryButton(userId: currentUserId);
+              // First item is own stories if they exist
+              if (ownStories != null && index == 0) {
+                final hasUnviewed = ownStories.any(
+                  (story) => !story.viewerIds.contains(currentUserId),
+                );
+                return _StoryAvatar(
+                  userId: currentUserId,
+                  stories: ownStories,
+                  hasUnviewed: hasUnviewed,
+                  isOwnStory: true,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StoryViewScreen(
+                          stories: ownStories,
+                          initialIndex: 0,
+                          currentUserId: currentUserId,
+                        ),
+                      ),
+                    );
+                  },
+                );
               }
 
-              // Get user stories
-              final userId = storiesByUser.keys.elementAt(index - 1);
-              final userStories = storiesByUser[userId]!;
+              // Following stories
+              final followingIndex = ownStories != null ? index - 1 : index;
+              final userId = followingStoriesMap.keys.elementAt(followingIndex);
+              final userStories = followingStoriesMap[userId]!;
               final hasUnviewed = userStories.any(
                 (story) => !story.viewerIds.contains(currentUserId),
               );
@@ -61,6 +87,7 @@ class StoryBarWidget extends ConsumerWidget {
                 userId: userId,
                 stories: userStories,
                 hasUnviewed: hasUnviewed,
+                isOwnStory: false,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -133,68 +160,19 @@ class StoryBarWidget extends ConsumerWidget {
   }
 }
 
-/// Add Story button widget
-class _AddStoryButton extends StatelessWidget {
-  final String userId;
-
-  const _AddStoryButton({required this.userId});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => StoryCameraScreen(userId: userId),
-          ),
-        );
-      },
-      child: Container(
-        width: 70,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        child: Column(
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [
-                    Theme.of(context).primaryColor,
-                    Theme.of(context).primaryColor.withValues(alpha: 0.7),
-                  ],
-                ),
-              ),
-              child: const Icon(Icons.add, color: Colors.white, size: 30),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'قصتك',
-              style: TextStyle(fontSize: 12),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Story avatar widget
 class _StoryAvatar extends ConsumerWidget {
   final String userId;
   final List<Story> stories;
   final bool hasUnviewed;
+  final bool isOwnStory;
   final VoidCallback onTap;
 
   const _StoryAvatar({
     required this.userId,
     required this.stories,
     required this.hasUnviewed,
+    required this.isOwnStory,
     required this.onTap,
   });
 
@@ -204,8 +182,10 @@ class _StoryAvatar extends ConsumerWidget {
     final storyUsersState = ref.watch(storyUsersProvider);
     final userProfile = storyUsersState.profiles[userId];
 
-    // Determine display name: use profile name or fallback to userId
-    final displayName = userProfile?.name ?? userId.substring(0, 8);
+    // Determine display name: use "قصتي" for own stories, otherwise use profile name
+    final displayName = isOwnStory 
+        ? 'قصتي' 
+        : (userProfile?.name ?? 'مستخدم');
 
     // Get profile image URL, fallback to story media if not available
     final profileImageUrl = userProfile?.profileImageUrl;
@@ -240,18 +220,11 @@ class _StoryAvatar extends ConsumerWidget {
                           image: NetworkImage(profileImageUrl),
                           fit: BoxFit.cover,
                         )
-                      : (stories.isNotEmpty
-                            ? DecorationImage(
-                                image: NetworkImage(stories.first.mediaUrl),
-                                fit: BoxFit.cover,
-                              )
-                            : null),
-                  color: profileImageUrl == null && stories.isEmpty
-                      ? Colors.grey[300]
                       : null,
+                  color: profileImageUrl == null ? Colors.grey[300] : null,
                 ),
-                child: profileImageUrl == null && stories.isEmpty
-                    ? const Icon(Icons.person, color: Colors.grey)
+                child: profileImageUrl == null
+                    ? const Icon(Icons.person, color: Colors.grey, size: 30)
                     : null,
               ),
             ),

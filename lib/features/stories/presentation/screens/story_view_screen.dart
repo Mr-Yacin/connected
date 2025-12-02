@@ -302,8 +302,7 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen>
                   builder: (context, ref, _) {
                     final storyUsersState = ref.watch(storyUsersProvider);
                     final userProfile = storyUsersState.profiles[story.userId];
-                    final displayName =
-                        userProfile?.name ?? story.userId.substring(0, 8);
+                    final displayName = userProfile?.name ?? 'مستخدم';
                     final profileImageUrl = userProfile?.profileImageUrl;
 
                     return Row(
@@ -312,8 +311,11 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen>
                           radius: 20,
                           backgroundImage: profileImageUrl != null
                               ? NetworkImage(profileImageUrl)
-                              : NetworkImage(story.mediaUrl),
+                              : null,
                           backgroundColor: Colors.grey[300],
+                          child: profileImageUrl == null
+                              ? const Icon(Icons.person, color: Colors.grey, size: 20)
+                              : null,
                         ),
                         const SizedBox(width: 8),
                         Expanded(

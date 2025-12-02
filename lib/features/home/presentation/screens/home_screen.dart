@@ -7,6 +7,7 @@ import '../../../discovery/presentation/screens/shuffle_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../stories/presentation/widgets/story_bar_widget.dart';
 import '../../../stories/presentation/widgets/stories_grid_widget.dart';
+import '../../../stories/presentation/screens/story_camera_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 /// Main home screen with bottom navigation
@@ -97,7 +98,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return SafeArea(
       child: Column(
         children: [
-          // App bar
+          // App bar with title and add icon
           Container(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -109,11 +110,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline, size: 28),
+                  onPressed: () {
+                    // Navigate to story camera
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StoryCameraScreen(userId: userId),
+                      ),
+                    );
+                  },
+                  tooltip: 'إضافة قصة',
+                ),
               ],
             ),
           ),
 
-          // Story bar - Horizontal scroll
+          // Story bar - Horizontal scroll (Mine and Following)
           StoryBarWidget(currentUserId: userId),
 
           const Divider(),

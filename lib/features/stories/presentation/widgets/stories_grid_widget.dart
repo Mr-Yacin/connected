@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/discovery_filters.dart';
 import '../providers/story_provider.dart';
+import '../providers/story_user_provider.dart';
 import '../screens/multi_user_story_view_screen.dart';
 import 'story_card_widget.dart';
 
@@ -23,7 +24,8 @@ class StoriesGridWidget extends ConsumerStatefulWidget {
 class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
   final ScrollController _scrollController = ScrollController();
   DiscoveryFilters _filters = DiscoveryFilters();
-  bool _hasLoadedAll = false;
+  List<String> _shuffledUserIds = [];
+  int _scrollToBottomCount = 0;
 
   @override
   void initState() {
@@ -39,18 +41,25 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent * 0.8) {
-      // Load more when 80% scrolled
-      _loadMore();
+        _scrollController.position.maxScrollExtent * 0.95) {
+      // Auto-shuffle when reaching bottom
+      _handleScrollToBottom();
     }
   }
 
-  void _loadMore() {
-    // In a real app, implement pagination here
-    // For now, just check if we've reached the end
-    if (!_hasLoadedAll) {
+  void _handleScrollToBottom() {
+    if (_shuffledUserIds.isEmpty) return;
+    
+    _scrollToBottomCount++;
+    
+    // Shuffle logic based on story count
+    final shouldShuffle = _shuffledUserIds.length < 10 
+        ? true  // Always shuffle if few stories
+        : _scrollToBottomCount % 3 == 0;  // Every 3rd scroll if many stories
+    
+    if (shouldShuffle) {
       setState(() {
-        _hasLoadedAll = true;
+        _shuffledUserIds = List.from(_shuffledUserIds)..shuffle();
       });
     }
   }
@@ -91,8 +100,20 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
 
         // Convert to list of user IDs for grid display
         final List<String> userIds = storiesByUser.keys.toList();
+        
+        // Load user profiles for all story creators
+        if (userIds.isNotEmpty) {
+          Future.microtask(() {
+            ref.read(storyUsersProvider.notifier).loadProfiles(userIds);
+          });
+        }
+        
+        // Initialize or update shuffled list
+        if (_shuffledUserIds.isEmpty || _shuffledUserIds.length != userIds.length) {
+          _shuffledUserIds = List.from(userIds)..shuffle();
+        }
 
-        if (userIds.isEmpty && !_hasLoadedAll) {
+        if (userIds.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -242,76 +263,39 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
                         mainAxisSpacing: 8,
                         childAspectRatio: 0.7,
                       ),
-                      itemCount: userIds.length +
-                          (_hasLoadedAll ? 0 : 1), // +1 for load more/shuffle
+                      itemCount: _shuffledUserIds.length,
                       itemBuilder: (context, index) {
-                        // Show shuffle prompt when reaching the end
-                        if (index == userIds.length) {
-                          return GestureDetector(
-                            onTap: _navigateToShuffle,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Theme.of(context)
-                                    .primaryColor
-                                    .withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Theme.of(context).primaryColor,
-                                  width: 2,
-                                ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.shuffle,
-                                    size: 40,
-                                    color: Theme.of(context).primaryColor,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'المزيد',
-                                    style: TextStyle(
-                                      color: Theme.of(context).primaryColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'الشفل',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Theme.of(context).primaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-
-                        // Get user ID and all their stories
-                        final userId = userIds[index];
+                        // Get user ID and all their stories using shuffled order
+                        final userId = _shuffledUserIds[index];
                         final userStories = storiesByUser[userId]!;
                         
                         // Use the first (most recent) story as preview
                         final previewStory = userStories.first;
+                        
+                        // Get user profile for display name
+                        return Consumer(
+                          builder: (context, ref, _) {
+                            final storyUsersState = ref.watch(storyUsersProvider);
+                            final userProfile = storyUsersState.profiles[userId];
+                            final displayName = userProfile?.name ?? 'مستخدم';
 
-                        return StoryCardWidget(
-                          story: previewStory,
-                          userName: userId.substring(0, 8),
-                          storiesCount: userStories.length, // Pass story count
-                          onTap: () {
-                            // Simple navigation - no animation when opening
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => MultiUserStoryViewScreen(
-                                  userIds: userIds,
-                                  currentUserId: widget.currentUserId,
-                                  initialUserIndex: index,
-                                ),
-                              ),
+                            return StoryCardWidget(
+                              story: previewStory,
+                              userName: displayName,
+                              storiesCount: userStories.length,
+                              onTap: () {
+                                // Simple navigation - no animation when opening
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => MultiUserStoryViewScreen(
+                                      userIds: _shuffledUserIds,
+                                      currentUserId: widget.currentUserId,
+                                      initialUserIndex: index,
+                                    ),
+                                  ),
+                                );
+                              },
                             );
                           },
                         );

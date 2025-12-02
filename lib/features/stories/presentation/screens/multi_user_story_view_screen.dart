@@ -416,7 +416,7 @@ class _MultiUserStoryViewScreenState
         builder: (context, ref, _) {
           final storyUsersState = ref.watch(storyUsersProvider);
           final userProfile = storyUsersState.profiles[story.userId];
-          final displayName = userProfile?.name ?? story.userId.substring(0, 8);
+          final displayName = userProfile?.name ?? 'مستخدم';
           final profileImageUrl = userProfile?.profileImageUrl;
           final isOwnStory = story.userId == widget.currentUserId;
 
@@ -426,8 +426,11 @@ class _MultiUserStoryViewScreenState
                 radius: 18,
                 backgroundImage: profileImageUrl != null
                     ? NetworkImage(profileImageUrl)
-                    : NetworkImage(story.mediaUrl),
+                    : null,
                 backgroundColor: Colors.grey[800],
+                child: profileImageUrl == null
+                    ? const Icon(Icons.person, color: Colors.grey, size: 18)
+                    : null,
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -472,11 +475,86 @@ class _MultiUserStoryViewScreenState
                   icon: const Icon(Icons.more_vert, color: Colors.white),
                   onPressed: () => _showReportOptions(context, story),
                 ),
+              // Filter icon button
+              IconButton(
+                icon: const Icon(Icons.filter_list, color: Colors.white),
+                onPressed: () => _showFilterOptions(context),
+                tooltip: 'تصفية',
+              ),
             ],
           );
         },
       ),
     );
+  }
+
+  void _showFilterOptions(BuildContext context) {
+    _pauseStory();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'خيارات التصفية',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.people),
+                  title: const Text('عرض الكل'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implement filter logic
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.favorite),
+                  title: const Text('الأكثر إعجاباً'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implement filter logic
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.access_time),
+                  title: const Text('الأحدث'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    // TODO: Implement filter logic
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((_) => _resumeStory());
   }
 
   Widget _buildBottomActions(Story story, bool isOwnStory) {
@@ -758,7 +836,9 @@ class _MultiUserStoryViewScreenState
     try {
       await repository.createStoryReply(reply);
 
+      // Refresh both active stories and user-specific stories to update reply count
       ref.invalidate(activeStoriesProvider);
+      ref.invalidate(userStoriesProvider(story.userId));
 
       _messageController.clear();
       _messageFocusNode.unfocus();
@@ -848,7 +928,9 @@ class _MultiUserStoryViewScreenState
               } else {
                 await repository.likeStory(story.id, widget.currentUserId);
               }
+              // Refresh both active stories and user-specific stories
               ref.invalidate(activeStoriesProvider);
+              ref.invalidate(userStoriesProvider(story.userId));
             } catch (e) {
               if (mounted) {
                 SnackbarHelper.showError(
