@@ -39,6 +39,6 @@ abstract class StoryRepository {
   /// Unlike a story
   Future<void> unlikeStory(String storyId, String userId);
 
-  /// Create a story reply
-  Future<void> createStoryReply(StoryReply reply);
+  /// Increment reply count for a story
+  Future<void> incrementReplyCount(String storyId);
 }

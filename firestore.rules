@@ -144,15 +144,19 @@ service cloud.firestore {
                        // Validate required fields
                        request.resource.data.keys().hasAll(['userId', 'mediaUrl', 'createdAt']);
       
-      // OPTIMIZED: Allow updating viewerIds (for view tracking)
+      // OPTIMIZED: Allow updating viewerIds (for view tracking) and likedBy (for likes)
       // Story owner can update their own stories
-      // Any authenticated user can add themselves to viewerIds
+      // Any authenticated user can add themselves to viewerIds or likedBy
       allow update: if request.auth != null && (
                        // Owner can update their story
                        request.auth.uid == resource.data.userId ||
                        // Any user can update only viewerIds to record their view
                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewerIds']) &&
-                        request.auth.uid in request.resource.data.viewerIds)
+                        request.auth.uid in request.resource.data.viewerIds) ||
+                       // Any user can update only likedBy to like/unlike
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likedBy']) ||
+                       // Allow incrementing replyCount when replies are sent as chat messages
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount'])
                      );
       
       // Only the story owner can delete their stories

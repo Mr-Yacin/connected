@@ -31,6 +31,16 @@ abstract class ChatRepository {
     required File audioFile,
   });
   
+  /// Send a story reply message
+  Future<void> sendStoryReplyMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String text,
+    required String storyId,
+    required String storyMediaUrl,
+  });
+  
   /// Mark a message as read
   Future<void> markAsRead(String chatId, String messageId);
   

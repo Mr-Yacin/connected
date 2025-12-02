@@ -8,6 +8,7 @@ import '../../../../services/analytics/analytics_events.dart';
 import '../../../../services/monitoring/crashlytics_service.dart';
 import '../providers/story_provider.dart';
 import '../providers/story_user_provider.dart';
+import '../../utils/story_time_formatter.dart';
 
 /// Screen for viewing stories in fullscreen mode
 class StoryViewScreen extends ConsumerStatefulWidget {
@@ -328,7 +329,7 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen>
                                 ),
                               ),
                               Text(
-                                _getTimeAgo(story.createdAt),
+                                StoryTimeFormatter.getTimeAgo(story.createdAt),
                                 style: const TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,
@@ -395,20 +396,5 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen>
         ),
       ),
     );
-  }
-
-  String _getTimeAgo(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-
-    if (difference.inMinutes < 1) {
-      return 'الآن';
-    } else if (difference.inHours < 1) {
-      return 'منذ ${difference.inMinutes} دقيقة';
-    } else if (difference.inHours < 24) {
-      return 'منذ ${difference.inHours} ساعة';
-    } else {
-      return 'منذ ${difference.inDays} يوم';
-    }
   }
 }

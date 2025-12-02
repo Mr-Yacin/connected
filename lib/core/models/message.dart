@@ -11,6 +11,10 @@ class Message {
   final String content; // text content or audio URL
   final DateTime timestamp;
   final bool isRead;
+  
+  // Story reply metadata (only for storyReply type)
+  final String? storyId;
+  final String? storyMediaUrl;
 
   Message({
     required this.id,
@@ -21,6 +25,8 @@ class Message {
     required this.content,
     required this.timestamp,
     this.isRead = false,
+    this.storyId,
+    this.storyMediaUrl,
   });
 
   /// Convert Message to JSON for Firestore
@@ -34,6 +40,8 @@ class Message {
       'content': content,
       'timestamp': Timestamp.fromDate(timestamp),
       'isRead': isRead,
+      if (storyId != null) 'storyId': storyId,
+      if (storyMediaUrl != null) 'storyMediaUrl': storyMediaUrl,
     };
   }
 
@@ -64,6 +72,8 @@ class Message {
       content: json['content'] as String,
       timestamp: timestamp,
       isRead: json['isRead'] as bool? ?? false,
+      storyId: json['storyId'] as String?,
+      storyMediaUrl: json['storyMediaUrl'] as String?,
     );
   }
 
@@ -77,6 +87,8 @@ class Message {
     String? content,
     DateTime? timestamp,
     bool? isRead,
+    String? storyId,
+    String? storyMediaUrl,
   }) {
     return Message(
       id: id ?? this.id,
@@ -87,6 +99,8 @@ class Message {
       content: content ?? this.content,
       timestamp: timestamp ?? this.timestamp,
       isRead: isRead ?? this.isRead,
+      storyId: storyId ?? this.storyId,
+      storyMediaUrl: storyMediaUrl ?? this.storyMediaUrl,
     );
   }
 
@@ -102,7 +116,9 @@ class Message {
         other.type == type &&
         other.content == content &&
         other.timestamp == timestamp &&
-        other.isRead == isRead;
+        other.isRead == isRead &&
+        other.storyId == storyId &&
+        other.storyMediaUrl == storyMediaUrl;
   }
 
   @override
@@ -116,6 +132,8 @@ class Message {
       content,
       timestamp,
       isRead,
+      storyId,
+      storyMediaUrl,
     );
   }
 }

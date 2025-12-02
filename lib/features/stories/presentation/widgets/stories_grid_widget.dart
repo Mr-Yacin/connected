@@ -246,14 +246,11 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
                 final displayName = userProfile?.name ?? 'مستخدم';
                 final profileImageUrl = userProfile?.profileImageUrl;
 
-                final isOwnStory = userId == widget.currentUserId;
-
                 return StoryCardWidget(
                   story: previewStory,
                   userName: displayName,
                   profileImageUrl: profileImageUrl,
                   storiesCount: userStories.length,
-                  isOwnStory: isOwnStory,
                   onTap: () {
                     // Simple navigation - no animation when opening
                     Navigator.push(
@@ -267,9 +264,6 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
                       ),
                     );
                   },
-                  onMenuTap: isOwnStory ? () {
-                    _showStoryManagementSheet(context, previewStory);
-                  } : null,
                 );
               },
             );

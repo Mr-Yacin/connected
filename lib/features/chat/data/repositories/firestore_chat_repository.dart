@@ -231,6 +231,53 @@ class FirestoreChatRepository extends BaseFirestoreRepository
   }
 
   @override
+  Future<void> sendStoryReplyMessage({
+    required String chatId,
+    required String senderId,
+    required String receiverId,
+    required String text,
+    required String storyId,
+    required String storyMediaUrl,
+  }) async {
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        final messageId = _uuid.v4();
+        final message = Message(
+          id: messageId,
+          chatId: chatId,
+          senderId: senderId,
+          receiverId: receiverId,
+          type: MessageType.storyReply,
+          content: text,
+          timestamp: DateTime.now(),
+          isRead: false,
+          storyId: storyId,
+          storyMediaUrl: storyMediaUrl,
+        );
+
+        await _firestore
+            .collection('chats')
+            .doc(chatId)
+            .collection('messages')
+            .doc(messageId)
+            .set(message.toJson());
+
+        await _updateChatMetadata(
+          chatId: chatId,
+          senderId: senderId,
+          receiverId: receiverId,
+          lastMessage: text,
+          lastMessageTime: message.timestamp,
+        );
+      },
+      operationName: 'sendStoryReplyMessage',
+      screen: 'StoryViewScreen',
+      arabicErrorMessage: 'فشل في إرسال الرد على القصة',
+      collection: 'chats/$chatId/messages',
+    );
+  }
+
+  @override
   Future<void> markAsRead(String chatId, String messageId) async {
     return handleFirestoreVoidOperation(
       operation: () async {

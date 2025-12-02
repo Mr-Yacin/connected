@@ -5,6 +5,7 @@ import '../../../../core/models/story.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/snackbar_helper.dart';
 import '../providers/story_provider.dart';
+import 'common/story_stats_row.dart';
 
 /// Bottom sheet for managing own stories (delete, view insights, share)
 /// 
@@ -65,7 +66,11 @@ class StoryManagementSheet extends ConsumerWidget {
           _ManagementOption(
             icon: Icons.bar_chart_rounded,
             label: 'عرض الإحصائيات',
-            subtitle: '${story.viewerIds.length} مشاهدة • ${story.likedBy.length} إعجاب • ${story.replyCount} رد',
+            subtitle: StoryStatsText.formatStatsText(
+              viewCount: story.viewerIds.length,
+              likeCount: story.likedBy.length,
+              replyCount: story.replyCount,
+            ),
             onTap: () {
               // Don't close bottom sheet, show dialog on top
               _showInsightsDialog(context);

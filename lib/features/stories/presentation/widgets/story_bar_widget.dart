@@ -4,7 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/models/story.dart';
 import '../providers/story_provider.dart';
 import '../providers/story_user_provider.dart';
-import '../screens/story_view_screen.dart';
+import '../screens/multi_user_story_view_screen.dart';
 import '../screens/story_camera_screen.dart';
 
 /// Horizontal bar widget displaying active stories
@@ -56,6 +56,10 @@ class StoryBarWidget extends ConsumerWidget {
                 final hasUnviewed = ownStories.any(
                   (story) => !story.viewerIds.contains(currentUserId),
                 );
+                
+                // Build list of all user IDs in order (own stories first)
+                final allUserIds = [currentUserId, ...followingStoriesMap.keys];
+                
                 return _StoryAvatar(
                   userId: currentUserId,
                   stories: ownStories,
@@ -65,10 +69,10 @@ class StoryBarWidget extends ConsumerWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => StoryViewScreen(
-                          stories: ownStories,
-                          initialIndex: 0,
+                        builder: (context) => MultiUserStoryViewScreen(
+                          userIds: allUserIds,
                           currentUserId: currentUserId,
+                          initialUserIndex: 0,
                         ),
                       ),
                     );
@@ -84,6 +88,16 @@ class StoryBarWidget extends ConsumerWidget {
                 (story) => !story.viewerIds.contains(currentUserId),
               );
 
+              // Build list of all user IDs in order
+              final allUserIds = ownStories != null 
+                  ? [currentUserId, ...followingStoriesMap.keys]
+                  : followingStoriesMap.keys.toList();
+              
+              // Calculate the correct initial index
+              final initialUserIndex = ownStories != null 
+                  ? followingIndex + 1 
+                  : followingIndex;
+
               return _StoryAvatar(
                 userId: userId,
                 stories: userStories,
@@ -93,10 +107,10 @@ class StoryBarWidget extends ConsumerWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => StoryViewScreen(
-                        stories: userStories,
-                        initialIndex: 0,
+                      builder: (context) => MultiUserStoryViewScreen(
+                        userIds: allUserIds,
                         currentUserId: currentUserId,
+                        initialUserIndex: initialUserIndex,
                       ),
                     ),
                   );

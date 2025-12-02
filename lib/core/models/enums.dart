@@ -2,6 +2,7 @@
 enum MessageType {
   text,
   voice,
+  storyReply, // Reply to a story (shows story preview card)
 }
 
 /// Story media types

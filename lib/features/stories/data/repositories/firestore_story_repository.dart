@@ -310,8 +310,17 @@ class FirestoreStoryRepository implements StoryRepository {
   @override
   Future<void> likeStory(String storyId, String userId) async {
     try {
-      await _firestore.collection('stories').doc(storyId).update({
-        'likedBy': FieldValue.arrayUnion([userId]),
+      await _firestore.runTransaction((transaction) async {
+        final storyRef = _firestore.collection('stories').doc(storyId);
+        final storySnapshot = await transaction.get(storyRef);
+
+        if (!storySnapshot.exists) {
+          return; // Story doesn't exist, skip
+        }
+
+        transaction.update(storyRef, {
+          'likedBy': FieldValue.arrayUnion([userId]),
+        });
       });
     } on FirebaseException catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
@@ -330,8 +339,17 @@ class FirestoreStoryRepository implements StoryRepository {
   @override
   Future<void> unlikeStory(String storyId, String userId) async {
     try {
-      await _firestore.collection('stories').doc(storyId).update({
-        'likedBy': FieldValue.arrayRemove([userId]),
+      await _firestore.runTransaction((transaction) async {
+        final storyRef = _firestore.collection('stories').doc(storyId);
+        final storySnapshot = await transaction.get(storyRef);
+
+        if (!storySnapshot.exists) {
+          return; // Story doesn't exist, skip
+        }
+
+        transaction.update(storyRef, {
+          'likedBy': FieldValue.arrayRemove([userId]),
+        });
       });
     } on FirebaseException catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
@@ -348,38 +366,29 @@ class FirestoreStoryRepository implements StoryRepository {
   }
 
   @override
-  Future<void> createStoryReply(StoryReply reply) async {
+  Future<void> incrementReplyCount(String storyId) async {
     try {
-      final replyId = reply.id.isEmpty ? _uuid.v4() : reply.id;
-      final replyPayload = reply.copyWith(id: replyId);
-
-      // Save reply to Firestore
-      await _firestore
-          .collection('story_replies')
-          .doc(replyId)
-          .set(replyPayload.toJson());
-
-      // Increment reply count in story
-      await _firestore.collection('stories').doc(reply.storyId).update({
+      await _firestore.collection('stories').doc(storyId).update({
         'replyCount': FieldValue.increment(1),
       });
     } on FirebaseException catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
         e,
         stackTrace: stackTrace,
-        context: 'Failed to create story reply',
+        context: 'Failed to increment reply count',
         screen: 'StoryViewScreen',
-        operation: 'createStoryReply',
-        collection: 'story_replies',
+        operation: 'incrementReplyCount',
+        collection: 'stories',
+        documentId: storyId,
       );
-      throw AppException('فشل في إرسال الرد: ${e.message}');
+      throw AppException('فشل في تحديث عدد الردود: ${e.message}');
     } catch (e, stackTrace) {
       ErrorLoggingService.logGeneralError(
         e,
         stackTrace: stackTrace,
-        context: 'Unexpected error creating story reply',
+        context: 'Unexpected error incrementing reply count',
         screen: 'StoryViewScreen',
-        operation: 'createStoryReply',
+        operation: 'incrementReplyCount',
       );
       throw AppException('حدث خطأ غير متوقع: $e');
     }
