@@ -7,6 +7,7 @@ import '../../data/repositories/firestore_story_repository.dart';
 import '../../data/services/story_expiration_service.dart';
 import '../../domain/repositories/story_repository.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../discovery/presentation/providers/follow_provider.dart';
 import '../../../../services/media/image_compression_service.dart';
 import '../../../../services/media/video_compression_service.dart';
 
@@ -48,6 +49,61 @@ final activeStoriesProvider = StreamProvider<List<Story>>((ref) {
     loading: () => Stream.value([]),
     error: (_, __) => Stream.value([]),
   );
+});
+
+/// Provider for stories from followed users only (plus own stories)
+/// This filters the active stories to show only those from users you follow
+final followingStoriesProvider = StreamProvider<List<Story>>((ref) async* {
+  // Watch auth state to get current user
+  final authState = ref.watch(currentUserProvider);
+
+  await for (final user in authState.when(
+    data: (user) {
+      if (user == null) {
+        return Stream.value(null);
+      }
+      return Stream.value(user);
+    },
+    loading: () => Stream.value(null),
+    error: (_, __) => Stream.value(null),
+  )) {
+    if (user == null) {
+      yield [];
+      continue;
+    }
+
+    final currentUserId = user.uid;
+
+    // Get all active stories
+    final allStoriesStream = ref.watch(activeStoriesProvider.stream);
+
+    await for (final allStories in allStoriesStream) {
+      try {
+        // Get list of users current user is following
+        final followRepository = ref.read(followRepositoryProvider);
+        final followingUserIds = await followRepository.getFollowing(
+          currentUserId,
+        );
+
+        // Filter stories to include:
+        // 1. Own stories
+        // 2. Stories from followed users
+        final filteredStories = allStories.where((story) {
+          return story.userId == currentUserId || // Own stories
+              followingUserIds.contains(
+                story.userId,
+              ); // Followed users' stories
+        }).toList();
+
+        yield filteredStories;
+      } catch (e) {
+        // On error, just show own stories
+        yield allStories
+            .where((story) => story.userId == currentUserId)
+            .toList();
+      }
+    }
+  }
 });
 
 /// Provider for user-specific stories stream with auth state validation

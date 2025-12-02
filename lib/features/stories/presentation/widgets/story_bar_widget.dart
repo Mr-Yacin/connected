@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/story.dart';
 import '../providers/story_provider.dart';
+import '../providers/story_user_provider.dart';
 import '../screens/story_view_screen.dart';
 import '../screens/story_camera_screen.dart';
 
@@ -9,14 +10,12 @@ import '../screens/story_camera_screen.dart';
 class StoryBarWidget extends ConsumerWidget {
   final String currentUserId;
 
-  const StoryBarWidget({
-    super.key,
-    required this.currentUserId,
-  });
+  const StoryBarWidget({super.key, required this.currentUserId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final storiesAsync = ref.watch(activeStoriesProvider);
+    // Use followingStoriesProvider to show only stories from followed users
+    final storiesAsync = ref.watch(followingStoriesProvider);
 
     return Container(
       height: 100,
@@ -30,6 +29,15 @@ class StoryBarWidget extends ConsumerWidget {
               storiesByUser[story.userId] = [];
             }
             storiesByUser[story.userId]!.add(story);
+          }
+
+          // Load user profiles for all story creators
+          final userIds = storiesByUser.keys.toList();
+          if (userIds.isNotEmpty) {
+            // Trigger profile loading
+            Future.microtask(() {
+              ref.read(storyUsersProvider.notifier).loadProfiles(userIds);
+            });
           }
 
           return ListView.builder(
@@ -72,15 +80,15 @@ class StoryBarWidget extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) {
           // ✅ Handle permission-denied errors gracefully with retry
-          if (error.toString().contains('permission-denied') || 
+          if (error.toString().contains('permission-denied') ||
               error.toString().contains('PERMISSION_DENIED')) {
             // Auto-retry after a short delay
             Future.delayed(const Duration(milliseconds: 500), () {
               if (context.mounted) {
-                ref.refresh(activeStoriesProvider);
+                ref.refresh(followingStoriesProvider);
               }
             });
-            
+
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -100,21 +108,21 @@ class StoryBarWidget extends ConsumerWidget {
               ),
             );
           }
-          
+
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.error_outline, size: 32, color: Colors.red),
                 const SizedBox(height: 8),
-                Text(
-                  'خطأ في تحميل القصص',
-                  style: TextStyle(fontSize: 12),
-                ),
+                Text('خطأ في تحميل القصص', style: TextStyle(fontSize: 12)),
                 const SizedBox(height: 4),
                 TextButton(
-                  onPressed: () => ref.refresh(activeStoriesProvider),
-                  child: const Text('إعادة المحاولة', style: TextStyle(fontSize: 12)),
+                  onPressed: () => ref.refresh(followingStoriesProvider),
+                  child: const Text(
+                    'إعادة المحاولة',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
               ],
             ),
@@ -159,11 +167,7 @@ class _AddStoryButton extends StatelessWidget {
                   ],
                 ),
               ),
-              child: const Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 30,
-              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 30),
             ),
             const SizedBox(height: 4),
             const Text(
@@ -181,7 +185,7 @@ class _AddStoryButton extends StatelessWidget {
 }
 
 /// Story avatar widget
-class _StoryAvatar extends StatelessWidget {
+class _StoryAvatar extends ConsumerWidget {
   final String userId;
   final List<Story> stories;
   final bool hasUnviewed;
@@ -195,7 +199,17 @@ class _StoryAvatar extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Get user profile from cache
+    final storyUsersState = ref.watch(storyUsersProvider);
+    final userProfile = storyUsersState.profiles[userId];
+
+    // Determine display name: use profile name or fallback to userId
+    final displayName = userProfile?.name ?? userId.substring(0, 8);
+
+    // Get profile image URL, fallback to story media if not available
+    final profileImageUrl = userProfile?.profileImageUrl;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -209,12 +223,8 @@ class _StoryAvatar extends StatelessWidget {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: hasUnviewed
-                    ? LinearGradient(
-                        colors: [
-                          Colors.purple,
-                          Colors.pink,
-                          Colors.orange,
-                        ],
+                    ? const LinearGradient(
+                        colors: [Colors.purple, Colors.pink, Colors.orange],
                       )
                     : null,
                 border: !hasUnviewed
@@ -225,22 +235,29 @@ class _StoryAvatar extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  image: stories.isNotEmpty
+                  image: profileImageUrl != null
                       ? DecorationImage(
-                          image: NetworkImage(stories.first.mediaUrl),
+                          image: NetworkImage(profileImageUrl),
                           fit: BoxFit.cover,
                         )
+                      : (stories.isNotEmpty
+                            ? DecorationImage(
+                                image: NetworkImage(stories.first.mediaUrl),
+                                fit: BoxFit.cover,
+                              )
+                            : null),
+                  color: profileImageUrl == null && stories.isEmpty
+                      ? Colors.grey[300]
                       : null,
-                  color: Colors.grey[300],
                 ),
-                child: stories.isEmpty
+                child: profileImageUrl == null && stories.isEmpty
                     ? const Icon(Icons.person, color: Colors.grey)
                     : null,
               ),
             ),
             const SizedBox(height: 4),
             Text(
-              userId.substring(0, 8), // Show first 8 chars of userId
+              displayName,
               style: const TextStyle(fontSize: 12),
               textAlign: TextAlign.center,
               maxLines: 1,

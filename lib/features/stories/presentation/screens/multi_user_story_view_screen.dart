@@ -3,11 +3,13 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cube_transition_plus/cube_transition_plus.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/models/story_reply.dart';
 import '../../../../core/utils/snackbar_helper.dart';
 import '../providers/story_provider.dart';
+import '../providers/story_user_provider.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
 
@@ -32,14 +34,12 @@ class MultiUserStoryViewScreen extends ConsumerStatefulWidget {
 class _MultiUserStoryViewScreenState
     extends ConsumerState<MultiUserStoryViewScreen>
     with TickerProviderStateMixin {
+  late PageController _userPageController;
   late int _currentUserIndex;
   int _currentStoryIndex = 0;
-  int? _previousUserIndex; // Track previous user for transition
-  late AnimationController _userTransitionController;
   late AnimationController _storyProgressController;
   Timer? _storyTimer;
   static const Duration _storyDuration = Duration(seconds: 5);
-  static const Duration _transitionDuration = Duration(milliseconds: 500);
 
   final Map<String, List<Story>> _userStoriesCache = {};
   bool _isLoading = true;
@@ -52,10 +52,7 @@ class _MultiUserStoryViewScreenState
     super.initState();
     _currentUserIndex = widget.initialUserIndex;
 
-    _userTransitionController = AnimationController(
-      vsync: this,
-      duration: _transitionDuration,
-    );
+    _userPageController = PageController(initialPage: widget.initialUserIndex);
 
     _storyProgressController = AnimationController(
       vsync: this,
@@ -81,7 +78,7 @@ class _MultiUserStoryViewScreenState
 
   @override
   void dispose() {
-    _userTransitionController.dispose();
+    _userPageController.dispose();
     _storyProgressController.dispose();
     _storyTimer?.cancel();
     _messageController.dispose();
@@ -95,9 +92,18 @@ class _MultiUserStoryViewScreenState
     });
 
     try {
+      // Load all user profiles first
+      await ref.read(storyUsersProvider.notifier).loadProfiles(widget.userIds);
+
+      // Then load their stories and sort chronologically
       for (final userId in widget.userIds) {
         final userStories = await ref.read(userStoriesProvider(userId).future);
-        _userStoriesCache[userId] = userStories;
+
+        // Sort stories by creation time (oldest first, like Instagram)
+        final sortedStories = List<Story>.from(userStories)
+          ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+
+        _userStoriesCache[userId] = sortedStories;
       }
     } catch (e) {
       print('Error loading user stories: $e');
@@ -178,104 +184,41 @@ class _MultiUserStoryViewScreenState
       });
       _startStory();
     } else if (_currentUserIndex > 0) {
-      // Move to previous user and show their last story
-      setState(() {
-        _currentUserIndex--;
-      });
-      _loadUserStories(() {
-        final prevStories = _getCurrentUserStories();
-        if (prevStories.isNotEmpty) {
-          setState(() {
-            _currentStoryIndex = prevStories.length - 1;
-          });
-        }
-        _startStory();
-      });
+      // Move to previous user
+      _previousUser();
     }
   }
 
   void _nextUser() {
     if (_currentUserIndex < widget.userIds.length - 1) {
-      // Pause current story and show 3D flip transition
       _pauseStory();
-
-      // Save previous user index for transition
       setState(() {
-        _previousUserIndex = _currentUserIndex;
+        _currentUserIndex++;
+        _currentStoryIndex = 0;
       });
-
-      // Start the flip animation
-      _userTransitionController.forward(from: 0.0).then((_) {
-        // At halfway point (90 degrees), switch to next user
-        setState(() {
-          _currentUserIndex++;
-          _currentStoryIndex = 0;
-        });
-
-        // Complete the flip animation
-        _userTransitionController.reverse(from: 1.0).then((_) {
-          setState(() {
-            _previousUserIndex = null;
-          });
-          _loadUserStories(() {
-            _startStory();
-          });
-        });
-      });
+      _userPageController.nextPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+      _startStory();
     } else {
-      // All stories completed, exit
       Navigator.pop(context);
     }
   }
 
   void _previousUser() {
     if (_currentUserIndex > 0) {
-      // Pause current story and show 3D flip transition
       _pauseStory();
-
       setState(() {
-        _previousUserIndex = _currentUserIndex;
+        _currentUserIndex--;
+        _currentStoryIndex = 0;
       });
-
-      // Start the flip animation (backwards)
-      _userTransitionController.forward(from: 0.0).then((_) {
-        setState(() {
-          _currentUserIndex--;
-        });
-
-        _userTransitionController.reverse(from: 1.0).then((_) {
-          setState(() {
-            _previousUserIndex = null;
-          });
-          _loadUserStories(() {
-            final stories = _getCurrentUserStories();
-            if (stories.isNotEmpty) {
-              setState(() {
-                _currentStoryIndex = 0;
-              });
-            }
-            _startStory();
-          });
-        });
-      });
+      _userPageController.previousPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+      _startStory();
     }
-  }
-
-  void _loadUserStories(VoidCallback onComplete) {
-    final userId = widget.userIds[_currentUserIndex];
-
-    // Load stories if not cached
-    if (!_userStoriesCache.containsKey(userId)) {
-      ref.read(userStoriesProvider(userId).future).then((stories) {
-        setState(() {
-          _userStoriesCache[userId] = stories;
-        });
-        onComplete();
-      });
-    } else {
-      _nextStory();
-    }
-    // Middle half - pause/resume handled by gesture detectors
   }
 
   void _onTap(TapUpDetails details) {
@@ -290,14 +233,412 @@ class _MultiUserStoryViewScreenState
 
     final screenWidth = MediaQuery.of(context).size.width;
 
-    if (details.globalPosition.dx < screenWidth / 4) {
-      // Left quarter - previous story/user
-      _previousStory();
-    } else if (details.globalPosition.dx > screenWidth * 3 / 4) {
-      // Right quarter - next story/user
+    // Fixed navigation: LEFT = NEXT (like Instagram/TikTok), RIGHT = PREVIOUS
+    if (details.globalPosition.dx < screenWidth / 3) {
+      // Left third - NEXT story/user
       _nextStory();
+    } else if (details.globalPosition.dx > screenWidth * 2 / 3) {
+      // Right third - PREVIOUS story/user
+      _previousStory();
     }
-    // Middle half - pause/resume handled by gesture detectors
+    // Middle third - pause/resume handled by gesture detectors
+  }
+
+
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+
+    final currentStories = _getCurrentUserStories();
+    if (currentStories.isEmpty) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.photo_library_outlined,
+                color: Colors.white,
+                size: 64,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'لا توجد قصص لهذا المستخدم',
+                style: TextStyle(color: Colors.white, fontSize: 18),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(onPressed: _nextUser, child: const Text('التالي')),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final currentStory = currentStories[_currentStoryIndex];
+    final isOwnStory = currentStory.userId == widget.currentUserId;
+
+    return Scaffold(
+      resizeToAvoidBottomInset: false,
+      backgroundColor: Colors.black,
+      body: CubePageView(
+        controller: _userPageController,
+        onPageChanged: (index) {
+          setState(() {
+            _currentUserIndex = index;
+            _currentStoryIndex = 0;
+          });
+        },
+        children: List.generate(
+          widget.userIds.length,
+          (userIndex) {
+            final userId = widget.userIds[userIndex];
+            final stories = _userStoriesCache[userId] ?? [];
+
+            if (stories.isEmpty) {
+              return const Center(
+                child: Text(
+                  'لا توجد قصص',
+                  style: TextStyle(color: Colors.white),
+                ),
+              );
+            }
+
+            final story = stories[_currentStoryIndex.clamp(0, stories.length - 1)];
+            final isOwnStory = story.userId == widget.currentUserId;
+
+            return _buildFullStoryScreen(story, stories, isOwnStory);
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFullStoryScreen(Story story, List<Story> stories, bool isOwnStory) {
+    return GestureDetector(
+      onTapDown: (_) {
+        if (!_isTyping) _pauseStory();
+      },
+      onTapUp: _onTap,
+      onTapCancel: () {
+        if (!_isTyping) _resumeStory();
+      },
+      onLongPressStart: (_) {
+        if (!_isTyping) _pauseStory();
+      },
+      onLongPressEnd: (_) {
+        if (!_isTyping) _resumeStory();
+      },
+      onVerticalDragEnd: (details) {
+        if (details.primaryVelocity != null &&
+            details.primaryVelocity! > 500) {
+          Navigator.pop(context);
+        }
+      },
+      child: Stack(
+        children: [
+          // 1. Story Content (Image/Video)
+          _buildStoryContent(story),
+
+          // 2. Progress Indicators
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 8,
+            right: 8,
+            child: Row(
+              children: List.generate(
+                stories.length,
+                (index) => Expanded(
+                  child: Container(
+                    height: 3,
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    child: index < _currentStoryIndex
+                        ? Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          )
+                        : index == _currentStoryIndex
+                            ? AnimatedBuilder(
+                                animation: _storyProgressController,
+                                builder: (context, child) {
+                                  return ClipRRect(
+                                    borderRadius: BorderRadius.circular(2),
+                                    child: LinearProgressIndicator(
+                                      value: _storyProgressController.value,
+                                      backgroundColor: Colors.white30,
+                                      valueColor:
+                                          const AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white30,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 3. Header with User Info & Timestamp
+          _buildHeader(story),
+
+          // 4. Bottom Action Bar
+          if (!_isTyping) _buildBottomActions(story, isOwnStory),
+
+          // 5. Quick reactions when typing
+          if (_isTyping) _buildQuickReactions(story),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(Story story) {
+    return Positioned(
+      top: MediaQuery.of(context).padding.top + 20,
+      left: 8,
+      right: 8,
+      child: Consumer(
+        builder: (context, ref, _) {
+          final storyUsersState = ref.watch(storyUsersProvider);
+          final userProfile = storyUsersState.profiles[story.userId];
+          final displayName = userProfile?.name ?? story.userId.substring(0, 8);
+          final profileImageUrl = userProfile?.profileImageUrl;
+          final isOwnStory = story.userId == widget.currentUserId;
+
+          return Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundImage: profileImageUrl != null
+                    ? NetworkImage(profileImageUrl)
+                    : NetworkImage(story.mediaUrl),
+                backgroundColor: Colors.grey[800],
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        shadows: [
+                          Shadow(
+                            offset: Offset(0, 1),
+                            blurRadius: 3.0,
+                            color: Colors.black54,
+                          ),
+                        ],
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _getTimeAgo(story.createdAt),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                        shadows: [
+                          Shadow(
+                            offset: Offset(0, 1),
+                            blurRadius: 3.0,
+                            color: Colors.black54,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isOwnStory)
+                IconButton(
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                  onPressed: () => _showReportOptions(context, story),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBottomActions(Story story, bool isOwnStory) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 12,
+          bottom: MediaQuery.of(context).padding.bottom + 12,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.transparent,
+              Colors.black.withValues(alpha: 0.3),
+              Colors.black.withValues(alpha: 0.6),
+            ],
+          ),
+        ),
+        child: isOwnStory
+            ? _buildOwnStoryStats(story)
+            : _buildMessageAndLikeBar(story),
+      ),
+    );
+  }
+
+  Widget _buildQuickReactions(Story story) {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: EdgeInsets.only(
+              bottom: math.max(
+                MediaQuery.of(context).viewInsets.bottom,
+                MediaQuery.of(context).padding.bottom,
+              ),
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withValues(alpha: 0.4),
+                  Colors.black.withValues(alpha: 0.8),
+                  Colors.black,
+                ],
+              ),
+              border: Border(
+                top: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  width: 0.5,
+                ),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Quick Reactions - 2 Lines, No Scroll
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    children: [
+                      // First Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildQuickReaction('😂', story),
+                          _buildQuickReaction('😮', story),
+                          _buildQuickReaction('😍', story),
+                          _buildQuickReaction('😢', story),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Second Row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildQuickReaction('👏', story),
+                          _buildQuickReaction('🔥', story),
+                          _buildQuickReaction('🎉', story),
+                          _buildQuickReaction('💯', story),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Pro Input Bar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: TextField(
+                            controller: _messageController,
+                            focusNode: _messageFocusNode,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'أرسل رسالة...',
+                              hintStyle: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.5),
+                              ),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                            ),
+                            onSubmitted: (_) => _sendMessage(story),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () => _sendMessage(story),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              colors: [
+                                Theme.of(context).primaryColor,
+                                Theme.of(context).primaryColor.withValues(alpha: 0.7),
+                              ],
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.send,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _showReportOptions(BuildContext context, Story story) {
@@ -342,15 +683,6 @@ class _MultiUserStoryViewScreenState
                     _blockUser(story.userId);
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.cancel),
-                  title: const Text('إلغاء'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _resumeStory();
-                  },
-                ),
-                const SizedBox(height: 8),
               ],
             ),
           ),
@@ -359,63 +691,58 @@ class _MultiUserStoryViewScreenState
     ).then((_) => _resumeStory());
   }
 
-  void _reportStory(Story story) {
-    showModalBottomSheet(
+  void _reportStory(Story story) async {
+    _pauseStory();
+
+    final result = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: ReportBottomSheet(
-          reporterId: widget.currentUserId,
-          reportedUserId: story.userId,
-          reportedContentId: story.id,
-          reportType: ReportType.story,
-        ),
+      backgroundColor: Colors.transparent,
+      builder: (context) => ReportBottomSheet(
+        reporterId: widget.currentUserId,
+        reportedUserId: story.userId,
+        reportedContentId: story.id,
+        reportType: ReportType.story,
       ),
     );
+
+    if (result == true && mounted) {
+      SnackbarHelper.showSuccess(
+        context,
+        'تم إرسال البلاغ بنجاح',
+      );
+    }
+
+    _resumeStory();
   }
 
-  Future<void> _blockUser(String userId) async {
+  void _blockUser(String userId) async {
     try {
-      await ref
-          .read(moderationProvider.notifier)
-          .blockUser(widget.currentUserId, userId);
+      await ref.read(moderationRepositoryProvider).blockUser(
+            widget.currentUserId,
+            userId,
+          );
 
       if (mounted) {
-        SnackbarHelper.showSuccess(context, 'تم حظر المستخدم بنجاح');
-        Navigator.of(context).pop();
-        // Close the story view as we blocked the user
+        SnackbarHelper.showSuccess(
+          context,
+          'تم حظر المستخدم بنجاح',
+        );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        SnackbarHelper.showError(context, 'فشل في حظر المستخدم: $e');
-      }
-    }
-  }
-
-  Future<void> _toggleLike(Story story) async {
-    final repository = ref.read(storyRepositoryProvider);
-    final isLiked = story.likedBy.contains(widget.currentUserId);
-
-    try {
-      if (isLiked) {
-        await repository.unlikeStory(story.id, widget.currentUserId);
-      } else {
-        await repository.likeStory(story.id, widget.currentUserId);
-      }
-      ref.invalidate(activeStoriesProvider);
-    } catch (e) {
-      if (mounted) {
-        SnackbarHelper.showError(context, 'فشل في الإعجاب: $e');
+        SnackbarHelper.showError(
+          context,
+          'فشل في حظر المستخدم: ${e.toString()}',
+        );
       }
     }
   }
 
   Future<void> _sendMessage(Story story, {String? quickReaction}) async {
     final message = quickReaction ?? _messageController.text.trim();
+
     if (message.isEmpty) return;
 
     final repository = ref.read(storyRepositoryProvider);
@@ -430,461 +757,38 @@ class _MultiUserStoryViewScreenState
 
     try {
       await repository.createStoryReply(reply);
+
       ref.invalidate(activeStoriesProvider);
 
       _messageController.clear();
-      setState(() {
-        _isTyping = false;
-      });
       _messageFocusNode.unfocus();
 
       if (mounted) {
-        SnackbarHelper.showSuccess(
-          context,
-          'تم إرسال الرسالة!',
-          duration: const Duration(seconds: 1),
-        );
+        SnackbarHelper.showSuccess(context, 'تم إرسال الرسالة');
       }
-
-      _resumeStory();
     } catch (e) {
       if (mounted) {
-        SnackbarHelper.showError(context, 'فشل في إرسال الرسالة: $e');
+        SnackbarHelper.showError(
+          context,
+          'فشل في إرسال الرسالة: ${e.toString()}',
+        );
       }
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator(color: Colors.white)),
-      );
+  String _getTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return 'منذ ${difference.inDays} ${difference.inDays == 1 ? 'يوم' : 'أيام'}';
+    } else if (difference.inHours > 0) {
+      return 'منذ ${difference.inHours} ${difference.inHours == 1 ? 'ساعة' : 'ساعات'}';
+    } else if (difference.inMinutes > 0) {
+      return 'منذ ${difference.inMinutes} ${difference.inMinutes == 1 ? 'دقيقة' : 'دقائق'}';
+    } else {
+      return 'الآن';
     }
-
-    final currentStories = _getCurrentUserStories();
-    if (currentStories.isEmpty) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.photo_library_outlined,
-                color: Colors.white,
-                size: 64,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'لا توجد قصص لهذا المستخدم',
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(onPressed: _nextUser, child: const Text('التالي')),
-            ],
-          ),
-        ),
-      );
-    }
-
-    final currentStory = currentStories[_currentStoryIndex];
-    final isOwnStory = currentStory.userId == widget.currentUserId;
-
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      backgroundColor: Colors.black,
-      body: GestureDetector(
-        onTapDown: (_) {
-          if (!_isTyping) _pauseStory();
-        },
-        onTapUp: _onTap,
-        onTapCancel: () {
-          if (!_isTyping) _resumeStory();
-        },
-        onLongPressStart: (_) {
-          if (!_isTyping) _pauseStory();
-        },
-        onLongPressEnd: (_) {
-          if (!_isTyping) _resumeStory();
-        },
-        onVerticalDragEnd: (details) {
-          // Swipe down to exit
-          if (details.primaryVelocity != null &&
-              details.primaryVelocity! > 500) {
-            Navigator.pop(context);
-          }
-        },
-        child: Stack(
-          children: [
-            // Story content - shows current user's story (no animation when moving within same user)
-            if (_userTransitionController.value == 0.0)
-              _buildStoryContent(currentStory),
-
-            // 3D box flip animation ONLY when transitioning between users
-            if (_userTransitionController.value > 0.0)
-              AnimatedBuilder(
-                animation: _userTransitionController,
-                builder: (context, child) {
-                  // Create a 3D flip animation showing both sides
-                  final angle =
-                      _userTransitionController.value *
-                      math.pi; // 180 degrees full rotation
-
-                  // First half of animation (0 to 0.5) - show previous user (front face)
-                  // Second half (0.5 to 1.0) - show current user (back face)
-                  final showCurrentUser = _userTransitionController.value > 0.5;
-
-                  final displayAngle = showCurrentUser
-                      ? angle // Continue rotating
-                      : angle; // Show rotation
-
-                  final transform = Matrix4.identity()
-                    ..setEntry(3, 2, 0.001) // perspective
-                    ..rotateY(displayAngle);
-
-                  // Get the story to display
-                  Story storyToShow;
-                  if (showCurrentUser) {
-                    // Show current user's first story
-                    storyToShow = currentStory;
-                  } else {
-                    // Show previous user's last story
-                    if (_previousUserIndex != null) {
-                      final prevUserId = widget.userIds[_previousUserIndex!];
-                      final prevStories = _userStoriesCache[prevUserId];
-                      if (prevStories != null && prevStories.isNotEmpty) {
-                        storyToShow = prevStories.last;
-                      } else {
-                        storyToShow = currentStory;
-                      }
-                    } else {
-                      storyToShow = currentStory;
-                    }
-                  }
-
-                  return Transform(
-                    transform: transform,
-                    alignment: Alignment.center,
-                    child: _buildStoryContent(storyToShow),
-                  );
-                },
-              ),
-
-            // Progress indicators - ONLY for current user's stories
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              left: 8,
-              right: 8,
-              child: Row(
-                children: List.generate(
-                  currentStories.length,
-                  (index) => Expanded(
-                    child: Container(
-                      height: 3,
-                      margin: const EdgeInsets.symmetric(horizontal: 2),
-                      child: index < _currentStoryIndex
-                          ? Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            )
-                          : index == _currentStoryIndex
-                          ? AnimatedBuilder(
-                              animation: _storyProgressController,
-                              builder: (context, child) {
-                                return ClipRRect(
-                                  borderRadius: BorderRadius.circular(2),
-                                  child: LinearProgressIndicator(
-                                    value: _storyProgressController.value,
-                                    backgroundColor: Colors.white30,
-                                    valueColor:
-                                        const AlwaysStoppedAnimation<Color>(
-                                          Colors.white,
-                                        ),
-                                  ),
-                                );
-                              },
-                            )
-                          : Container(
-                              decoration: BoxDecoration(
-                                color: Colors.white30,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // Header with user info and report button
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 20,
-              left: 8,
-              right: 8,
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundImage: NetworkImage(currentStory.mediaUrl),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      currentStory.userId.substring(0, 8),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                  // Show report button only for other users' stories
-                  if (!isOwnStory)
-                    IconButton(
-                      icon: const Icon(Icons.more_vert, color: Colors.white),
-                      onPressed: () =>
-                          _showReportOptions(context, currentStory),
-                    ),
-                ],
-              ),
-            ),
-
-            // Bottom action bar - message input and like (when NOT typing)
-            if (!_isTyping)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  padding: EdgeInsets.only(
-                    left: 16,
-                    right: 16,
-                    top: 12,
-                    bottom: MediaQuery.of(context).padding.bottom + 12,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.3),
-                        Colors.black.withValues(alpha: 0.6),
-                      ],
-                    ),
-                  ),
-                  child: isOwnStory
-                      ? _buildOwnStoryStats(currentStory)
-                      : _buildMessageAndLikeBar(currentStory),
-                ),
-              ),
-
-            // Quick reactions + keyboard area (when typing) - PRO DESIGN
-            if (_isTyping)
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: ClipRRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                    child: Container(
-                      padding: EdgeInsets.only(
-                        bottom: math.max(
-                          MediaQuery.of(context).viewInsets.bottom,
-                          MediaQuery.of(context).padding.bottom,
-                        ),
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.4),
-                            Colors.black.withValues(alpha: 0.8),
-                            Colors.black,
-                          ],
-                        ),
-                        border: Border(
-                          top: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            width: 0.5,
-                          ),
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Quick Reactions - 2 Lines, No Scroll
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Column(
-                              children: [
-                                // First Row
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _buildQuickReaction('😂', currentStory),
-                                    _buildQuickReaction('😮', currentStory),
-                                    _buildQuickReaction('😍', currentStory),
-                                    _buildQuickReaction('😢', currentStory),
-                                  ],
-                                ),
-                                const SizedBox(height: 12),
-                                // Second Row
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _buildQuickReaction('👏', currentStory),
-                                    _buildQuickReaction('🔥', currentStory),
-                                    _buildQuickReaction('🎉', currentStory),
-                                    _buildQuickReaction('💯', currentStory),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Pro Input Bar
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.1,
-                                      ),
-                                      borderRadius: BorderRadius.circular(30),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.2,
-                                        ),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: TextField(
-                                            controller: _messageController,
-                                            focusNode: _messageFocusNode,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              height: 1.2,
-                                            ),
-                                            textDirection: TextDirection.rtl,
-                                            decoration: InputDecoration(
-                                              hintText: 'أرسل رسالة...',
-                                              hintStyle: TextStyle(
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.5,
-                                                ),
-                                                fontSize: 15,
-                                              ),
-                                              border: InputBorder.none,
-                                              isDense: true,
-                                              contentPadding:
-                                                  const EdgeInsets.symmetric(
-                                                    vertical: 12,
-                                                  ),
-                                            ),
-                                            onChanged: (value) {
-                                              setState(() {});
-                                            },
-                                            onSubmitted: (_) {
-                                              if (_messageController.text
-                                                  .trim()
-                                                  .isNotEmpty) {
-                                                _sendMessage(currentStory);
-                                              }
-                                            },
-                                          ),
-                                        ),
-                                        if (_messageController.text
-                                            .trim()
-                                            .isEmpty)
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                            ),
-                                            child: Icon(
-                                              Icons.image_outlined,
-                                              color: Colors.white.withValues(
-                                                alpha: 0.5,
-                                              ),
-                                              size: 24,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                // Send button with animation
-                                AnimatedSize(
-                                  duration: const Duration(milliseconds: 200),
-                                  child:
-                                      _messageController.text.trim().isNotEmpty
-                                      ? Padding(
-                                          padding: const EdgeInsets.only(
-                                            right: 12,
-                                          ),
-                                          child: GestureDetector(
-                                            onTap: () =>
-                                                _sendMessage(currentStory),
-                                            child: Container(
-                                              width: 44,
-                                              height: 44,
-                                              decoration: const BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                gradient: LinearGradient(
-                                                  colors: [
-                                                    Color(
-                                                      0xFF833AB4,
-                                                    ), // Instagram-like purple
-                                                    Color(
-                                                      0xFFFD1D1D,
-                                                    ), // Instagram-like red
-                                                    Color(
-                                                      0xFFFCAF45,
-                                                    ), // Instagram-like orange
-                                                  ],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                ),
-                                              ),
-                                              child: const Icon(
-                                                Icons.arrow_upward_rounded,
-                                                color: Colors.white,
-                                                size: 24,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      : const SizedBox.shrink(),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _buildStoryContent(Story story) {
@@ -899,70 +803,80 @@ class _MultiUserStoryViewScreenState
                   child: CircularProgressIndicator(color: Colors.white),
                 );
               },
-              errorBuilder: (context, error, stackTrace) {
-                return const Center(
-                  child: Icon(Icons.error, color: Colors.white, size: 50),
-                );
-              },
             )
-          : const Center(
-              child: Text(
-                'فيديو',
-                style: TextStyle(color: Colors.white, fontSize: 24),
-              ),
-            ),
+          : const Icon(Icons.play_circle_outline, size: 64, color: Colors.white),
     );
   }
 
   Widget _buildMessageAndLikeBar(Story story) {
-    final isLiked = story.likedBy.contains(widget.currentUserId);
-
     return Row(
       children: [
         Expanded(
           child: GestureDetector(
             onTap: () {
-              _pauseStory();
-              setState(() {
-                _isTyping = true;
-              });
-              // Request focus after a slight delay to ensure animation completes
-              Future.delayed(const Duration(milliseconds: 100), () {
-                _messageFocusNode.requestFocus();
-              });
+              _messageFocusNode.requestFocus();
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 1),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 1,
+                ),
               ),
-              child: const Row(
-                children: [
-                  Icon(Icons.message_outlined, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Text(
-                    'أرسل رسالة...',
-                    style: TextStyle(color: Colors.white, fontSize: 14),
-                  ),
-                ],
+              child: Text(
+                'أرسل رسالة...',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
         ),
         const SizedBox(width: 12),
         GestureDetector(
-          onTap: () => _toggleLike(story),
+          onTap: () async {
+            final repository = ref.read(storyRepositoryProvider);
+            final isLiked = story.likedBy.contains(widget.currentUserId);
+
+            try {
+              if (isLiked) {
+                await repository.unlikeStory(story.id, widget.currentUserId);
+              } else {
+                await repository.likeStory(story.id, widget.currentUserId);
+              }
+              ref.invalidate(activeStoriesProvider);
+            } catch (e) {
+              if (mounted) {
+                SnackbarHelper.showError(
+                  context,
+                  'فشل في تحديث الإعجاب',
+                );
+              }
+            }
+          },
           child: Container(
-            padding: const EdgeInsets.all(12),
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1),
+              color: Colors.white.withValues(alpha: 0.2),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+                width: 1,
+              ),
             ),
             child: Icon(
-              isLiked ? Icons.favorite : Icons.favorite_border,
-              color: isLiked ? Colors.red : Colors.white,
-              size: 24,
+              story.likedBy.contains(widget.currentUserId)
+                  ? Icons.favorite
+                  : Icons.favorite_border,
+              color: story.likedBy.contains(widget.currentUserId)
+                  ? Colors.red
+                  : Colors.white,
+              size: 20,
             ),
           ),
         ),
@@ -983,15 +897,11 @@ class _MultiUserStoryViewScreenState
   }
 
   Widget _buildOwnStoryStats(Story story) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.black54,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        // Views
+        Row(
           children: [
             const Icon(Icons.visibility, color: Colors.white, size: 20),
             const SizedBox(width: 4),
@@ -999,14 +909,22 @@ class _MultiUserStoryViewScreenState
               '${story.viewerIds.length}',
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
-            const SizedBox(width: 16),
-            const Icon(Icons.favorite, color: Colors.white, size: 20),
+          ],
+        ),
+        // Likes
+        Row(
+          children: [
+            const Icon(Icons.favorite, color: Colors.red, size: 20),
             const SizedBox(width: 4),
             Text(
               '${story.likedBy.length}',
               style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
-            const SizedBox(width: 16),
+          ],
+        ),
+        // Replies
+        Row(
+          children: [
             const Icon(Icons.message, color: Colors.white, size: 20),
             const SizedBox(width: 4),
             Text(
@@ -1015,7 +933,7 @@ class _MultiUserStoryViewScreenState
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 }

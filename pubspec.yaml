@@ -85,6 +85,9 @@ dependencies:
   permission_handler: ^11.3.1
   flutter_image_compress: ^2.4.0
   video_compress: ^3.1.4
+  
+  # 3D Transitions
+  cube_transition_plus: ^2.0.1
 
 dev_dependencies:
   flutter_test:
