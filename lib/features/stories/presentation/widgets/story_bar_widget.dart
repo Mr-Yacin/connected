@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/models/story.dart';
 import '../providers/story_provider.dart';
 import '../providers/story_user_provider.dart';
@@ -217,7 +218,7 @@ class _StoryAvatar extends ConsumerWidget {
                   shape: BoxShape.circle,
                   image: profileImageUrl != null
                       ? DecorationImage(
-                          image: NetworkImage(profileImageUrl),
+                          image: CachedNetworkImageProvider(profileImageUrl),
                           fit: BoxFit.cover,
                         )
                       : null,

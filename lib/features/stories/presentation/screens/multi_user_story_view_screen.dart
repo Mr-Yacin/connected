@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cube_transition_plus/cube_transition_plus.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/models/story_reply.dart';
@@ -12,6 +13,7 @@ import '../providers/story_provider.dart';
 import '../providers/story_user_provider.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
+import '../widgets/story_management_sheet.dart';
 
 /// Screen for viewing stories with automatic progression between users
 class MultiUserStoryViewScreen extends ConsumerStatefulWidget {
@@ -281,9 +283,6 @@ class _MultiUserStoryViewScreenState
       );
     }
 
-    final currentStory = currentStories[_currentStoryIndex];
-    final isOwnStory = currentStory.userId == widget.currentUserId;
-
     return Scaffold(
       resizeToAvoidBottomInset: false,
       backgroundColor: Colors.black,
@@ -409,152 +408,104 @@ class _MultiUserStoryViewScreenState
 
   Widget _buildHeader(Story story) {
     return Positioned(
-      top: MediaQuery.of(context).padding.top + 20,
-      left: 8,
-      right: 8,
-      child: Consumer(
-        builder: (context, ref, _) {
-          final storyUsersState = ref.watch(storyUsersProvider);
-          final userProfile = storyUsersState.profiles[story.userId];
-          final displayName = userProfile?.name ?? 'مستخدم';
-          final profileImageUrl = userProfile?.profileImageUrl;
-          final isOwnStory = story.userId == widget.currentUserId;
+      top: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: EdgeInsets.only(
+          top: MediaQuery.of(context).padding.top + 20,
+          left: 8,
+          right: 8,
+          bottom: 20,
+        ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.black.withValues(alpha: 0.6),
+              Colors.black.withValues(alpha: 0.4),
+              Colors.black.withValues(alpha: 0.2),
+              Colors.transparent,
+            ],
+            stops: const [0.0, 0.5, 0.8, 1.0],
+          ),
+        ),
+        child: Consumer(
+          builder: (context, ref, _) {
+            final storyUsersState = ref.watch(storyUsersProvider);
+            final userProfile = storyUsersState.profiles[story.userId];
+            final displayName = userProfile?.name ?? 'مستخدم';
+            final profileImageUrl = userProfile?.profileImageUrl;
+            final isOwnStory = story.userId == widget.currentUserId;
 
-          return Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundImage: profileImageUrl != null
-                    ? NetworkImage(profileImageUrl)
-                    : null,
-                backgroundColor: Colors.grey[800],
-                child: profileImageUrl == null
-                    ? const Icon(Icons.person, color: Colors.grey, size: 18)
-                    : null,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        shadows: [
-                          Shadow(
-                            offset: Offset(0, 1),
-                            blurRadius: 3.0,
-                            color: Colors.black54,
-                          ),
-                        ],
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      _getTimeAgo(story.createdAt),
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 12,
-                        shadows: [
-                          Shadow(
-                            offset: Offset(0, 1),
-                            blurRadius: 3.0,
-                            color: Colors.black54,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+            return Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundImage: profileImageUrl != null
+                      ? CachedNetworkImageProvider(profileImageUrl)
+                      : null,
+                  backgroundColor: Colors.grey[800],
+                  child: profileImageUrl == null
+                      ? const Icon(Icons.person, color: Colors.grey, size: 18)
+                      : null,
                 ),
-              ),
-              if (!isOwnStory)
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(0, 1),
+                              blurRadius: 3.0,
+                              color: Colors.black54,
+                            ),
+                          ],
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        _getTimeAgo(story.createdAt),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(0, 1),
+                              blurRadius: 3.0,
+                              color: Colors.black54,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Three-dot menu for both own and other users' stories
                 IconButton(
                   icon: const Icon(Icons.more_vert, color: Colors.white),
-                  onPressed: () => _showReportOptions(context, story),
+                  onPressed: () {
+                    if (isOwnStory) {
+                      _showOwnStoryOptions(context, story);
+                    } else {
+                      _showReportOptions(context, story);
+                    }
+                  },
                 ),
-              // Filter icon button
-              IconButton(
-                icon: const Icon(Icons.filter_list, color: Colors.white),
-                onPressed: () => _showFilterOptions(context),
-                tooltip: 'تصفية',
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
     );
-  }
-
-  void _showFilterOptions(BuildContext context) {
-    _pauseStory();
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: SafeArea(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 8),
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
-                    'خيارات التصفية',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.people),
-                  title: const Text('عرض الكل'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Implement filter logic
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.favorite),
-                  title: const Text('الأكثر إعجاباً'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Implement filter logic
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.access_time),
-                  title: const Text('الأحدث'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    // TODO: Implement filter logic
-                  },
-                ),
-                const SizedBox(height: 16),
-              ],
-            ),
-          ),
-        );
-      },
-    ).then((_) => _resumeStory());
   }
 
   Widget _buildBottomActions(Story story, bool isOwnStory) {
@@ -719,6 +670,52 @@ class _MultiUserStoryViewScreenState
     );
   }
 
+  void _showOwnStoryOptions(BuildContext context, Story story) {
+    _pauseStory();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StoryManagementSheet(
+        story: story,
+        currentUserId: widget.currentUserId,
+      ),
+    ).then((_) async {
+      // Resume story when bottom sheet is dismissed
+      if (!mounted) return;
+      
+      // Check if story still exists (wasn't deleted)
+      try {
+        final userStories = await ref.read(userStoriesProvider(story.userId).future);
+        final storyStillExists = userStories.any((s) => s.id == story.id);
+        
+        if (!storyStillExists) {
+          // Story was deleted, update cache and navigate
+          _userStoriesCache[story.userId]?.removeWhere((s) => s.id == story.id);
+          
+          if (_userStoriesCache[story.userId]?.isEmpty ?? true) {
+            // No more stories for this user
+            if (_currentUserIndex < widget.userIds.length - 1) {
+              _nextUser();
+            } else {
+              Navigator.pop(context);
+            }
+          } else {
+            // Move to next story
+            _nextStory();
+          }
+        } else {
+          // Story still exists, just resume
+          _resumeStory();
+        }
+      } catch (e) {
+        // On error, just resume
+        _resumeStory();
+      }
+    });
+  }
+
   void _showReportOptions(BuildContext context, Story story) {
     _pauseStory();
 
@@ -818,6 +815,153 @@ class _MultiUserStoryViewScreenState
     }
   }
 
+  void _deleteStory(Story story) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('حذف القصة'),
+        content: const Text('هل أنت متأكد من حذف هذه القصة؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) {
+      _resumeStory();
+      return;
+    }
+
+    try {
+      await ref.read(storyRepositoryProvider).deleteStory(story.id);
+
+      if (mounted) {
+        SnackbarHelper.showSuccess(context, 'تم حذف القصة بنجاح');
+        
+        // Remove from cache
+        _userStoriesCache[story.userId]?.removeWhere((s) => s.id == story.id);
+        
+        // If no more stories for this user, exit
+        if (_userStoriesCache[story.userId]?.isEmpty ?? true) {
+          Navigator.pop(context);
+        } else {
+          // Move to next story
+          _nextStory();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarHelper.showError(
+          context,
+          'فشل في حذف القصة: ${e.toString()}',
+        );
+      }
+      _resumeStory();
+    }
+  }
+
+  void _showStoryInsights(Story story) {
+    _pauseStory();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'إحصائيات القصة',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildInsightRow(
+                    Icons.visibility,
+                    'المشاهدات',
+                    '${story.viewerIds.length}',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInsightRow(
+                    Icons.favorite,
+                    'الإعجابات',
+                    '${story.likedBy.length}',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildInsightRow(
+                    Icons.message,
+                    'الردود',
+                    '${story.replyCount}',
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('إغلاق'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    ).then((_) => _resumeStory());
+  }
+
+  Widget _buildInsightRow(IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 24, color: Colors.grey[700]),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 16),
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _shareStory(Story story) {
+    _resumeStory();
+    
+    // TODO: Implement share functionality in future task
+    SnackbarHelper.showInfo(
+      context,
+      'مشاركة القصة - سيتم تنفيذها قريباً',
+    );
+  }
+
   Future<void> _sendMessage(Story story, {String? quickReaction}) async {
     final message = quickReaction ?? _messageController.text.trim();
 
@@ -834,9 +978,25 @@ class _MultiUserStoryViewScreenState
     );
 
     try {
+      // Create the story reply (this also increments reply count in Firestore)
       await repository.createStoryReply(reply);
 
-      // Refresh both active stories and user-specific stories to update reply count
+      // Update local cache to reflect the new reply count
+      if (_userStoriesCache.containsKey(story.userId)) {
+        final stories = _userStoriesCache[story.userId]!;
+        final storyIndex = stories.indexWhere((s) => s.id == story.id);
+        if (storyIndex != -1) {
+          final updatedStory = stories[storyIndex].copyWith(
+            replyCount: stories[storyIndex].replyCount + 1,
+          );
+          _userStoriesCache[story.userId]![storyIndex] = updatedStory;
+          if (mounted) {
+            setState(() {});
+          }
+        }
+      }
+
+      // Invalidate providers to ensure fresh data on next load
       ref.invalidate(activeStoriesProvider);
       ref.invalidate(userStoriesProvider(story.userId));
 
@@ -872,20 +1032,75 @@ class _MultiUserStoryViewScreenState
   }
 
   Widget _buildStoryContent(Story story) {
-    return Center(
+    // Preload adjacent stories for smooth transitions
+    _preloadAdjacentStories();
+    
+    return SizedBox.expand(
       child: story.type == StoryType.image
-          ? Image.network(
-              story.mediaUrl,
-              fit: BoxFit.contain,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
-                );
-              },
+          ? CachedNetworkImage(
+              imageUrl: story.mediaUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+              errorWidget: (context, url, error) => const Center(
+                child: Icon(
+                  Icons.error,
+                  color: Colors.white,
+                  size: 50,
+                ),
+              ),
             )
-          : const Icon(Icons.play_circle_outline, size: 64, color: Colors.white),
+          : const Center(
+              child: Icon(Icons.play_circle_outline, size: 64, color: Colors.white),
+            ),
     );
+  }
+  
+  /// Preload adjacent stories (previous and next) for smooth transitions
+  void _preloadAdjacentStories() {
+    final currentStories = _getCurrentUserStories();
+    
+    // Preload next story in current user's stories
+    if (_currentStoryIndex < currentStories.length - 1) {
+      final nextStory = currentStories[_currentStoryIndex + 1];
+      if (nextStory.type == StoryType.image) {
+        precacheImage(CachedNetworkImageProvider(nextStory.mediaUrl), context);
+      }
+    }
+    
+    // Preload first story of next user
+    if (_currentStoryIndex == currentStories.length - 1 && 
+        _currentUserIndex < widget.userIds.length - 1) {
+      final nextUserId = widget.userIds[_currentUserIndex + 1];
+      final nextUserStories = _userStoriesCache[nextUserId];
+      if (nextUserStories != null && nextUserStories.isNotEmpty) {
+        final nextUserFirstStory = nextUserStories[0];
+        if (nextUserFirstStory.type == StoryType.image) {
+          precacheImage(CachedNetworkImageProvider(nextUserFirstStory.mediaUrl), context);
+        }
+      }
+    }
+    
+    // Preload previous story in current user's stories
+    if (_currentStoryIndex > 0) {
+      final prevStory = currentStories[_currentStoryIndex - 1];
+      if (prevStory.type == StoryType.image) {
+        precacheImage(CachedNetworkImageProvider(prevStory.mediaUrl), context);
+      }
+    }
+    
+    // Preload last story of previous user
+    if (_currentStoryIndex == 0 && _currentUserIndex > 0) {
+      final prevUserId = widget.userIds[_currentUserIndex - 1];
+      final prevUserStories = _userStoriesCache[prevUserId];
+      if (prevUserStories != null && prevUserStories.isNotEmpty) {
+        final prevUserLastStory = prevUserStories[prevUserStories.length - 1];
+        if (prevUserLastStory.type == StoryType.image) {
+          precacheImage(CachedNetworkImageProvider(prevUserLastStory.mediaUrl), context);
+        }
+      }
+    }
   }
 
   Widget _buildMessageAndLikeBar(Story story) {

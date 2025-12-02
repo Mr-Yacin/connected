@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../services/analytics/analytics_events.dart';
@@ -231,24 +232,21 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen>
               // Story content
               Center(
                 child: story.type == StoryType.image
-                    ? Image.network(
-                        story.mediaUrl,
+                    ? CachedNetworkImage(
+                        imageUrl: story.mediaUrl,
                         fit: BoxFit.contain,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        },
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Center(
-                            child: Icon(
-                              Icons.error,
-                              color: Colors.white,
-                              size: 50,
-                            ),
-                          );
-                        },
+                        placeholder: (context, url) => const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                          ),
+                        ),
+                        errorWidget: (context, url, error) => const Center(
+                          child: Icon(
+                            Icons.error,
+                            color: Colors.white,
+                            size: 50,
+                          ),
+                        )
                       )
                     : const Center(
                         child: Text(

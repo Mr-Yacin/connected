@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/models/discovery_filters.dart';
 import '../../../../services/analytics/analytics_events.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../chat/presentation/screens/chat_list_screen.dart';
@@ -7,6 +8,7 @@ import '../../../discovery/presentation/screens/shuffle_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../stories/presentation/widgets/story_bar_widget.dart';
 import '../../../stories/presentation/widgets/stories_grid_widget.dart';
+import '../../../stories/presentation/widgets/story_filter_bottom_sheet.dart';
 import '../../../stories/presentation/screens/story_camera_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 
@@ -20,6 +22,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   int _currentIndex = 0;
+  DiscoveryFilters _activeFilters = DiscoveryFilters();
 
   @override
   void initState() {
@@ -28,6 +31,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(analyticsEventsProvider).trackScreenView('home_screen');
     });
+  }
+
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StoryFilterBottomSheet(
+        initialFilters: _activeFilters,
+        onApply: (filters) {
+          setState(() {
+            _activeFilters = filters;
+          });
+        },
+      ),
+    );
   }
 
   void _onTabChanged(int index) {
@@ -98,18 +117,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return SafeArea(
       child: Column(
         children: [
-          // App bar with title and add icon
+          // App bar with title, filter, and add icon
           Container(
             padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                // Filter button on the left
+                Stack(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.filter_list, size: 28),
+                      onPressed: _showFilterBottomSheet,
+                      tooltip: 'تصفية القصص',
+                    ),
+                    // Filter indicator badge
+                    if (_activeFilters.hasActiveFilters)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                
+                // Title in the center
                 Text(
                   'القصص',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                
+                // Add story button on the right
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline, size: 28),
                   onPressed: () {
@@ -132,9 +179,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
           const Divider(),
 
-          // Stories Grid - Main content
+          // Stories Grid - Main content with filters
           Expanded(
-            child: StoriesGridWidget(currentUserId: userId),
+            child: StoriesGridWidget(
+              key: ValueKey(_activeFilters.hashCode),
+              currentUserId: userId,
+              filters: _activeFilters,
+            ),
           ),
         ],
       ),
