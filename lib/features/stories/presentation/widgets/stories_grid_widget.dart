@@ -25,7 +25,8 @@ class StoriesGridWidget extends ConsumerStatefulWidget {
   ConsumerState<StoriesGridWidget> createState() => _StoriesGridWidgetState();
 }
 
-class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
+class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> 
+    with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   List<String> _shuffledUserIds = [];
   bool _isLoadingMore = false;
@@ -34,6 +35,9 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    
+    // Add lifecycle observer to handle app resume
+    WidgetsBinding.instance.addObserver(this);
     
     // Load initial stories
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -44,7 +48,21 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
   @override
   void dispose() {
     _scrollController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    // Refresh stories when app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      AppLogger.debug('App resumed - refreshing stories');
+      ref.invalidate(activeStoriesProvider);
+      ref.invalidate(paginatedStoriesProvider);
+      ref.read(paginatedStoriesProvider.notifier).refresh();
+    }
   }
 
   void _onScroll() {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/chat_utils.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/discovery_provider.dart';
 import '../widgets/filter_bottom_sheet.dart';
@@ -68,7 +69,8 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
   void _handleUserTap(String userId, String userName, String? imageUrl) {
     final loggedInUser = ref.read(currentUserProvider).value;
     if (loggedInUser != null) {
-      final chatId = 'new_$userId';
+      // Generate deterministic chat ID to prevent duplicates
+      final chatId = ChatUtils.generateChatId(loggedInUser.uid, userId);
       context.push(
         '/chat/$chatId?currentUserId=${loggedInUser.uid}&otherUserId=$userId&otherUserName=${Uri.encodeComponent(userName)}&otherUserImageUrl=${Uri.encodeComponent(imageUrl ?? "")}',
       );

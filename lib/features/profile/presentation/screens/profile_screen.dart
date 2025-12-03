@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/utils/snackbar_helper.dart';
+import '../../../../core/utils/chat_utils.dart';
 import '../../../../services/analytics/analytics_events.dart';
 import '../../../../services/monitoring/crashlytics_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -801,7 +802,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
               onTap: () {
                 final otherUserId = profile.id;
-                final chatId = 'new_$otherUserId';
+                // Generate deterministic chat ID to prevent duplicates
+                final chatId = ChatUtils.generateChatId(currentUserId, otherUserId);
 
                 context.push(
                   '/chat/$chatId?currentUserId=$currentUserId&otherUserId=$otherUserId&otherUserName=${Uri.encodeComponent(profile.name ?? "")}&otherUserImageUrl=${Uri.encodeComponent(profile.profileImageUrl ?? "")}',

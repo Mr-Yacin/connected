@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/snackbar_helper.dart';
+import '../../../../core/utils/chat_utils.dart';
 import '../../../../services/analytics/analytics_events.dart';
 import '../../../../services/monitoring/crashlytics_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -179,7 +180,8 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
       // Navigate to chat screen with this user
       final otherUserId = currentUser.id;
       final currentUserId = loggedInUser.uid;
-      final chatId = 'new_$otherUserId'; // Convention for new/potential chat
+      // Generate deterministic chat ID to prevent duplicates
+      final chatId = ChatUtils.generateChatId(currentUserId, otherUserId);
 
       context.push(
         '/chat/$chatId?currentUserId=$currentUserId&otherUserId=$otherUserId&otherUserName=${Uri.encodeComponent(currentUser.name ?? "")}&otherUserImageUrl=${Uri.encodeComponent(currentUser.profileImageUrl ?? "")}',
