@@ -202,6 +202,9 @@ class StoryManagementSheet extends ConsumerWidget {
 
   /// Show delete confirmation dialog
   void _showDeleteConfirmation(BuildContext context, dynamic repository, WidgetRef ref) {
+    // Get the ScaffoldMessenger before showing dialogs
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
     showDialog(
       context: context,
       builder: (dialogContext) => Consumer(
@@ -225,13 +228,13 @@ class StoryManagementSheet extends ConsumerWidget {
               child: const Text('إلغاء'),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 // Close confirmation dialog
                 Navigator.pop(dialogContext);
                 // Close bottom sheet
                 Navigator.pop(context);
                 // Delete story
-                _deleteStory(context, repository, ref);
+                await _deleteStory(scaffoldMessenger, repository, ref);
               },
               style: TextButton.styleFrom(
                 foregroundColor: AppColors.error,
@@ -245,34 +248,32 @@ class StoryManagementSheet extends ConsumerWidget {
   }
 
   /// Delete story from repository
-  Future<void> _deleteStory(BuildContext context, dynamic repository, WidgetRef ref) async {
+  Future<void> _deleteStory(ScaffoldMessengerState scaffoldMessenger, dynamic repository, WidgetRef ref) async {
     print('🗑️ Starting story deletion: ${story.id}');
     
-    // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
     try {
       print('🗑️ Calling repository.deleteStory()');
       await repository.deleteStory(story.id);
       print('✅ Story deleted successfully from repository');
+    } catch (e) {
+      print('❌ Error deleting story: $e');
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text('فشل في حذف القصة: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return; // Exit early on error
+    }
 
+    // Only continue if deletion was successful
+    try {
       // Invalidate providers to refresh UI
-      // We need to use a Consumer or get a new ref from context
       print('🔄 Invalidating providers');
       ref.invalidate(activeStoriesProvider);
       ref.invalidate(userStoriesProvider(currentUserId));
-
-      // Close loading dialog
-      if (context.mounted) {
-        print('🚪 Closing loading dialog');
-        Navigator.pop(context);
-      }
+      ref.invalidate(followingStoriesProvider);
 
       // Call the onDeleted callback if provided
       if (onDeleted != null) {
@@ -280,24 +281,24 @@ class StoryManagementSheet extends ConsumerWidget {
         onDeleted!();
       }
 
-      if (context.mounted) {
-        print('✅ Showing success message');
-        SnackbarHelper.showSuccess(context, 'تم حذف القصة بنجاح');
-      }
+      print('✅ Showing success message');
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('تم حذف القصة بنجاح'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
     } catch (e) {
-      print('❌ Error deleting story: $e');
-      
-      // Close loading dialog
-      if (context.mounted) {
-        Navigator.pop(context);
-      }
-
-      if (context.mounted) {
-        SnackbarHelper.showError(
-          context,
-          'فشل في حذف القصة: ${e.toString()}',
-        );
-      }
+      print('⚠️ Error during post-deletion cleanup: $e');
+      // Still show success since the story was deleted
+      scaffoldMessenger.showSnackBar(
+        const SnackBar(
+          content: Text('تم حذف القصة بنجاح'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 2),
+        ),
+      );
     }
   }
 }

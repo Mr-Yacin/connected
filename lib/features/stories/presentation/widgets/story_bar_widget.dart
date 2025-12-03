@@ -49,60 +49,69 @@ class StoryBarWidget extends ConsumerWidget {
           return ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            itemCount: (ownStories != null ? 1 : 0) + followingStoriesMap.length,
+            itemCount: 1 + followingStoriesMap.length, // Always show own profile
             itemBuilder: (context, index) {
-              // First item is own stories if they exist
-              if (ownStories != null && index == 0) {
-                final hasUnviewed = ownStories.any(
+              // First item is always own profile (with or without stories)
+              if (index == 0) {
+                final hasUnviewed = ownStories?.any(
                   (story) => !story.viewerIds.contains(currentUserId),
-                );
-                
-                // Build list of all user IDs in order (own stories first)
-                final allUserIds = [currentUserId, ...followingStoriesMap.keys];
+                ) ?? false;
                 
                 return _StoryAvatar(
                   userId: currentUserId,
                   stories: ownStories,
                   hasUnviewed: hasUnviewed,
                   isOwnStory: true,
+                  hasStories: ownStories != null && ownStories.isNotEmpty,
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MultiUserStoryViewScreen(
-                          userIds: allUserIds,
-                          currentUserId: currentUserId,
-                          initialUserIndex: 0,
+                    if (ownStories != null && ownStories.isNotEmpty) {
+                      // View own stories
+                      final allUserIds = [currentUserId, ...followingStoriesMap.keys];
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => MultiUserStoryViewScreen(
+                            userIds: allUserIds,
+                            currentUserId: currentUserId,
+                            initialUserIndex: 0,
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    } else {
+                      // Create new story
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => StoryCameraScreen(
+                            userId: currentUserId,
+                          ),
+                        ),
+                      );
+                    }
                   },
                 );
               }
 
               // Following stories
-              final followingIndex = ownStories != null ? index - 1 : index;
+              final followingIndex = index - 1; // Always subtract 1 since own profile is always first
               final userId = followingStoriesMap.keys.elementAt(followingIndex);
               final userStories = followingStoriesMap[userId]!;
               final hasUnviewed = userStories.any(
                 (story) => !story.viewerIds.contains(currentUserId),
               );
 
-              // Build list of all user IDs in order
-              final allUserIds = ownStories != null 
-                  ? [currentUserId, ...followingStoriesMap.keys]
-                  : followingStoriesMap.keys.toList();
+              // Build list of all user IDs in order (own profile always first)
+              final allUserIds = [currentUserId, ...followingStoriesMap.keys];
               
               // Calculate the correct initial index
-              final initialUserIndex = ownStories != null 
-                  ? followingIndex + 1 
-                  : followingIndex;
+              final initialUserIndex = index;
 
               return _StoryAvatar(
                 userId: userId,
                 stories: userStories,
                 hasUnviewed: hasUnviewed,
                 isOwnStory: false,
+                hasStories: true,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -178,9 +187,10 @@ class StoryBarWidget extends ConsumerWidget {
 /// Story avatar widget
 class _StoryAvatar extends ConsumerWidget {
   final String userId;
-  final List<Story> stories;
+  final List<Story>? stories;
   final bool hasUnviewed;
   final bool isOwnStory;
+  final bool hasStories;
   final VoidCallback onTap;
 
   const _StoryAvatar({
@@ -188,6 +198,7 @@ class _StoryAvatar extends ConsumerWidget {
     required this.stories,
     required this.hasUnviewed,
     required this.isOwnStory,
+    required this.hasStories,
     required this.onTap,
   });
 
@@ -212,36 +223,63 @@ class _StoryAvatar extends ConsumerWidget {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         child: Column(
           children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: hasUnviewed
-                    ? const LinearGradient(
-                        colors: [Colors.purple, Colors.pink, Colors.orange],
-                      )
-                    : null,
-                border: !hasUnviewed
-                    ? Border.all(color: Colors.grey, width: 2)
-                    : null,
-              ),
-              padding: const EdgeInsets.all(3),
-              child: Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  image: profileImageUrl != null
-                      ? DecorationImage(
-                          image: CachedNetworkImageProvider(profileImageUrl),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                  color: profileImageUrl == null ? Colors.grey[300] : null,
+            Stack(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: hasUnviewed && hasStories
+                        ? const LinearGradient(
+                            colors: [Colors.purple, Colors.pink, Colors.orange],
+                          )
+                        : null,
+                    border: !hasUnviewed || !hasStories
+                        ? Border.all(color: Colors.grey, width: 2)
+                        : null,
+                  ),
+                  padding: const EdgeInsets.all(3),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      image: profileImageUrl != null
+                          ? DecorationImage(
+                              image: CachedNetworkImageProvider(profileImageUrl),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                      color: profileImageUrl == null ? Colors.grey[300] : null,
+                    ),
+                    child: profileImageUrl == null
+                        ? const Icon(Icons.person, color: Colors.grey, size: 30)
+                        : null,
+                  ),
                 ),
-                child: profileImageUrl == null
-                    ? const Icon(Icons.person, color: Colors.grey, size: 30)
-                    : null,
-              ),
+                // Show "+" icon for own story when no stories exist
+                if (isOwnStory && !hasStories)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Theme.of(context).primaryColor,
+                        border: Border.all(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          width: 2,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 12,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 4),
             Text(

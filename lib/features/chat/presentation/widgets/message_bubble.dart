@@ -58,7 +58,9 @@ class MessageBubble extends StatelessWidget {
               VoiceMessageWidget(
                 audioUrl: message.content,
                 isMe: isMe,
-              ),
+              )
+            else if (message.type == MessageType.storyReply)
+              _buildStoryReplyContent(context),
 
             const SizedBox(height: 5),
 
@@ -86,6 +88,129 @@ class MessageBubble extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildStoryReplyContent(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Story preview card (compact Instagram-like design)
+        Container(
+          decoration: BoxDecoration(
+            color: isMe 
+                ? Colors.white.withValues(alpha: 0.15)
+                : Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isMe 
+                  ? Colors.white.withValues(alpha: 0.25)
+                  : Colors.grey.withValues(alpha: 0.25),
+              width: 0.5,
+            ),
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              children: [
+                // Story thumbnail (smaller and more compact)
+                if (message.storyMediaUrl != null)
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topRight: Radius.circular(8),
+                      bottomRight: Radius.circular(8),
+                    ),
+                    child: Image.network(
+                      message.storyMediaUrl!,
+                      width: 40,
+                      height: 56,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 40,
+                          height: 56,
+                          color: isMe 
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.grey[200],
+                          child: Icon(
+                            Icons.image_not_supported_rounded,
+                            color: isMe 
+                                ? Colors.white.withValues(alpha: 0.5)
+                                : Colors.grey[400],
+                            size: 20,
+                          ),
+                        );
+                      },
+                    ),
+                  )
+                else
+                  Container(
+                    width: 40,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: isMe 
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.grey[200],
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(8),
+                        bottomRight: Radius.circular(8),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.photo_library_rounded,
+                      color: isMe 
+                          ? Colors.white.withValues(alpha: 0.5)
+                          : Colors.grey[400],
+                      size: 20,
+                    ),
+                  ),
+                
+                // Story label (more compact)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.auto_awesome_rounded,
+                          size: 14,
+                          color: isMe 
+                              ? Colors.white.withValues(alpha: 0.85)
+                              : Colors.grey[600],
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          'القصة',
+                          style: TextStyle(
+                            color: isMe 
+                                ? Colors.white.withValues(alpha: 0.85)
+                                : Colors.grey[600],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        // Reply text (if exists)
+        if (message.content.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            message.content,
+            style: TextStyle(
+              color: isMe ? Colors.white : Colors.black87,
+              fontSize: 15,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ],
     );
   }
 

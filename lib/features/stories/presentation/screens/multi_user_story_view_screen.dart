@@ -328,30 +328,12 @@ class _MultiUserStoryViewScreenState
           final story = stories[storyIndex];
           final isOwnStory = story.userId == widget.currentUserId;
 
-          return AnimatedBuilder(
-            animation: _userPageController,
-            builder: (context, child) {
-              double value = 1.0;
-              if (_userPageController.position.haveDimensions) {
-                value = _userPageController.page! - userIndex;
-                value = (1 - (value.abs() * 0.5)).clamp(0.0, 1.0);
-              }
-
-              return Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()
-                  ..setEntry(3, 2, 0.001)
-                  ..rotateY((_userPageController.page ?? 0) - userIndex),
-                child: child,
-              );
-            },
-            child: _UserStoryPage(
-              key: ValueKey('user_$userId'),
-              story: story,
-              stories: stories,
-              isOwnStory: isOwnStory,
-              buildFullStoryScreen: (s, ss, own) => _buildFullStoryScreen(s, ss, own),
-            ),
+          return _UserStoryPage(
+            key: ValueKey('user_$userId'),
+            story: story,
+            stories: stories,
+            isOwnStory: isOwnStory,
+            buildFullStoryScreen: (s, ss, own) => _buildFullStoryScreen(s, ss, own),
           );
         },
       ),

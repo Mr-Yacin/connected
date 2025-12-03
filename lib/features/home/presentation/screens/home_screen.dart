@@ -117,13 +117,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return SafeArea(
       child: Column(
         children: [
-          // App bar with title, filter, and add icon
+          // App bar with title and filter icon
           Container(
             padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Filter button on the left
+                // Empty space for balance
+                const SizedBox(width: 48),
+                
+                // Title in the center
+                Text(
+                  'القصص',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                
+                // Filter button on the right
                 Stack(
                   children: [
                     IconButton(
@@ -146,29 +157,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                   ],
-                ),
-                
-                // Title in the center
-                Text(
-                  'القصص',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                
-                // Add story button on the right
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline, size: 28),
-                  onPressed: () {
-                    // Navigate to story camera
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => StoryCameraScreen(userId: userId),
-                      ),
-                    );
-                  },
-                  tooltip: 'إضافة قصة',
                 ),
               ],
             ),

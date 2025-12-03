@@ -150,6 +150,9 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
         // Group stories by user - this is what we'll display in grid
         final Map<String, List<Story>> storiesByUser = {};
         for (var story in allStories) {
+          // Skip current user's stories
+          if (story.userId == widget.currentUserId) continue;
+          
           if (!storiesByUser.containsKey(story.userId)) {
             storiesByUser[story.userId] = [];
           }

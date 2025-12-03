@@ -4,7 +4,6 @@ import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
 import '../../utils/story_time_formatter.dart';
 import 'common/story_profile_avatar.dart';
-import 'common/story_stats_row.dart';
 
 /// Individual story card widget for grid display
 /// Shows ONE card per user with all their stories count
@@ -127,56 +126,55 @@ class StoryCardWidget extends StatelessWidget {
                       ],
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
+                  child: Row(
                     children: [
-                      // User name and time
+                      // User name at bottom left
                       if (userName != null)
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                userName!,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                        Expanded(
+                          child: Text(
+                            userName!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              StoryTimeFormatter.getTimeAgo(story.createdAt),
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10,
-                              ),
-                            ),
-                          ],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      const SizedBox(height: 4),
-                      // Story stats
-                      StoryStatsRow(
-                        viewCount: story.viewerIds.length,
-                        likeCount: story.likedBy.length,
-                        replyCount: story.replyCount,
+                      const SizedBox(width: 8),
+                      // Profile avatar at bottom right
+                      StoryProfileAvatar(
+                        profileImageUrl: profileImageUrl,
+                        size: 32,
+                        borderWidth: 2,
                       ),
                     ],
                   ),
                 ),
               ),
 
-              // Profile avatar at top left
+              // Time at top left
               Positioned(
                 top: 8,
                 left: 8,
-                child: StoryProfileAvatar(
-                  profileImageUrl: profileImageUrl,
-                  size: 40,
-                  borderWidth: 2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    StoryTimeFormatter.getTimeAgo(story.createdAt),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
 
