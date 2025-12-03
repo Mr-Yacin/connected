@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../core/models/discovery_filters.dart';
@@ -77,9 +78,17 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
   final FirestoreDiscoveryRepository _repository;
   final ViewedUsersService _viewedUsersService;
   String? _currentUserId;
+  Timer? _cooldownTimer;
 
   DiscoveryNotifier(this._repository, this._viewedUsersService) : super(DiscoveryState()) {
     _initViewedUsers();
+  }
+
+  @override
+  void dispose() {
+    _cooldownTimer?.cancel();
+    _cooldownTimer = null;
+    super.dispose();
   }
 
   /// Initialize viewed users from storage
@@ -184,18 +193,22 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
 
   /// Start cooldown countdown
   void _startCooldownCountdown() {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        final remaining = _getRemainingSeconds();
-        if (remaining > 0) {
-          state = state.copyWith(cooldownSeconds: remaining);
-          _startCooldownCountdown();
-        } else {
-          state = state.copyWith(
-            canShuffle: true,
-            cooldownSeconds: 0,
-          );
-        }
+    // Cancel existing timer before starting new one
+    _cooldownTimer?.cancel();
+    
+    // Use Timer.periodic instead of recursive Future.delayed
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final remaining = _getRemainingSeconds();
+      
+      if (remaining > 0) {
+        state = state.copyWith(cooldownSeconds: remaining);
+      } else {
+        state = state.copyWith(
+          canShuffle: true,
+          cooldownSeconds: 0,
+        );
+        timer.cancel();
+        _cooldownTimer = null;
       }
     });
   }

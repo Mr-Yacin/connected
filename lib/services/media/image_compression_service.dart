@@ -13,9 +13,14 @@ final imageCompressionServiceProvider = Provider<ImageCompressionService>((
 
 /// Service for compressing images
 class ImageCompressionService {
-  /// Compress image file
+  /// Compress image file with configurable dimensions
   /// Returns the compressed file, or the original file if compression fails
-  Future<File> compressImage(File file, {int quality = 85}) async {
+  Future<File> compressImage(
+    File file, {
+    int quality = 85,
+    int maxWidth = 1920,
+    int maxHeight = 1920,
+  }) async {
     try {
       final filePath = file.absolute.path;
       final fileExtension = p.extension(filePath);
@@ -39,8 +44,8 @@ class ImageCompressionService {
         filePath,
         targetPath,
         quality: quality,
-        minWidth: 1920, // Resize if larger than Full HD
-        minHeight: 1920,
+        minWidth: maxWidth,
+        minHeight: maxHeight,
       );
 
       if (result != null) {
@@ -53,5 +58,27 @@ class ImageCompressionService {
       print('Image compression failed: $e');
       return file;
     }
+  }
+
+  /// Compress image for stories (optimized dimensions)
+  /// Uses 1080x1920 dimensions for optimal story display
+  Future<File> compressForStory(File file) {
+    return compressImage(
+      file,
+      quality: 85,
+      maxWidth: 1080,
+      maxHeight: 1920,
+    );
+  }
+
+  /// Compress image for profile photo (smaller dimensions)
+  /// Uses 512x512 dimensions for profile photos
+  Future<File> compressForProfile(File file) {
+    return compressImage(
+      file,
+      quality: 90,
+      maxWidth: 512,
+      maxHeight: 512,
+    );
   }
 }

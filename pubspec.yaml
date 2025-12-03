@@ -107,6 +107,7 @@ dev_dependencies:
   mockito: ^5.4.4
   build_runner: ^2.4.14
   riverpod_generator: ^2.6.3
+  fake_cloud_firestore: ^3.0.3
 
 # Override to fix record_linux compatibility issue
 dependency_overrides:

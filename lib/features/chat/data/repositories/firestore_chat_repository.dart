@@ -340,7 +340,9 @@ class FirestoreChatRepository extends BaseFirestoreRepository
           .orderBy('lastMessageTime', descending: true)
           .snapshots()
           .asyncMap((chatsSnapshot) async {
-            final chatPreviews = <ChatPreview>[];
+            // Collect chat data and identify which users need profile fetching
+            final chatDataList = <Map<String, dynamic>>[];
+            final userIdsNeedingFetch = <String>[];
 
             for (final doc in chatsSnapshot.docs) {
               final data = doc.data();
@@ -354,24 +356,65 @@ class FirestoreChatRepository extends BaseFirestoreRepository
 
               if (otherUserId.isEmpty) continue;
 
-              // Get other user's profile
-              final userDoc = await _firestore
-                  .collection('users')
-                  .doc(otherUserId)
-                  .get();
-              final userData = userDoc.data();
+              // Check if denormalized data exists
+              final participantNames = data['participantNames'] as Map<String, dynamic>?;
+              
+              final hasDenormalizedData = participantNames != null && 
+                                         participantNames.containsKey(otherUserId);
 
-              // OPTIMIZED: Read unread count directly from denormalized field
+              chatDataList.add({
+                'chatId': doc.id,
+                'otherUserId': otherUserId,
+                'data': data,
+                'hasDenormalizedData': hasDenormalizedData,
+              });
+
+              // If denormalized data is missing, add to fetch list
+              if (!hasDenormalizedData) {
+                userIdsNeedingFetch.add(otherUserId);
+              }
+            }
+
+            // Batch fetch missing user profiles
+            final userProfiles = userIdsNeedingFetch.isNotEmpty
+                ? await _batchFetchUserProfiles(userIdsNeedingFetch)
+                : <String, Map<String, dynamic>?>{};
+
+            // Build chat previews using denormalized data or fetched profiles
+            final chatPreviews = <ChatPreview>[];
+            for (final chatData in chatDataList) {
+              final data = chatData['data'] as Map<String, dynamic>;
+              final otherUserId = chatData['otherUserId'] as String;
+              final hasDenormalizedData = chatData['hasDenormalizedData'] as bool;
+
+              String? otherUserName;
+              String? otherUserImageUrl;
+
+              if (hasDenormalizedData) {
+                // Use denormalized data
+                final participantNames = data['participantNames'] as Map<String, dynamic>;
+                final participantImages = data['participantImages'] as Map<String, dynamic>?;
+                
+                otherUserName = participantNames[otherUserId] as String?;
+                otherUserImageUrl = participantImages?[otherUserId] as String?;
+              } else {
+                // Fallback to fetched profile data
+                final userData = userProfiles[otherUserId];
+                otherUserName = userData?['name'] as String?;
+                otherUserImageUrl = userData?['profileImageUrl'] as String?;
+              }
+
+              // Read unread count directly from denormalized field
               final unreadCountMap =
                   data['unreadCount'] as Map<String, dynamic>?;
               final unreadCount = unreadCountMap?[userId] as int? ?? 0;
 
               chatPreviews.add(
                 ChatPreview(
-                  chatId: doc.id,
+                  chatId: chatData['chatId'] as String,
                   otherUserId: otherUserId,
-                  otherUserName: userData?['name'] as String?,
-                  otherUserImageUrl: userData?['profileImageUrl'] as String?,
+                  otherUserName: otherUserName,
+                  otherUserImageUrl: otherUserImageUrl,
                   lastMessage: data['lastMessage'] as String?,
                   lastMessageTime: data['lastMessageTime'] != null
                       ? (data['lastMessageTime'] as Timestamp).toDate()
@@ -396,12 +439,98 @@ class FirestoreChatRepository extends BaseFirestoreRepository
     }
   }
 
+  /// Batch fetch user profiles using Firestore whereIn queries
+  /// Handles batching for lists larger than 10 (Firestore limit)
+  /// Returns a map of userId to user data
+  Future<Map<String, Map<String, dynamic>?>> _batchFetchUserProfiles(
+    List<String> userIds,
+  ) async {
+    if (userIds.isEmpty) return {};
+
+    final profiles = <String, Map<String, dynamic>?>{};
+
+    try {
+      // Firestore whereIn limit is 10, so we need to batch
+      for (var i = 0; i < userIds.length; i += 10) {
+        final batch = userIds.skip(i).take(10).toList();
+
+        try {
+          final snapshot = await _firestore
+              .collection('users')
+              .where(FieldPath.documentId, whereIn: batch)
+              .get();
+
+          for (final doc in snapshot.docs) {
+            profiles[doc.id] = doc.data();
+          }
+
+          // Mark any users not found in this batch
+          for (final userId in batch) {
+            if (!profiles.containsKey(userId)) {
+              profiles[userId] = null;
+            }
+          }
+        } catch (e, stackTrace) {
+          // Log batch query error and fall back to individual queries
+          ErrorLoggingService.logFirestoreError(
+            e,
+            stackTrace: stackTrace,
+            context: 'Batch query failed, falling back to individual queries',
+            screen: 'ChatListScreen',
+            operation: '_batchFetchUserProfiles',
+            collection: 'users',
+          );
+
+          // Fallback: fetch individually for this batch
+          for (final userId in batch) {
+            try {
+              final userDoc = await _firestore
+                  .collection('users')
+                  .doc(userId)
+                  .get();
+              profiles[userId] = userDoc.data();
+            } catch (individualError, individualStackTrace) {
+              ErrorLoggingService.logFirestoreError(
+                individualError,
+                stackTrace: individualStackTrace,
+                context: 'Individual user fetch failed',
+                screen: 'ChatListScreen',
+                operation: '_batchFetchUserProfiles',
+                collection: 'users',
+                documentId: userId,
+              );
+              profiles[userId] = null;
+            }
+          }
+        }
+      }
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to batch fetch user profiles',
+        screen: 'ChatListScreen',
+        operation: '_batchFetchUserProfiles',
+        collection: 'users',
+      );
+      // Return empty map on complete failure
+      return {};
+    }
+
+    return profiles;
+  }
+
   /// Build chat previews from snapshot
+  /// Uses denormalized data first, falls back to batch fetch if missing
   Future<List<ChatPreview>> _buildChatPreviews(
     QuerySnapshot chatsSnapshot,
     String userId,
   ) async {
     final chatPreviews = <ChatPreview>[];
+
+    // Collect chat data and identify which users need profile fetching
+    final chatDataList = <Map<String, dynamic>>[];
+    final userIdsNeedingFetch = <String>[];
 
     for (final doc in chatsSnapshot.docs) {
       final data = doc.data() as Map<String, dynamic>;
@@ -413,21 +542,62 @@ class FirestoreChatRepository extends BaseFirestoreRepository
 
       if (otherUserId.isEmpty) continue;
 
-      final userDoc = await _firestore
-          .collection('users')
-          .doc(otherUserId)
-          .get();
-      final userData = userDoc.data();
+      // Check if denormalized data exists
+      final participantNames = data['participantNames'] as Map<String, dynamic>?;
+      
+      final hasDenormalizedData = participantNames != null && 
+                                 participantNames.containsKey(otherUserId);
+
+      chatDataList.add({
+        'chatId': doc.id,
+        'otherUserId': otherUserId,
+        'data': data,
+        'hasDenormalizedData': hasDenormalizedData,
+      });
+
+      // If denormalized data is missing, add to fetch list
+      if (!hasDenormalizedData) {
+        userIdsNeedingFetch.add(otherUserId);
+      }
+    }
+
+    // Batch fetch missing user profiles
+    final userProfiles = userIdsNeedingFetch.isNotEmpty
+        ? await _batchFetchUserProfiles(userIdsNeedingFetch)
+        : <String, Map<String, dynamic>?>{};
+
+    // Build chat previews using denormalized data or fetched profiles
+    for (final chatData in chatDataList) {
+      final data = chatData['data'] as Map<String, dynamic>;
+      final otherUserId = chatData['otherUserId'] as String;
+      final hasDenormalizedData = chatData['hasDenormalizedData'] as bool;
+
+      String? otherUserName;
+      String? otherUserImageUrl;
+
+      if (hasDenormalizedData) {
+        // Use denormalized data
+        final participantNames = data['participantNames'] as Map<String, dynamic>;
+        final participantImages = data['participantImages'] as Map<String, dynamic>?;
+        
+        otherUserName = participantNames[otherUserId] as String?;
+        otherUserImageUrl = participantImages?[otherUserId] as String?;
+      } else {
+        // Fallback to fetched profile data
+        final userData = userProfiles[otherUserId];
+        otherUserName = userData?['name'] as String?;
+        otherUserImageUrl = userData?['profileImageUrl'] as String?;
+      }
 
       final unreadCountMap = data['unreadCount'] as Map<String, dynamic>?;
       final unreadCount = unreadCountMap?[userId] as int? ?? 0;
 
       chatPreviews.add(
         ChatPreview(
-          chatId: doc.id,
+          chatId: chatData['chatId'] as String,
           otherUserId: otherUserId,
-          otherUserName: userData?['name'] as String?,
-          otherUserImageUrl: userData?['profileImageUrl'] as String?,
+          otherUserName: otherUserName,
+          otherUserImageUrl: otherUserImageUrl,
           lastMessage: data['lastMessage'] as String?,
           lastMessageTime: data['lastMessageTime'] != null
               ? (data['lastMessageTime'] as Timestamp).toDate()
@@ -457,6 +627,7 @@ class FirestoreChatRepository extends BaseFirestoreRepository
   }
 
   /// Update chat metadata (last message, timestamp, participants)
+  /// Also stores denormalized participant data (names and profile images)
   Future<void> _updateChatMetadata({
     required String chatId,
     required String senderId,
@@ -466,8 +637,30 @@ class FirestoreChatRepository extends BaseFirestoreRepository
   }) async {
     return handleFirestoreVoidOperation(
       operation: () async {
+        // Fetch participant profiles for denormalization
+        final participantProfiles = await _batchFetchUserProfiles([senderId, receiverId]);
+        
+        final senderData = participantProfiles[senderId];
+        final receiverData = participantProfiles[receiverId];
+        
+        // Build denormalized participant data
+        final participantNames = <String, String>{};
+        final participantImages = <String, String?>{};
+        
+        if (senderData != null) {
+          participantNames[senderId] = senderData['name'] as String? ?? '';
+          participantImages[senderId] = senderData['profileImageUrl'] as String?;
+        }
+        
+        if (receiverData != null) {
+          participantNames[receiverId] = receiverData['name'] as String? ?? '';
+          participantImages[receiverId] = receiverData['profileImageUrl'] as String?;
+        }
+        
         await _firestore.collection('chats').doc(chatId).set({
           'participants': [senderId, receiverId],
+          'participantNames': participantNames,
+          'participantImages': participantImages,
           'lastMessage': lastMessage,
           'lastMessageTime': Timestamp.fromDate(lastMessageTime),
           'updatedAt': FieldValue.serverTimestamp(),
@@ -480,5 +673,98 @@ class FirestoreChatRepository extends BaseFirestoreRepository
       collection: 'chats',
       documentId: chatId,
     );
+  }
+
+  /// Update denormalized participant data in all chats for a specific user
+  /// This should be called when a user updates their profile (name or profile image)
+  /// Supports background job execution for batch updates
+  @override
+  Future<void> updateUserDenormalizedData({
+    required String userId,
+    required String userName,
+    String? userImageUrl,
+    bool runInBackground = false,
+  }) async {
+    if (runInBackground) {
+      // Run in background without blocking
+      _updateUserDenormalizedDataInBackground(
+        userId: userId,
+        userName: userName,
+        userImageUrl: userImageUrl,
+      );
+      return;
+    }
+
+    // Run synchronously
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        await _updateUserDenormalizedDataInBackground(
+          userId: userId,
+          userName: userName,
+          userImageUrl: userImageUrl,
+        );
+      },
+      operationName: 'updateUserDenormalizedData',
+      screen: 'ProfileScreen',
+      arabicErrorMessage: 'فشل في تحديث بيانات المحادثات',
+      collection: 'chats',
+    );
+  }
+
+  /// Internal method to update denormalized data in background
+  Future<void> _updateUserDenormalizedDataInBackground({
+    required String userId,
+    required String userName,
+    String? userImageUrl,
+  }) async {
+    try {
+      // Find all chats where this user is a participant
+      final chatsSnapshot = await _firestore
+          .collection('chats')
+          .where('participants', arrayContains: userId)
+          .get();
+
+      if (chatsSnapshot.docs.isEmpty) {
+        return;
+      }
+
+      // Batch update all chats (Firestore batch limit is 500 operations)
+      final batchSize = 500;
+      var batch = _firestore.batch();
+      var operationCount = 0;
+
+      for (final doc in chatsSnapshot.docs) {
+        // Update the denormalized data for this user
+        batch.update(doc.reference, {
+          'participantNames.$userId': userName,
+          'participantImages.$userId': userImageUrl,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        operationCount++;
+
+        // Commit batch when reaching limit
+        if (operationCount >= batchSize) {
+          await batch.commit();
+          batch = _firestore.batch();
+          operationCount = 0;
+        }
+      }
+
+      // Commit remaining operations
+      if (operationCount > 0) {
+        await batch.commit();
+      }
+    } catch (e, stackTrace) {
+      // Log error but don't throw to prevent blocking profile updates
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to update denormalized user data in chats',
+        screen: 'ProfileScreen',
+        operation: 'updateUserDenormalizedData',
+        collection: 'chats',
+      );
+    }
   }
 }

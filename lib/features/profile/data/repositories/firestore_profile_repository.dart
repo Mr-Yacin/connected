@@ -84,7 +84,7 @@ class FirestoreProfileRepository extends BaseFirestoreRepository
         // Compress image before upload if compression service is available
         File imageToUpload = image;
         if (_imageCompression != null) {
-          imageToUpload = await _imageCompression.compressImage(image);
+          imageToUpload = await _imageCompression.compressForProfile(image);
         }
 
         final ref = _storage.ref().child('profile_images/$userId/profile.jpg');

@@ -51,6 +51,114 @@ final activeStoriesProvider = StreamProvider<List<Story>>((ref) {
   );
 });
 
+/// State for paginated stories
+class PaginatedStoriesState {
+  final List<Story> stories;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final DateTime? lastStoryCreatedAt;
+  final String? error;
+
+  PaginatedStoriesState({
+    this.stories = const [],
+    this.isLoadingMore = false,
+    this.hasMore = true,
+    this.lastStoryCreatedAt,
+    this.error,
+  });
+
+  PaginatedStoriesState copyWith({
+    List<Story>? stories,
+    bool? isLoadingMore,
+    bool? hasMore,
+    DateTime? lastStoryCreatedAt,
+    String? error,
+  }) {
+    return PaginatedStoriesState(
+      stories: stories ?? this.stories,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      hasMore: hasMore ?? this.hasMore,
+      lastStoryCreatedAt: lastStoryCreatedAt ?? this.lastStoryCreatedAt,
+      error: error,
+    );
+  }
+}
+
+/// Notifier for paginated stories
+class PaginatedStoriesNotifier extends StateNotifier<PaginatedStoriesState> {
+  final StoryRepository _repository;
+  static const int _pageSize = 20;
+
+  PaginatedStoriesNotifier(this._repository) : super(PaginatedStoriesState());
+
+  /// Load initial stories
+  Future<void> loadInitialStories() async {
+    state = PaginatedStoriesState(
+      stories: [],
+      isLoadingMore: false,
+      hasMore: true,
+      lastStoryCreatedAt: null,
+    );
+
+    await loadMoreStories();
+  }
+
+  /// Load more stories (pagination)
+  Future<void> loadMoreStories() async {
+    // Don't load if already loading or no more items
+    if (state.isLoadingMore || !state.hasMore) return;
+
+    state = state.copyWith(isLoadingMore: true, error: null);
+
+    try {
+      // Get paginated stories stream (we'll take first emission)
+      final storiesStream = _repository.getActiveStoriesPaginated(
+        limit: _pageSize,
+        lastStoryCreatedAt: state.lastStoryCreatedAt,
+      );
+
+      // Listen to first emission
+      final newStories = await storiesStream.first;
+
+      // Determine if there are more stories
+      final hasMore = newStories.length >= _pageSize;
+
+      // Get last story's createdAt for next pagination
+      DateTime? lastCreatedAt = state.lastStoryCreatedAt;
+      if (newStories.isNotEmpty) {
+        lastCreatedAt = newStories.last.createdAt;
+      }
+
+      // Append new stories to existing list
+      final updatedStories = [...state.stories, ...newStories];
+
+      state = state.copyWith(
+        stories: updatedStories,
+        isLoadingMore: false,
+        hasMore: hasMore,
+        lastStoryCreatedAt: lastCreatedAt,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingMore: false,
+        error: 'فشل في تحميل القصص: $e',
+      );
+    }
+  }
+
+  /// Refresh stories (reload from beginning)
+  Future<void> refresh() async {
+    await loadInitialStories();
+  }
+}
+
+/// Provider for paginated stories notifier
+final paginatedStoriesProvider =
+    StateNotifierProvider<PaginatedStoriesNotifier, PaginatedStoriesState>((ref) {
+  final repository = ref.watch(storyRepositoryProvider);
+  return PaginatedStoriesNotifier(repository);
+});
+
 /// Provider for stories from followed users only (plus own stories)
 /// This filters the active stories to show only those from users you follow
 final followingStoriesProvider = StreamProvider<List<Story>>((ref) async* {
@@ -203,7 +311,7 @@ class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
       File fileToUpload = file;
 
       if (type == StoryType.image) {
-        fileToUpload = await _imageCompression.compressImage(file);
+        fileToUpload = await _imageCompression.compressForStory(file);
       } else if (type == StoryType.video) {
         fileToUpload = await _videoCompression.compressVideo(file);
       }

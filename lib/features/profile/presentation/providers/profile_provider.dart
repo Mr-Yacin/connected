@@ -6,6 +6,7 @@ import '../../../../core/exceptions/app_exceptions.dart';
 import '../../data/repositories/firestore_profile_repository.dart';
 import '../../data/services/image_blur_service.dart';
 import '../../../../services/media/image_compression_service.dart';
+import '../../../chat/presentation/providers/chat_provider.dart';
 
 /// Provider for ProfileRepository
 final profileRepositoryProvider = Provider<FirestoreProfileRepository>((ref) {
@@ -55,8 +56,9 @@ class ProfileState {
 class ProfileNotifier extends StateNotifier<ProfileState> {
   final FirestoreProfileRepository _repository;
   final ImageBlurService _blurService;
+  final Ref _ref;
 
-  ProfileNotifier(this._repository, this._blurService) : super(ProfileState());
+  ProfileNotifier(this._repository, this._blurService, this._ref) : super(ProfileState());
 
   /// Reset profile state (for switching between users)
   void resetState() {
@@ -112,8 +114,29 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     state = state.copyWith(isLoading: true, error: null);
 
     try {
+      // Store old profile to check if name or image changed
+      final oldProfile = state.profile;
+      
+      // Update profile in Firestore
       await _repository.updateProfile(profile);
       state = state.copyWith(profile: profile, isLoading: false);
+      
+      // Check if name or profile image changed
+      final nameChanged = oldProfile?.name != profile.name;
+      final imageChanged = oldProfile?.profileImageUrl != profile.profileImageUrl;
+      
+      // If name or image changed, update denormalized data in all chats
+      if (nameChanged || imageChanged) {
+        final chatRepository = _ref.read(chatRepositoryProvider);
+        
+        // Run in background to not block the UI
+        await chatRepository.updateUserDenormalizedData(
+          userId: profile.id,
+          userName: profile.name ?? '',
+          userImageUrl: profile.profileImageUrl,
+          runInBackground: true,
+        );
+      }
     } on AppException catch (e) {
       state = state.copyWith(error: e.message, isLoading: false);
       rethrow;
@@ -210,5 +233,5 @@ final viewedProfileProvider =
     StateNotifierProvider<ProfileNotifier, ProfileState>((ref) {
       final repository = ref.watch(profileRepositoryProvider);
       final blurService = ref.watch(imageBlurServiceProvider);
-      return ProfileNotifier(repository, blurService);
+      return ProfileNotifier(repository, blurService, ref);
     });

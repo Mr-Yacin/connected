@@ -7,11 +7,11 @@ import 'profile_provider.dart';
 final currentUserProfileProvider = StateNotifierProvider<CurrentUserProfileNotifier, ProfileState>((ref) {
   final repository = ref.watch(profileRepositoryProvider);
   final blurService = ref.watch(imageBlurServiceProvider);
-  return CurrentUserProfileNotifier(repository, blurService);
+  return CurrentUserProfileNotifier(repository, blurService, ref);
 });
 
 class CurrentUserProfileNotifier extends ProfileNotifier {
-  CurrentUserProfileNotifier(super.repository, super.blurService);
+  CurrentUserProfileNotifier(super.repository, super.blurService, super.ref);
 
   /// Load the current user's profile automatically
   Future<void> loadCurrentUserProfile() async {

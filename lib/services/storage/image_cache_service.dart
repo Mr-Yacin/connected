@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 // ignore: depend_on_referenced_packages
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// Service for caching images to improve performance
 class ImageCacheService {
@@ -9,7 +12,9 @@ class ImageCacheService {
   factory ImageCacheService() => _instance;
   ImageCacheService._internal();
 
-  /// Custom cache manager with 7-day cache duration
+  /// Custom cache manager with 7-day cache duration and 100MB size limit
+  /// Note: flutter_cache_manager uses maxNrOfCacheObjects to limit cache size.
+  /// The 100MB limit is enforced through the getCacheSize monitoring method.
   static final CacheManager cacheManager = CacheManager(
     Config(
       'social_connect_cache',
@@ -19,6 +24,9 @@ class ImageCacheService {
       fileService: HttpFileService(),
     ),
   );
+
+  /// Maximum cache size in bytes (100MB)
+  static const int maxCacheSize = 100 * 1024 * 1024;
 
   /// Get a cached network image widget
   Widget getCachedImage({
@@ -77,16 +85,41 @@ class ImageCacheService {
   }
 
   /// Get cache size in bytes
-  /// Note: flutter_cache_manager doesn't provide a direct API to get total cache size.
-  /// This method returns 0 as a placeholder. To implement this properly, you would need
-  /// to use path_provider to get the cache directory and manually calculate the size.
   Future<int> getCacheSize() async {
-    // The flutter_cache_manager package doesn't expose a direct way to get
-    // the total cache size. You would need to:
-    // 1. Add path_provider package to pubspec.yaml
-    // 2. Get the cache directory path
-    // 3. Manually iterate through files and sum their sizes
-    // For now, returning 0 as this feature requires additional dependencies
-    return 0;
+    try {
+      final cacheDir = await getTemporaryDirectory();
+      final cachePath = '${cacheDir.path}/social_connect_cache';
+      final dir = Directory(cachePath);
+
+      if (!await dir.exists()) return 0;
+
+      int totalSize = 0;
+      await for (final entity in dir.list(recursive: true)) {
+        if (entity is File) {
+          totalSize += await entity.length();
+        }
+      }
+
+      return totalSize;
+    } catch (e) {
+      // Return 0 if unable to calculate cache size
+      return 0;
+    }
+  }
+
+  /// Check if cache size exceeds the maximum limit and clean if necessary
+  Future<void> enforceCacheSizeLimit() async {
+    try {
+      final currentSize = await getCacheSize();
+      
+      if (currentSize > maxCacheSize) {
+        // Clear cache if it exceeds the limit
+        // flutter_cache_manager will automatically remove oldest files
+        // based on stalePeriod and maxNrOfCacheObjects
+        await cacheManager.emptyCache();
+      }
+    } catch (e) {
+      // Silently fail if unable to enforce cache size limit
+    }
   }
 }

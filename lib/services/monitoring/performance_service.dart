@@ -28,6 +28,15 @@ class PerformanceService {
     required this.analytics,
   });
 
+  /// Initialize Firebase Performance and Analytics
+  static Future<void> initialize() async {
+    final performance = FirebasePerformance.instance;
+    await performance.setPerformanceCollectionEnabled(true);
+
+    final analytics = FirebaseAnalytics.instance;
+    await analytics.setAnalyticsCollectionEnabled(true);
+  }
+
   /// Start a custom trace for performance monitoring
   Future<Trace> startTrace(String traceName) async {
     final trace = performance.newTrace(traceName);

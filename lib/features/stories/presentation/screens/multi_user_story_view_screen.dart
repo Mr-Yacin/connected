@@ -46,11 +46,17 @@ class _MultiUserStoryViewScreenState
   Timer? _storyTimer;
   static const Duration _storyDuration = Duration(seconds: 5);
 
+  // LRU cache configuration
+  static const int _maxCacheEntries = 50;
   final Map<String, List<Story>> _userStoriesCache = {};
+  final Map<String, DateTime> _cacheAccessTimes = {};
   bool _isLoading = true;
   final TextEditingController _messageController = TextEditingController();
   final FocusNode _messageFocusNode = FocusNode();
   bool _isTyping = false;
+  
+  // Track precached images for cleanup
+  final Set<String> _precachedImageUrls = {};
 
   @override
   void initState() {
@@ -90,11 +96,29 @@ class _MultiUserStoryViewScreenState
 
   @override
   void dispose() {
-    _userPageController.dispose();
-    _storyProgressController.dispose();
+    // Cancel timer first to prevent any callbacks during disposal
     _storyTimer?.cancel();
+    _storyTimer = null;
+    
+    // Dispose all controllers
+    _storyProgressController.dispose();
+    _userPageController.dispose();
     _messageController.dispose();
     _messageFocusNode.dispose();
+    
+    // Clear user stories cache map
+    _userStoriesCache.clear();
+    _cacheAccessTimes.clear();
+    
+    // Evict all precached images from memory
+    for (final url in _precachedImageUrls) {
+      imageCache.evict(CachedNetworkImageProvider(url));
+    }
+    _precachedImageUrls.clear();
+    
+    // Invalidate providers to refresh data for next view
+    ref.invalidate(activeStoriesProvider);
+    
     super.dispose();
   }
 
@@ -115,7 +139,7 @@ class _MultiUserStoryViewScreenState
         final sortedStories = List<Story>.from(userStories)
           ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-        _userStoriesCache[userId] = sortedStories;
+        _addToCache(userId, sortedStories);
       }
     } catch (e) {
       print('Error loading user stories: $e');
@@ -128,6 +152,33 @@ class _MultiUserStoryViewScreenState
     if (_userStoriesCache.isNotEmpty) {
       _startStory();
     }
+  }
+
+  /// Add stories to cache with LRU eviction
+  void _addToCache(String userId, List<Story> stories) {
+    // Check if cache exceeds limit
+    if (_userStoriesCache.length >= _maxCacheEntries && !_userStoriesCache.containsKey(userId)) {
+      // Find least recently used entry
+      String? lruKey;
+      DateTime? oldestTime;
+      
+      for (final entry in _cacheAccessTimes.entries) {
+        if (oldestTime == null || entry.value.isBefore(oldestTime)) {
+          oldestTime = entry.value;
+          lruKey = entry.key;
+        }
+      }
+      
+      // Remove LRU entry
+      if (lruKey != null) {
+        _userStoriesCache.remove(lruKey);
+        _cacheAccessTimes.remove(lruKey);
+      }
+    }
+    
+    // Add to cache and update access time
+    _userStoriesCache[userId] = stories;
+    _cacheAccessTimes[userId] = DateTime.now();
   }
 
   void _startStory() {
@@ -170,6 +221,12 @@ class _MultiUserStoryViewScreenState
   List<Story> _getCurrentUserStories() {
     if (_currentUserIndex >= widget.userIds.length) return [];
     final userId = widget.userIds[_currentUserIndex];
+    
+    // Update access time when stories are accessed
+    if (_userStoriesCache.containsKey(userId)) {
+      _cacheAccessTimes[userId] = DateTime.now();
+    }
+    
     return _userStoriesCache[userId] ?? [];
   }
 
@@ -746,6 +803,20 @@ class _MultiUserStoryViewScreenState
 
     if (message.isEmpty) return;
 
+    // Optimistic update - increment reply count immediately
+    setState(() {
+      if (_userStoriesCache.containsKey(story.userId)) {
+        final stories = _userStoriesCache[story.userId]!;
+        final storyIndex = stories.indexWhere((s) => s.id == story.id);
+        if (storyIndex != -1) {
+          final updatedStory = stories[storyIndex].copyWith(
+            replyCount: stories[storyIndex].replyCount + 1,
+          );
+          _userStoriesCache[story.userId]![storyIndex] = updatedStory;
+        }
+      }
+    });
+
     try {
       // Generate chat ID (sorted user IDs to ensure consistency)
       final userIds = [widget.currentUserId, story.userId]..sort();
@@ -762,21 +833,6 @@ class _MultiUserStoryViewScreenState
         storyMediaUrl: story.mediaUrl,
       );
 
-      // Update local cache to reflect the new reply count
-      if (_userStoriesCache.containsKey(story.userId)) {
-        final stories = _userStoriesCache[story.userId]!;
-        final storyIndex = stories.indexWhere((s) => s.id == story.id);
-        if (storyIndex != -1) {
-          final updatedStory = stories[storyIndex].copyWith(
-            replyCount: stories[storyIndex].replyCount + 1,
-          );
-          _userStoriesCache[story.userId]![storyIndex] = updatedStory;
-          if (mounted) {
-            setState(() {});
-          }
-        }
-      }
-
       // Also increment reply count in Firestore
       final storyRepository = ref.read(storyRepositoryProvider);
       await storyRepository.incrementReplyCount(story.id);
@@ -788,6 +844,20 @@ class _MultiUserStoryViewScreenState
         SnackbarHelper.showSuccess(context, 'تم إرسال الرد');
       }
     } catch (e) {
+      // Rollback on error
+      setState(() {
+        if (_userStoriesCache.containsKey(story.userId)) {
+          final stories = _userStoriesCache[story.userId]!;
+          final storyIndex = stories.indexWhere((s) => s.id == story.id);
+          if (storyIndex != -1) {
+            final updatedStory = stories[storyIndex].copyWith(
+              replyCount: stories[storyIndex].replyCount - 1,
+            );
+            _userStoriesCache[story.userId]![storyIndex] = updatedStory;
+          }
+        }
+      });
+      
       if (mounted) {
         SnackbarHelper.showError(
           context,
@@ -840,6 +910,7 @@ class _MultiUserStoryViewScreenState
     if (_currentStoryIndex < currentStories.length - 1) {
       final nextStory = currentStories[_currentStoryIndex + 1];
       if (nextStory.type == StoryType.image) {
+        _precachedImageUrls.add(nextStory.mediaUrl);
         precacheImage(CachedNetworkImageProvider(nextStory.mediaUrl), context);
       }
     }
@@ -852,6 +923,7 @@ class _MultiUserStoryViewScreenState
       if (nextUserStories != null && nextUserStories.isNotEmpty) {
         final nextUserFirstStory = nextUserStories[0];
         if (nextUserFirstStory.type == StoryType.image) {
+          _precachedImageUrls.add(nextUserFirstStory.mediaUrl);
           precacheImage(CachedNetworkImageProvider(nextUserFirstStory.mediaUrl), context);
         }
       }
@@ -861,6 +933,7 @@ class _MultiUserStoryViewScreenState
     if (_currentStoryIndex > 0) {
       final prevStory = currentStories[_currentStoryIndex - 1];
       if (prevStory.type == StoryType.image) {
+        _precachedImageUrls.add(prevStory.mediaUrl);
         precacheImage(CachedNetworkImageProvider(prevStory.mediaUrl), context);
       }
     }
@@ -872,6 +945,7 @@ class _MultiUserStoryViewScreenState
       if (prevUserStories != null && prevUserStories.isNotEmpty) {
         final prevUserLastStory = prevUserStories[prevUserStories.length - 1];
         if (prevUserLastStory.type == StoryType.image) {
+          _precachedImageUrls.add(prevUserLastStory.mediaUrl);
           precacheImage(CachedNetworkImageProvider(prevUserLastStory.mediaUrl), context);
         }
       }
@@ -965,21 +1039,40 @@ class _MultiUserStoryViewScreenState
               final repository = ref.read(storyRepositoryProvider);
               final isLiked = story.likedBy.contains(widget.currentUserId);
 
+              // Optimistic update - update local cache immediately for instant UI feedback
+              setState(() {
+                final userStories = _userStoriesCache[story.userId];
+                if (userStories != null) {
+                  final storyIndex = userStories.indexWhere((s) => s.id == story.id);
+                  if (storyIndex != -1) {
+                    final updatedLikedBy = List<String>.from(userStories[storyIndex].likedBy);
+                    if (isLiked) {
+                      updatedLikedBy.remove(widget.currentUserId);
+                    } else {
+                      updatedLikedBy.add(widget.currentUserId);
+                    }
+                    _userStoriesCache[story.userId]![storyIndex] = 
+                      userStories[storyIndex].copyWith(likedBy: updatedLikedBy);
+                  }
+                }
+              });
+
               try {
+                // Update Firestore in background
                 if (isLiked) {
                   await repository.unlikeStory(story.id, widget.currentUserId);
                 } else {
                   await repository.likeStory(story.id, widget.currentUserId);
                 }
-                
-                // Update local cache immediately for instant UI feedback
+              } catch (e) {
+                // Rollback on error
                 setState(() {
                   final userStories = _userStoriesCache[story.userId];
                   if (userStories != null) {
                     final storyIndex = userStories.indexWhere((s) => s.id == story.id);
                     if (storyIndex != -1) {
                       final updatedLikedBy = List<String>.from(userStories[storyIndex].likedBy);
-                      if (isLiked) {
+                      if (!isLiked) {
                         updatedLikedBy.remove(widget.currentUserId);
                       } else {
                         updatedLikedBy.add(widget.currentUserId);
@@ -990,10 +1083,6 @@ class _MultiUserStoryViewScreenState
                   }
                 });
                 
-                // Refresh providers in background
-                ref.invalidate(activeStoriesProvider);
-                ref.invalidate(userStoriesProvider(story.userId));
-              } catch (e) {
                 if (mounted) {
                   SnackbarHelper.showError(
                     context,

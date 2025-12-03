@@ -315,13 +315,15 @@ class FirestoreStoryRepository implements StoryRepository {
         final storySnapshot = await transaction.get(storyRef);
 
         if (!storySnapshot.exists) {
-          return; // Story doesn't exist, skip
+          throw AppException('القصة غير موجودة');
         }
 
         transaction.update(storyRef, {
           'likedBy': FieldValue.arrayUnion([userId]),
         });
       });
+    } on AppException {
+      rethrow;
     } on FirebaseException catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
         e,
@@ -344,13 +346,15 @@ class FirestoreStoryRepository implements StoryRepository {
         final storySnapshot = await transaction.get(storyRef);
 
         if (!storySnapshot.exists) {
-          return; // Story doesn't exist, skip
+          throw AppException('القصة غير موجودة');
         }
 
         transaction.update(storyRef, {
           'likedBy': FieldValue.arrayRemove([userId]),
         });
       });
+    } on AppException {
+      rethrow;
     } on FirebaseException catch (e, stackTrace) {
       ErrorLoggingService.logFirestoreError(
         e,

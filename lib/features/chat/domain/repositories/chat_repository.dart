@@ -52,6 +52,16 @@ abstract class ChatRepository {
   
   /// Get chat list stream for real-time updates
   Stream<List<ChatPreview>> getChatListStream(String userId);
+  
+  /// Update denormalized participant data in all chats for a specific user
+  /// This should be called when a user updates their profile (name or profile image)
+  /// Set [runInBackground] to true to run the update asynchronously without blocking
+  Future<void> updateUserDenormalizedData({
+    required String userId,
+    required String userName,
+    String? userImageUrl,
+    bool runInBackground = false,
+  });
 }
 
 /// Chat preview model for chat list
