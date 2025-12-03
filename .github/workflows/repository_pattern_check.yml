@@ -1,0 +1,35 @@
+name: Repository Pattern Compliance
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  verify-repository-patterns:
+    name: Verify Repository Patterns
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: stable
+      
+      - name: Get dependencies
+        run: dart pub get
+      
+      - name: Verify Repository Pattern Compliance
+        run: dart tool/verify_repository_patterns.dart
+      
+      - name: Report Status
+        if: failure()
+        run: |
+          echo "❌ Repository pattern compliance check failed!"
+          echo "Please review the errors above and fix them."
+          echo "See docs/guides/REPOSITORY_PATTERN_GUIDE.md for guidance."
+          exit 1

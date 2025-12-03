@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
-import '../../data/repositories/follow_repository.dart';
+import '../../domain/repositories/follow_repository.dart';
+import '../../data/repositories/follow_repository.dart' as impl;
 
 /// Provider for FollowRepository
 final followRepositoryProvider = Provider<FollowRepository>((ref) {
-  return FollowRepository();
+  return impl.FirestoreFollowRepository();
 });
 
 /// State for follow operations

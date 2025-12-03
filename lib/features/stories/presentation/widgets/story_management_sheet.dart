@@ -4,8 +4,11 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/snackbar_helper.dart';
+import '../../../../services/monitoring/app_logger.dart';
+import '../../../../services/monitoring/error_logging_service.dart';
 import '../providers/story_provider.dart';
 import 'common/story_stats_row.dart';
+import 'story_insights_dialog.dart';
 
 /// Bottom sheet for managing own stories (delete, view insights, share)
 /// 
@@ -73,7 +76,10 @@ class StoryManagementSheet extends ConsumerWidget {
             ),
             onTap: () {
               // Don't close bottom sheet, show dialog on top
-              _showInsightsDialog(context);
+              showStoryInsightsDialog(
+                context: context,
+                story: story,
+              );
             },
           ),
           const SizedBox(height: 12),
@@ -114,76 +120,7 @@ class StoryManagementSheet extends ConsumerWidget {
     );
   }
 
-  /// Show insights dialog with detailed statistics
-  void _showInsightsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(
-          'إحصائيات القصة',
-          textAlign: TextAlign.center,
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _InsightRow(
-              icon: Icons.visibility_rounded,
-              label: 'المشاهدات',
-              value: '${story.viewerIds.length}',
-            ),
-            const SizedBox(height: 16),
-            _InsightRow(
-              icon: Icons.favorite_rounded,
-              label: 'الإعجابات',
-              value: '${story.likedBy.length}',
-            ),
-            const SizedBox(height: 16),
-            _InsightRow(
-              icon: Icons.reply_rounded,
-              label: 'الردود',
-              value: '${story.replyCount}',
-            ),
-            const SizedBox(height: 16),
-            _InsightRow(
-              icon: Icons.access_time_rounded,
-              label: 'تنتهي في',
-              value: _getTimeRemaining(),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              // Close insights dialog
-              Navigator.pop(dialogContext);
-              // Close bottom sheet
-              Navigator.pop(context);
-            },
-            child: const Text('إغلاق'),
-          ),
-        ],
-      ),
-    );
-  }
 
-  /// Calculate time remaining until story expires
-  String _getTimeRemaining() {
-    final now = DateTime.now();
-    final remaining = story.expiresAt.difference(now);
-
-    if (remaining.isNegative) {
-      return 'منتهية';
-    }
-
-    final hours = remaining.inHours;
-    final minutes = remaining.inMinutes % 60;
-
-    if (hours > 0) {
-      return '$hours ساعة و $minutes دقيقة';
-    } else {
-      return '$minutes دقيقة';
-    }
-  }
 
   /// Share story using share_plus package
   void _shareStory(BuildContext context) {
@@ -249,14 +186,22 @@ class StoryManagementSheet extends ConsumerWidget {
 
   /// Delete story from repository
   Future<void> _deleteStory(ScaffoldMessengerState scaffoldMessenger, dynamic repository, WidgetRef ref) async {
-    print('🗑️ Starting story deletion: ${story.id}');
+    AppLogger.debug('Starting story deletion: ${story.id}');
     
     try {
-      print('🗑️ Calling repository.deleteStory()');
+      AppLogger.debug('Calling repository.deleteStory()');
       await repository.deleteStory(story.id);
-      print('✅ Story deleted successfully from repository');
-    } catch (e) {
-      print('❌ Error deleting story: $e');
+      AppLogger.debug('Story deleted successfully from repository');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Error deleting story',
+        screen: 'StoryManagementSheet',
+        operation: 'deleteStory',
+        collection: 'stories',
+        documentId: story.id,
+      );
       scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Text('فشل في حذف القصة: ${e.toString()}'),
@@ -270,18 +215,18 @@ class StoryManagementSheet extends ConsumerWidget {
     // Only continue if deletion was successful
     try {
       // Invalidate providers to refresh UI
-      print('🔄 Invalidating providers');
+      AppLogger.debug('Invalidating providers');
       ref.invalidate(activeStoriesProvider);
       ref.invalidate(userStoriesProvider(currentUserId));
       ref.invalidate(followingStoriesProvider);
 
       // Call the onDeleted callback if provided
       if (onDeleted != null) {
-        print('📞 Calling onDeleted callback');
+        AppLogger.debug('Calling onDeleted callback');
         onDeleted!();
       }
 
-      print('✅ Showing success message');
+      AppLogger.debug('Showing success message');
       scaffoldMessenger.showSnackBar(
         const SnackBar(
           content: Text('تم حذف القصة بنجاح'),
@@ -289,8 +234,14 @@ class StoryManagementSheet extends ConsumerWidget {
           duration: Duration(seconds: 2),
         ),
       );
-    } catch (e) {
-      print('⚠️ Error during post-deletion cleanup: $e');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Error during post-deletion cleanup',
+        screen: 'StoryManagementSheet',
+        operation: 'postDeletionCleanup',
+      );
       // Still show success since the story was deleted
       scaffoldMessenger.showSnackBar(
         const SnackBar(
@@ -380,42 +331,4 @@ class _ManagementOption extends StatelessWidget {
   }
 }
 
-/// Insight row widget for displaying statistics
-class _InsightRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
 
-  const _InsightRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: AppColors.primary,
-          size: 24,
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyLarge,
-          ),
-        ),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
-              ),
-        ),
-      ],
-    );
-  }
-}

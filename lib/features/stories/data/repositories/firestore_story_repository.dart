@@ -2,13 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/models/story.dart';
-import '../../../../core/models/story_reply.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
 import '../../domain/repositories/story_repository.dart';
 import '../../../../services/monitoring/error_logging_service.dart';
+import '../../../../core/data/base_firestore_repository.dart';
 
 /// Firestore implementation of StoryRepository
-class FirestoreStoryRepository implements StoryRepository {
+class FirestoreStoryRepository extends BaseFirestoreRepository implements StoryRepository {
   final FirebaseFirestore _firestore;
   final FirebaseStorage _storage;
   final Uuid _uuid;
@@ -23,37 +23,24 @@ class FirestoreStoryRepository implements StoryRepository {
 
   @override
   Future<Story> createStory(Story story) async {
-    try {
-      final storyId = story.id.isEmpty ? _uuid.v4() : story.id;
-      final storyPayload = story.copyWith(id: storyId);
+    return handleFirestoreOperation<Story>(
+      operation: () async {
+        final storyId = story.id.isEmpty ? _uuid.v4() : story.id;
+        final storyPayload = story.copyWith(id: storyId);
 
-      // Save story to Firestore
-      await _firestore
-          .collection('stories')
-          .doc(storyId)
-          .set(storyPayload.toJson());
+        // Save story to Firestore
+        await _firestore
+            .collection('stories')
+            .doc(storyId)
+            .set(storyPayload.toJson());
 
-      return storyPayload;
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to create story',
-        screen: 'StoryCreationScreen',
-        operation: 'createStory',
-        collection: 'stories',
-      );
-      throw AppException('فشل في إنشاء القصة: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error creating story',
-        screen: 'StoryCreationScreen',
-        operation: 'createStory',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+        return storyPayload;
+      },
+      operationName: 'createStory',
+      screen: 'StoryCreationScreen',
+      arabicErrorMessage: 'فشل في إنشاء القصة',
+      collection: 'stories',
+    );
   }
 
   @override
@@ -128,97 +115,71 @@ class FirestoreStoryRepository implements StoryRepository {
 
   @override
   Future<int> deleteExpiredStories() async {
-    try {
-      final now = DateTime.now();
-      final twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
+    return handleFirestoreOperation<int>(
+      operation: () async {
+        final now = DateTime.now();
+        final twentyFourHoursAgo = now.subtract(const Duration(hours: 24));
 
-      final snapshot = await _firestore
-          .collection('stories')
-          .where('createdAt', isLessThan: twentyFourHoursAgo.toIso8601String())
-          .get();
+        final snapshot = await _firestore
+            .collection('stories')
+            .where('createdAt', isLessThan: twentyFourHoursAgo.toIso8601String())
+            .get();
 
-      int deletedCount = 0;
-      for (final doc in snapshot.docs) {
-        final story = Story.fromJson(doc.data());
+        int deletedCount = 0;
+        for (final doc in snapshot.docs) {
+          final story = Story.fromJson(doc.data());
 
-        // Delete media from storage
-        try {
-          final ref = _storage.refFromURL(story.mediaUrl);
-          await ref.delete();
-        } catch (e) {
-          // Media might already be deleted, continue
+          // Delete media from storage
+          try {
+            final ref = _storage.refFromURL(story.mediaUrl);
+            await ref.delete();
+          } catch (e) {
+            // Media might already be deleted, continue
+          }
+
+          // Delete story document
+          await doc.reference.delete();
+          deletedCount++;
         }
 
-        // Delete story document
-        await doc.reference.delete();
-        deletedCount++;
-      }
-
-      return deletedCount;
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to delete expired stories',
-        screen: 'Background Service',
-        operation: 'deleteExpiredStories',
-        collection: 'stories',
-      );
-      throw AppException('فشل في حذف القصص المنتهية: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error deleting expired stories',
-        screen: 'Background Service',
-        operation: 'deleteExpiredStories',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+        return deletedCount;
+      },
+      operationName: 'deleteExpiredStories',
+      screen: 'Background Service',
+      arabicErrorMessage: 'فشل في حذف القصص المنتهية',
+      collection: 'stories',
+    );
   }
 
   @override
   Future<void> recordView(String storyId, String viewerId) async {
-    try {
-      // Use transaction to prevent duplicate views
-      await _firestore.runTransaction((transaction) async {
-        final storyRef = _firestore.collection('stories').doc(storyId);
-        final storySnapshot = await transaction.get(storyRef);
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        // Use transaction to prevent duplicate views
+        await _firestore.runTransaction((transaction) async {
+          final storyRef = _firestore.collection('stories').doc(storyId);
+          final storySnapshot = await transaction.get(storyRef);
 
-        if (!storySnapshot.exists) {
-          return; // Story doesn't exist, skip
-        }
+          if (!storySnapshot.exists) {
+            return; // Story doesn't exist, skip
+          }
 
-        final story = Story.fromJson(storySnapshot.data()!);
+          final story = Story.fromJson(storySnapshot.data()!);
 
-        // Only add view if not already viewed
-        if (!story.viewerIds.contains(viewerId)) {
-          transaction.update(storyRef, {
-            'viewerIds': FieldValue.arrayUnion([viewerId]),
-          });
-        }
-      });
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to record story view',
-        screen: 'StoryViewScreen',
-        operation: 'recordView',
-        collection: 'stories',
-        documentId: storyId,
-      );
-      throw AppException('فشل في تسجيل المشاهدة: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error recording story view',
-        screen: 'StoryViewScreen',
-        operation: 'recordView',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+          // Only add view if not already viewed
+          if (!story.viewerIds.contains(viewerId)) {
+            transaction.update(storyRef, {
+              'viewerIds': FieldValue.arrayUnion([viewerId]),
+            });
+          }
+        });
+      },
+      operationName: 'recordView',
+      screen: 'StoryViewScreen',
+      arabicErrorMessage: 'فشل في تسجيل المشاهدة',
+      collection: 'stories',
+      documentId: storyId,
+    );
   }
 
   @override
@@ -256,145 +217,107 @@ class FirestoreStoryRepository implements StoryRepository {
 
   @override
   Future<void> deleteStory(String storyId) async {
-    try {
-      // Get story to find media URL
-      final storyDoc = await _firestore
-          .collection('stories')
-          .doc(storyId)
-          .get();
-      if (storyDoc.exists) {
-        final story = Story.fromJson(storyDoc.data()!);
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        // Get story to find media URL
+        final storyDoc = await _firestore
+            .collection('stories')
+            .doc(storyId)
+            .get();
+        if (storyDoc.exists) {
+          final story = Story.fromJson(storyDoc.data()!);
 
-        // Delete media from storage
-        try {
-          final ref = _storage.refFromURL(story.mediaUrl);
-          await ref.delete();
-        } catch (e) {
-          // Media might already be deleted, continue with story deletion
-          ErrorLoggingService.logStorageError(
-            e,
-            context:
-                'Failed to delete story media (continuing with story deletion)',
-            screen: 'StoryViewScreen',
-            operation: 'deleteStory',
-            filePath: story.mediaUrl,
-          );
+          // Delete media from storage
+          try {
+            final ref = _storage.refFromURL(story.mediaUrl);
+            await ref.delete();
+          } catch (e) {
+            // Media might already be deleted, continue with story deletion
+            ErrorLoggingService.logStorageError(
+              e,
+              context:
+                  'Failed to delete story media (continuing with story deletion)',
+              screen: 'StoryViewScreen',
+              operation: 'deleteStory',
+              filePath: story.mediaUrl,
+            );
+          }
         }
-      }
 
-      // Delete story document
-      await _firestore.collection('stories').doc(storyId).delete();
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to delete story',
-        screen: 'StoryViewScreen',
-        operation: 'deleteStory',
-        collection: 'stories',
-        documentId: storyId,
-      );
-      throw AppException('فشل في حذف القصة: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error deleting story',
-        screen: 'StoryViewScreen',
-        operation: 'deleteStory',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+        // Delete story document
+        await _firestore.collection('stories').doc(storyId).delete();
+      },
+      operationName: 'deleteStory',
+      screen: 'StoryViewScreen',
+      arabicErrorMessage: 'فشل في حذف القصة',
+      collection: 'stories',
+      documentId: storyId,
+    );
   }
 
   @override
   Future<void> likeStory(String storyId, String userId) async {
-    try {
-      await _firestore.runTransaction((transaction) async {
-        final storyRef = _firestore.collection('stories').doc(storyId);
-        final storySnapshot = await transaction.get(storyRef);
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        await _firestore.runTransaction((transaction) async {
+          final storyRef = _firestore.collection('stories').doc(storyId);
+          final storySnapshot = await transaction.get(storyRef);
 
-        if (!storySnapshot.exists) {
-          throw AppException('القصة غير موجودة');
-        }
+          if (!storySnapshot.exists) {
+            throw AppException('القصة غير موجودة');
+          }
 
-        transaction.update(storyRef, {
-          'likedBy': FieldValue.arrayUnion([userId]),
+          transaction.update(storyRef, {
+            'likedBy': FieldValue.arrayUnion([userId]),
+          });
         });
-      });
-    } on AppException {
-      rethrow;
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to like story',
-        screen: 'StoryViewScreen',
-        operation: 'likeStory',
-        collection: 'stories',
-        documentId: storyId,
-      );
-      throw AppException('فشل في الإعجاب بالقصة: ${e.message}');
-    }
+      },
+      operationName: 'likeStory',
+      screen: 'StoryViewScreen',
+      arabicErrorMessage: 'فشل في الإعجاب بالقصة',
+      collection: 'stories',
+      documentId: storyId,
+    );
   }
 
   @override
   Future<void> unlikeStory(String storyId, String userId) async {
-    try {
-      await _firestore.runTransaction((transaction) async {
-        final storyRef = _firestore.collection('stories').doc(storyId);
-        final storySnapshot = await transaction.get(storyRef);
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        await _firestore.runTransaction((transaction) async {
+          final storyRef = _firestore.collection('stories').doc(storyId);
+          final storySnapshot = await transaction.get(storyRef);
 
-        if (!storySnapshot.exists) {
-          throw AppException('القصة غير موجودة');
-        }
+          if (!storySnapshot.exists) {
+            throw AppException('القصة غير موجودة');
+          }
 
-        transaction.update(storyRef, {
-          'likedBy': FieldValue.arrayRemove([userId]),
+          transaction.update(storyRef, {
+            'likedBy': FieldValue.arrayRemove([userId]),
+          });
         });
-      });
-    } on AppException {
-      rethrow;
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to unlike story',
-        screen: 'StoryViewScreen',
-        operation: 'unlikeStory',
-        collection: 'stories',
-        documentId: storyId,
-      );
-      throw AppException('فشل في إلغاء الإعجاب: ${e.message}');
-    }
+      },
+      operationName: 'unlikeStory',
+      screen: 'StoryViewScreen',
+      arabicErrorMessage: 'فشل في إلغاء الإعجاب',
+      collection: 'stories',
+      documentId: storyId,
+    );
   }
 
   @override
   Future<void> incrementReplyCount(String storyId) async {
-    try {
-      await _firestore.collection('stories').doc(storyId).update({
-        'replyCount': FieldValue.increment(1),
-      });
-    } on FirebaseException catch (e, stackTrace) {
-      ErrorLoggingService.logFirestoreError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Failed to increment reply count',
-        screen: 'StoryViewScreen',
-        operation: 'incrementReplyCount',
-        collection: 'stories',
-        documentId: storyId,
-      );
-      throw AppException('فشل في تحديث عدد الردود: ${e.message}');
-    } catch (e, stackTrace) {
-      ErrorLoggingService.logGeneralError(
-        e,
-        stackTrace: stackTrace,
-        context: 'Unexpected error incrementing reply count',
-        screen: 'StoryViewScreen',
-        operation: 'incrementReplyCount',
-      );
-      throw AppException('حدث خطأ غير متوقع: $e');
-    }
+    return handleFirestoreVoidOperation(
+      operation: () async {
+        await _firestore.collection('stories').doc(storyId).update({
+          'replyCount': FieldValue.increment(1),
+        });
+      },
+      operationName: 'incrementReplyCount',
+      screen: 'StoryViewScreen',
+      arabicErrorMessage: 'فشل في تحديث عدد الردود',
+      collection: 'stories',
+      documentId: storyId,
+    );
   }
 }

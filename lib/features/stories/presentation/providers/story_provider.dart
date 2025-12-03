@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
+import '../../../../services/monitoring/error_logging_service.dart';
 import '../../data/repositories/firestore_story_repository.dart';
 import '../../data/services/story_expiration_service.dart';
 import '../../domain/repositories/story_repository.dart';
@@ -138,10 +139,19 @@ class PaginatedStoriesNotifier extends StateNotifier<PaginatedStoriesState> {
         hasMore: hasMore,
         lastStoryCreatedAt: lastCreatedAt,
       );
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to load more stories',
+        screen: 'StoryProvider',
+        operation: 'loadMoreStories',
+      );
+      
       state = state.copyWith(
         isLoadingMore: false,
-        error: 'فشل في تحميل القصص: $e',
+        error: 'فشل في تحميل القصص',
       );
     }
   }
@@ -296,10 +306,19 @@ class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
       final createdStory = await _repository.createStory(story);
 
       state = state.copyWith(isLoading: false, createdStory: createdStory);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // Log critical error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to create story',
+        screen: 'StoryCreationScreen',
+        operation: 'createStory',
+      );
+      
       state = state.copyWith(
         isLoading: false,
-        error: 'فشل في إنشاء القصة: ${e.toString()}',
+        error: 'فشل في إنشاء القصة',
       );
     }
   }
@@ -325,8 +344,17 @@ class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
       final downloadUrl = await uploadTask.ref.getDownloadURL();
 
       return downloadUrl;
-    } catch (e) {
-      throw Exception('فشل في رفع الملف: $e');
+    } catch (e, stackTrace) {
+      // Log storage error with full context
+      ErrorLoggingService.logStorageError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to upload story media',
+        screen: 'StoryCreationScreen',
+        operation: 'uploadMedia',
+        filePath: 'stories/$userId',
+      );
+      throw Exception('فشل في رفع الملف');
     }
   }
 
@@ -334,9 +362,16 @@ class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
   Future<void> recordView(String storyId, String viewerId) async {
     try {
       await _repository.recordView(storyId, viewerId);
-    } catch (e) {
+    } catch (e, stackTrace) {
       // Silently fail - view recording is not critical
-      print('Failed to record view: $e');
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to record view',
+        screen: 'StoryProvider',
+        operation: 'recordView',
+        collection: 'stories',
+      );
     }
   }
 
@@ -344,8 +379,17 @@ class StoryCreationNotifier extends StateNotifier<StoryCreationState> {
   Future<void> deleteStory(String storyId) async {
     try {
       await _repository.deleteStory(storyId);
-    } catch (e) {
-      state = state.copyWith(error: 'فشل في حذف القصة: ${e.toString()}');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to delete story',
+        screen: 'StoryViewScreen',
+        operation: 'deleteStory',
+      );
+      
+      state = state.copyWith(error: 'فشل في حذف القصة');
     }
   }
 

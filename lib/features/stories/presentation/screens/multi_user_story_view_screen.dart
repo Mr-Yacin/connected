@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/enums.dart';
 import '../../../../core/utils/snackbar_helper.dart';
+import '../../../../services/monitoring/error_logging_service.dart';
 import '../providers/story_provider.dart';
 import '../providers/story_user_provider.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
@@ -141,8 +142,15 @@ class _MultiUserStoryViewScreenState
 
         _addToCache(userId, sortedStories);
       }
-    } catch (e) {
-      print('Error loading user stories: $e');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Error loading user stories',
+        screen: 'MultiUserStoryViewScreen',
+        operation: 'loadUserStories',
+        collection: 'stories',
+      );
     }
 
     setState(() {

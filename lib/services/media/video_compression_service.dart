@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:video_compress/video_compress.dart';
+import '../monitoring/error_logging_service.dart';
 
 /// Provider for VideoCompressionService
 final videoCompressionServiceProvider = Provider<VideoCompressionService>((
@@ -33,8 +34,14 @@ class VideoCompressionService {
       } else {
         return file;
       }
-    } catch (e) {
-      print('Video compression failed: $e');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Video compression failed',
+        screen: 'VideoCompressionService',
+        operation: 'compressVideo',
+      );
       return file;
     }
   }
@@ -47,8 +54,14 @@ class VideoCompressionService {
         quality: 50,
         position: -1, // Middle of video
       );
-    } catch (e) {
-      print('Thumbnail generation failed: $e');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Thumbnail generation failed',
+        screen: 'VideoCompressionService',
+        operation: 'getThumbnail',
+      );
       return null;
     }
   }

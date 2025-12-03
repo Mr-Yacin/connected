@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/exceptions/app_exceptions.dart';
 import '../../core/theme/theme_option.dart';
+import '../monitoring/error_logging_service.dart';
 
 /// User preferences model
 class UserPreferences {
@@ -62,8 +63,17 @@ class PreferencesService {
 
       await prefs.setString(_languageKey, preferences.language);
       await prefs.setBool(_darkModeKey, preferences.isDarkMode);
-    } catch (e) {
-      throw AppException('فشل حفظ الإعدادات: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to save user preferences',
+        screen: 'PreferencesService',
+        operation: 'savePreferences',
+      );
+      
+      throw AppException('فشل حفظ الإعدادات');
     }
   }
 
@@ -77,8 +87,17 @@ class PreferencesService {
       final isDarkMode = prefs.getBool(_darkModeKey) ?? true;
 
       return UserPreferences(language: language, isDarkMode: isDarkMode);
-    } catch (e) {
-      throw AppException('فشل جلب الإعدادات: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get user preferences',
+        screen: 'PreferencesService',
+        operation: 'getPreferences',
+      );
+      
+      throw AppException('فشل جلب الإعدادات');
     }
   }
 
@@ -87,8 +106,17 @@ class PreferencesService {
     try {
       final prefs = await _preferences;
       await prefs.setString(_languageKey, language);
-    } catch (e) {
-      throw AppException('فشل حفظ اللغة: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to save language preference',
+        screen: 'PreferencesService',
+        operation: 'saveLanguage',
+      );
+      
+      throw AppException('فشل حفظ اللغة');
     }
   }
 
@@ -97,8 +125,17 @@ class PreferencesService {
     try {
       final prefs = await _preferences;
       return prefs.getString(_languageKey) ?? 'ar';
-    } catch (e) {
-      throw AppException('فشل جلب اللغة: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get language preference',
+        screen: 'PreferencesService',
+        operation: 'getLanguage',
+      );
+      
+      throw AppException('فشل جلب اللغة');
     }
   }
 
@@ -107,8 +144,17 @@ class PreferencesService {
     try {
       final prefs = await _preferences;
       await prefs.setBool(_darkModeKey, isDarkMode);
-    } catch (e) {
-      throw AppException('فشل حفظ وضع الظلام: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to save dark mode preference',
+        screen: 'PreferencesService',
+        operation: 'saveDarkMode',
+      );
+      
+      throw AppException('فشل حفظ وضع الظلام');
     }
   }
 
@@ -117,8 +163,17 @@ class PreferencesService {
     try {
       final prefs = await _preferences;
       return prefs.getBool(_darkModeKey) ?? true;
-    } catch (e) {
-      throw AppException('فشل جلب وضع الظلام: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get dark mode preference',
+        screen: 'PreferencesService',
+        operation: 'getDarkMode',
+      );
+      
+      throw AppException('فشل جلب وضع الظلام');
     }
   }
 
@@ -129,8 +184,17 @@ class PreferencesService {
       await prefs.remove(_languageKey);
       await prefs.remove(_darkModeKey);
       await prefs.remove(_themeOptionKey);
-    } catch (e) {
-      throw AppException('فشل مسح الإعدادات: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to clear preferences',
+        screen: 'PreferencesService',
+        operation: 'clearPreferences',
+      );
+      
+      throw AppException('فشل مسح الإعدادات');
     }
   }
 
@@ -139,8 +203,17 @@ class PreferencesService {
     try {
       final prefs = await _preferences;
       await prefs.setInt(_themeOptionKey, option.value);
-    } catch (e) {
-      throw AppException('فشل حفظ خيار الثيم: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to save theme option',
+        screen: 'PreferencesService',
+        operation: 'setThemeOption',
+      );
+      
+      throw AppException('فشل حفظ خيار الثيم');
     }
   }
 

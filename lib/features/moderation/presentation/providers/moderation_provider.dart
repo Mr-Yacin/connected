@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/report.dart';
+import '../../domain/repositories/moderation_repository.dart';
 import '../../data/repositories/firestore_moderation_repository.dart';
 import '../../data/services/block_service.dart';
 
 /// Provider for ModerationRepository
-final moderationRepositoryProvider = Provider<FirestoreModerationRepository>((ref) {
+final moderationRepositoryProvider = Provider<ModerationRepository>((ref) {
   return FirestoreModerationRepository();
 });
 
@@ -16,7 +17,7 @@ final blockServiceProvider = Provider<BlockService>((ref) {
 
 /// State notifier for moderation operations
 class ModerationNotifier extends StateNotifier<AsyncValue<void>> {
-  final FirestoreModerationRepository _repository;
+  final ModerationRepository _repository;
   final BlockService _blockService;
 
   ModerationNotifier(this._repository, this._blockService)

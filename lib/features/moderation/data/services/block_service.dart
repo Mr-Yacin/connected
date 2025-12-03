@@ -1,10 +1,10 @@
-import '../repositories/firestore_moderation_repository.dart';
+import '../../domain/repositories/moderation_repository.dart';
 
 /// Service for handling block-related operations
 class BlockService {
-  final FirestoreModerationRepository _moderationRepository;
+  final ModerationRepository _moderationRepository;
 
-  BlockService({required FirestoreModerationRepository moderationRepository})
+  BlockService({required ModerationRepository moderationRepository})
       : _moderationRepository = moderationRepository;
 
   /// Check if a user is blocked by another user

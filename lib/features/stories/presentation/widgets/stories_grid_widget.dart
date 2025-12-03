@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/models/story.dart';
 import '../../../../core/models/discovery_filters.dart';
+import '../../../../services/monitoring/app_logger.dart';
 import '../providers/story_provider.dart';
 import '../providers/story_user_provider.dart';
 import '../screens/multi_user_story_view_screen.dart';
@@ -75,18 +76,6 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
     context.push('/shuffle');
   }
 
-  void _showStoryManagementSheet(BuildContext context, Story story) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StoryManagementSheet(
-        story: story,
-        currentUserId: widget.currentUserId,
-      ),
-    );
-  }
-
   List<String> _applyFiltersToUserIds(List<String> userIds) {
     final filters = widget.filters;
     
@@ -99,48 +88,64 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
     final storyUsersState = ref.read(storyUsersProvider);
     final filteredIds = <String>[];
 
-    print('🔍 Applying filters: gender=${filters.gender}, minAge=${filters.minAge}, maxAge=${filters.maxAge}, country=${filters.country}');
-    print('📊 Total users to filter: ${userIds.length}');
+    AppLogger.debug(
+      'Applying filters',
+      data: {
+        'gender': filters.gender?.toString() ?? 'null',
+        'minAge': filters.minAge?.toString() ?? 'null',
+        'maxAge': filters.maxAge?.toString() ?? 'null',
+        'country': filters.country ?? 'null',
+        'totalUsers': userIds.length,
+      },
+    );
 
     for (final userId in userIds) {
       final profile = storyUsersState.profiles[userId];
       
       if (profile == null) {
         // If profile not loaded yet, include the user
-        print('⚠️ Profile not loaded for user: $userId - including by default');
+        AppLogger.debug('Profile not loaded for user: $userId - including by default');
         filteredIds.add(userId);
         continue;
       }
 
-      print('👤 Checking user: ${profile.name ?? userId} - age: ${profile.age}, gender: ${profile.gender}, country: ${profile.country}');
+      AppLogger.debug(
+        'Checking user',
+        data: {
+          'name': profile.name ?? userId,
+          'age': profile.age?.toString() ?? 'null',
+          'gender': profile.gender ?? 'null',
+          'country': profile.country ?? 'null',
+        },
+      );
 
       // Apply gender filter
       if (filters.gender != null && profile.gender != filters.gender) {
-        print('  ❌ Filtered out by gender: ${profile.gender} != ${filters.gender}');
+        AppLogger.debug('Filtered out by gender: ${profile.gender} != ${filters.gender}');
         continue;
       }
 
       // Apply age filter
       if (filters.minAge != null && profile.age != null && profile.age! < filters.minAge!) {
-        print('  ❌ Filtered out by min age: ${profile.age} < ${filters.minAge}');
+        AppLogger.debug('Filtered out by min age: ${profile.age} < ${filters.minAge}');
         continue;
       }
       if (filters.maxAge != null && profile.age != null && profile.age! > filters.maxAge!) {
-        print('  ❌ Filtered out by max age: ${profile.age} > ${filters.maxAge}');
+        AppLogger.debug('Filtered out by max age: ${profile.age} > ${filters.maxAge}');
         continue;
       }
 
       // Apply country filter
       if (filters.country != null && profile.country != filters.country) {
-        print('  ❌ Filtered out by country: ${profile.country} != ${filters.country}');
+        AppLogger.debug('Filtered out by country: ${profile.country} != ${filters.country}');
         continue;
       }
 
-      print('  ✅ User passed all filters');
+      AppLogger.debug('User passed all filters');
       filteredIds.add(userId);
     }
 
-    print('✅ Filtered result: ${filteredIds.length} users passed filters');
+    AppLogger.debug('Filtered result: ${filteredIds.length} users passed filters');
     return filteredIds;
   }
 
@@ -180,7 +185,7 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget> {
         _shuffledUserIds.length != filteredUserIds.length ||
         !_shuffledUserIds.every((id) => filteredUserIds.contains(id))) {
       _shuffledUserIds = List.from(filteredUserIds)..shuffle();
-      print('🔄 Shuffled user list updated: ${_shuffledUserIds.length} users');
+      AppLogger.debug('Shuffled user list updated: ${_shuffledUserIds.length} users');
     }
     
     final userIds = _shuffledUserIds;

@@ -9,6 +9,7 @@ import '../../../../services/monitoring/crashlytics_service.dart';
 import '../providers/story_provider.dart';
 import '../providers/story_user_provider.dart';
 import '../../utils/story_time_formatter.dart';
+import '../widgets/common/story_profile_avatar.dart';
 
 /// Screen for viewing stories in fullscreen mode
 class StoryViewScreen extends ConsumerStatefulWidget {
@@ -306,15 +307,10 @@ class _StoryViewScreenState extends ConsumerState<StoryViewScreen>
 
                     return Row(
                       children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundImage: profileImageUrl != null
-                              ? NetworkImage(profileImageUrl)
-                              : null,
-                          backgroundColor: Colors.grey[300],
-                          child: profileImageUrl == null
-                              ? const Icon(Icons.person, color: Colors.grey, size: 20)
-                              : null,
+                        StoryProfileAvatar(
+                          profileImageUrl: profileImageUrl,
+                          size: 40,
+                          borderWidth: 2,
                         ),
                         const SizedBox(width: 8),
                         Expanded(

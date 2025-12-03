@@ -1,15 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
+import '../../domain/repositories/follow_repository.dart';
 
 /// Repository for managing follow relationships
-class FollowRepository {
+class FirestoreFollowRepository implements FollowRepository {
   final FirebaseFirestore _firestore;
 
-  FollowRepository({FirebaseFirestore? firestore})
+  FirestoreFollowRepository({FirebaseFirestore? firestore})
       : _firestore = firestore ?? FirebaseFirestore.instance;
 
-  /// Follow a user (direct follow, no request needed)
+  @override
   Future<void> followUser(String currentUserId, String targetUserId) async {
     try {
       // Prevent self-following
@@ -78,7 +79,7 @@ class FollowRepository {
     }
   }
 
-  /// Unfollow a user
+  @override
   Future<void> unfollowUser(String currentUserId, String targetUserId) async {
     try {
       debugPrint('DEBUG: Unfollowing user: $targetUserId');
@@ -148,7 +149,7 @@ class FollowRepository {
     }
   }
 
-  /// Toggle follow status
+  @override
   Future<void> toggleFollow(String currentUserId, String targetUserId) async {
     final isFollowing = await this.isFollowing(currentUserId, targetUserId);
     
@@ -159,7 +160,7 @@ class FollowRepository {
     }
   }
 
-  /// Check if current user is following target user
+  @override
   Future<bool> isFollowing(String currentUserId, String targetUserId) async {
     try {
       final doc = await _firestore
@@ -183,7 +184,7 @@ class FollowRepository {
     }
   }
 
-  /// Get followers list for a user
+  @override
   Future<List<String>> getFollowers(String userId) async {
     try {
       final snapshot = await _firestore
@@ -199,7 +200,7 @@ class FollowRepository {
     }
   }
 
-  /// Get following list for a user
+  @override
   Future<List<String>> getFollowing(String userId) async {
     try {
       final snapshot = await _firestore
@@ -215,7 +216,7 @@ class FollowRepository {
     }
   }
 
-  /// Get follower count for a user
+  @override
   Future<int> getFollowerCount(String userId) async {
     try {
       final snapshot = await _firestore
@@ -239,7 +240,7 @@ class FollowRepository {
     }
   }
 
-  /// Get following count for a user
+  @override
   Future<int> getFollowingCount(String userId) async {
     try {
       final snapshot = await _firestore

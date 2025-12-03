@@ -3,13 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
+import '../../domain/repositories/profile_repository.dart';
 import '../../data/repositories/firestore_profile_repository.dart';
 import '../../data/services/image_blur_service.dart';
 import '../../../../services/media/image_compression_service.dart';
 import '../../../chat/presentation/providers/chat_provider.dart';
 
 /// Provider for ProfileRepository
-final profileRepositoryProvider = Provider<FirestoreProfileRepository>((ref) {
+final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
   final imageCompression = ref.watch(imageCompressionServiceProvider);
   return FirestoreProfileRepository(imageCompression: imageCompression);
 });
@@ -54,7 +55,7 @@ class ProfileState {
 
 /// Profile provider for managing profile state
 class ProfileNotifier extends StateNotifier<ProfileState> {
-  final FirestoreProfileRepository _repository;
+  final ProfileRepository _repository;
   final ImageBlurService _blurService;
   final Ref _ref;
 

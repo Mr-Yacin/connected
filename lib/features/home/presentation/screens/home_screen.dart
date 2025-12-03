@@ -9,7 +9,6 @@ import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../stories/presentation/widgets/story_bar_widget.dart';
 import '../../../stories/presentation/widgets/stories_grid_widget.dart';
 import '../../../stories/presentation/widgets/story_filter_bottom_sheet.dart';
-import '../../../stories/presentation/screens/story_camera_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 /// Main home screen with bottom navigation

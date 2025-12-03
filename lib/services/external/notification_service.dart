@@ -1,8 +1,10 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/exceptions/app_exceptions.dart';
+import '../monitoring/error_logging_service.dart';
 
 // Provider for NotificationService
 final notificationServiceProvider = Provider<NotificationService>((ref) {
@@ -73,8 +75,25 @@ class NotificationService {
       if (initialMessage != null) {
         _handleNotificationTap(initialMessage);
       }
-    } catch (e) {
-      throw AppException('فشل في تهيئة خدمة الإشعارات: $e');
+    } catch (e, stackTrace) {
+      // Log critical error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to initialize notification service',
+        screen: 'NotificationService',
+        operation: 'initialize',
+      );
+      
+      // Report to Crashlytics
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stackTrace,
+        reason: 'Notification service initialization failed',
+        fatal: false,
+      );
+      
+      throw AppException('فشل في تهيئة خدمة الإشعارات');
     }
   }
 
@@ -116,8 +135,16 @@ class NotificationService {
           'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
         });
       }
-    } catch (e) {
-      // Don't throw - token refresh will retry
+    } catch (e, stackTrace) {
+      // Log error but don't throw - token refresh will retry
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to save FCM token to Firestore',
+        screen: 'NotificationService',
+        operation: 'saveFcmTokenToFirestore',
+        collection: 'users',
+      );
     }
   }
 
@@ -133,8 +160,15 @@ class NotificationService {
       if (_fcmToken != null) {
         await _saveFcmTokenToFirestore(_fcmToken!);
       }
-    } catch (e) {
-      // Silent failure - will retry on next token refresh
+    } catch (e, stackTrace) {
+      // Log error but don't throw - will retry on next token refresh
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to refresh FCM token',
+        screen: 'NotificationService',
+        operation: 'refreshAndSaveToken',
+      );
     }
   }
 
@@ -142,8 +176,17 @@ class NotificationService {
   Future<void> subscribeToTopic(String topic) async {
     try {
       await _messaging.subscribeToTopic(topic);
-    } catch (e) {
-      throw AppException('فشل في الاشتراك في الموضوع: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to subscribe to topic: $topic',
+        screen: 'NotificationService',
+        operation: 'subscribeToTopic',
+      );
+      
+      throw AppException('فشل في الاشتراك في الموضوع');
     }
   }
 
@@ -151,8 +194,17 @@ class NotificationService {
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
       await _messaging.unsubscribeFromTopic(topic);
-    } catch (e) {
-      throw AppException('فشل في إلغاء الاشتراك من الموضوع: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to unsubscribe from topic: $topic',
+        screen: 'NotificationService',
+        operation: 'unsubscribeFromTopic',
+      );
+      
+      throw AppException('فشل في إلغاء الاشتراك من الموضوع');
     }
   }
 
@@ -161,8 +213,17 @@ class NotificationService {
     try {
       await _messaging.deleteToken();
       _fcmToken = null;
-    } catch (e) {
-      throw AppException('فشل في حذف الرمز: $e');
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to delete FCM token',
+        screen: 'NotificationService',
+        operation: 'deleteToken',
+      );
+      
+      throw AppException('فشل في حذف الرمز');
     }
   }
 }

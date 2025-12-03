@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 // ignore: depend_on_referenced_packages
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:path_provider/path_provider.dart';
+import '../monitoring/error_logging_service.dart';
 
 /// Service for caching images to improve performance
 class ImageCacheService {
@@ -68,20 +69,55 @@ class ImageCacheService {
     BuildContext context,
     String imageUrl,
   ) async {
-    await precacheImage(
-      CachedNetworkImageProvider(imageUrl, cacheManager: cacheManager),
-      context,
-    );
+    try {
+      await precacheImage(
+        CachedNetworkImageProvider(imageUrl, cacheManager: cacheManager),
+        context,
+      );
+    } catch (e, stackTrace) {
+      // Log error but don't throw - precaching is not critical
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to precache image: $imageUrl',
+        screen: 'ImageCacheService',
+        operation: 'precacheCachedImage',
+      );
+    }
   }
 
   /// Clear all cached images
   Future<void> clearCache() async {
-    await cacheManager.emptyCache();
+    try {
+      await cacheManager.emptyCache();
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to clear image cache',
+        screen: 'ImageCacheService',
+        operation: 'clearCache',
+      );
+      rethrow;
+    }
   }
 
   /// Remove a specific cached image
   Future<void> removeFromCache(String imageUrl) async {
-    await cacheManager.removeFile(imageUrl);
+    try {
+      await cacheManager.removeFile(imageUrl);
+    } catch (e, stackTrace) {
+      // Log error with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to remove image from cache: $imageUrl',
+        screen: 'ImageCacheService',
+        operation: 'removeFromCache',
+      );
+      rethrow;
+    }
   }
 
   /// Get cache size in bytes

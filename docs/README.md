@@ -42,7 +42,8 @@ Production deployment and release documentation:
 
 ### 📖 Guides
 Setup instructions, troubleshooting guides, and best practices:
-- **PUSH_NOTIFICATIONS_GUIDE.md** - 🆕 Complete push notifications implementation
+- **REPOSITORY_PATTERN_GUIDE.md** - 🆕 Complete repository pattern implementation guide
+- **PUSH_NOTIFICATIONS_GUIDE.md** - Complete push notifications implementation
 - **FIREBASE_SETUP.md** - Complete Firebase configuration guide
 - **SETUP_COMPLETE.md** - Initial setup checklist
 - **PHONE_AUTH_TROUBLESHOOTING.md** - Phone authentication debugging
@@ -64,6 +65,7 @@ Project planning, organization, and roadmaps:
 
 ### 📋 References
 Technical documentation and API references:
+- **REPOSITORY_PATTERN_QUICK_REFERENCE.md** - 🆕 Repository pattern quick reference
 - **API.md** - Complete API documentation
 - **PROJECT_STRUCTURE.md** - Detailed architecture documentation
 - **PERFORMANCE_COMPARISON.md** - Performance benchmarks and metrics
@@ -94,10 +96,11 @@ Historical documentation and completed milestones:
 4. Check [PROJECT_SUMMARY.md](project-management/PROJECT_SUMMARY.md)
 
 ### For Feature Implementation
-1. **Push Notifications** → [PUSH_NOTIFICATIONS_GUIDE.md](guides/PUSH_NOTIFICATIONS_GUIDE.md) 🆕
-2. **Chat Optimization** → [CHAT_OPTIMIZATION_GUIDE.md](guides/CHAT_OPTIMIZATION_GUIDE.md)
-3. **Camera Setup** → [CAMERA_SETUP_GUIDE.md](guides/CAMERA_SETUP_GUIDE.md)
-4. **Indexes** → [COMPOSITE_INDEXES_GUIDE.md](guides/COMPOSITE_INDEXES_GUIDE.md)
+1. **Repository Pattern** → [REPOSITORY_PATTERN_GUIDE.md](guides/REPOSITORY_PATTERN_GUIDE.md) 🆕
+2. **Push Notifications** → [PUSH_NOTIFICATIONS_GUIDE.md](guides/PUSH_NOTIFICATIONS_GUIDE.md)
+3. **Chat Optimization** → [CHAT_OPTIMIZATION_GUIDE.md](guides/CHAT_OPTIMIZATION_GUIDE.md)
+4. **Camera Setup** → [CAMERA_SETUP_GUIDE.md](guides/CAMERA_SETUP_GUIDE.md)
+5. **Indexes** → [COMPOSITE_INDEXES_GUIDE.md](guides/COMPOSITE_INDEXES_GUIDE.md)
 
 ### For Branding & Design
 1. Review [BRAND_GUIDE.md](branding/BRAND_GUIDE.md)

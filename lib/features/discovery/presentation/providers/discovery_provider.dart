@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import '../../../../core/models/user_profile.dart';
 import '../../../../core/models/discovery_filters.dart';
 import '../../../../core/exceptions/app_exceptions.dart';
+import '../../domain/repositories/discovery_repository.dart';
 import '../../data/repositories/firestore_discovery_repository.dart';
 import '../../data/services/viewed_users_service.dart';
+import '../../../../services/monitoring/error_logging_service.dart';
 
 /// Provider for DiscoveryRepository
-final discoveryRepositoryProvider = Provider<FirestoreDiscoveryRepository>((ref) {
+final discoveryRepositoryProvider = Provider<DiscoveryRepository>((ref) {
   return FirestoreDiscoveryRepository();
 });
 
@@ -75,7 +78,7 @@ class DiscoveryState {
 
 /// Discovery provider for managing discovery state
 class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
-  final FirestoreDiscoveryRepository _repository;
+  final DiscoveryRepository _repository;
   final ViewedUsersService _viewedUsersService;
   String? _currentUserId;
   Timer? _cooldownTimer;
@@ -143,8 +146,26 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
         );
       }
     } on AppException catch (e) {
+      // Log AppException (already logged in repository)
       state = state.copyWith(error: e.message, isLoading: false);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // Log unexpected errors with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to get random user',
+        screen: 'ShuffleScreen',
+        operation: 'getRandomUser',
+      );
+      
+      // Report critical errors to Crashlytics
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stackTrace,
+        reason: 'Unexpected error in getRandomUser',
+        fatal: false,
+      );
+      
       state = state.copyWith(error: 'حدث خطأ غير متوقع', isLoading: false);
     }
   }
@@ -261,8 +282,26 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
         isLoading: false,
       );
     } on AppException catch (e) {
+      // Log AppException (already logged in repository)
       state = state.copyWith(error: e.message, isLoading: false);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // Log unexpected errors with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to load users',
+        screen: 'ShuffleScreen',
+        operation: 'loadUsers',
+      );
+      
+      // Report critical errors to Crashlytics
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stackTrace,
+        reason: 'Unexpected error in loadUsers',
+        fatal: false,
+      );
+      
       state = state.copyWith(error: 'حدث خطأ غير متوقع', isLoading: false);
     }
   }
@@ -292,8 +331,26 @@ class DiscoveryNotifier extends StateNotifier<DiscoveryState> {
         isLoadingMore: false,
       );
     } on AppException catch (e) {
+      // Log AppException (already logged in repository)
       state = state.copyWith(error: e.message, isLoadingMore: false);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // Log unexpected errors with full context
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to load more users',
+        screen: 'ShuffleScreen',
+        operation: 'loadMoreUsers',
+      );
+      
+      // Report critical errors to Crashlytics
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        stackTrace,
+        reason: 'Unexpected error in loadMoreUsers',
+        fatal: false,
+      );
+      
       state = state.copyWith(error: 'حدث خطأ غير متوقع', isLoadingMore: false);
     }
   }

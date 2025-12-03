@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/exceptions/app_exceptions.dart';
+import '../monitoring/app_logger.dart';
+import '../monitoring/error_logging_service.dart';
 
 // Provider for NotificationService
 final notificationServiceProvider = Provider<NotificationService>((ref) {
@@ -61,11 +63,13 @@ class NotificationService {
         sound: true,
       );
 
-      print('Notification permission status: ${settings.authorizationStatus}');
+      AppLogger.info(
+        'Notification permission status: ${settings.authorizationStatus}',
+      );
 
       // Get FCM token
       _fcmToken = await _messaging.getToken();
-      print('FCM Token: $_fcmToken');
+      AppLogger.info('FCM Token: $_fcmToken');
 
       // Save token to Firestore
       if (_fcmToken != null) {
@@ -75,7 +79,7 @@ class NotificationService {
       // Listen for token refresh
       _messaging.onTokenRefresh.listen((newToken) async {
         _fcmToken = newToken;
-        print('FCM Token refreshed: $newToken');
+        AppLogger.info('FCM Token refreshed: $newToken');
         await _saveFcmTokenToFirestore(newToken);
       });
 
@@ -95,23 +99,36 @@ class NotificationService {
       if (initialMessage != null) {
         _handleNotificationTap(initialMessage);
       }
-    } catch (e) {
-      print('Failed to initialize notification service: $e');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to initialize notification service',
+        screen: 'NotificationService',
+        operation: 'initialize',
+      );
       throw AppException('فشل في تهيئة خدمة الإشعارات: $e');
     }
   }
 
   /// Handle foreground messages - Show banner notification
   void _handleForegroundMessage(RemoteMessage message) {
-    print('📩 Foreground message received: ${message.notification?.title}');
-    print('   Data: ${message.data}');
+    AppLogger.debug(
+      'Foreground message received: ${message.notification?.title}',
+      data: {'messageData': message.data},
+    );
 
     final notification = message.notification;
     if (notification != null) {
       // TODO: Show local notification using flutter_local_notifications
       // For now, just log
-      print('   Title: ${notification.title}');
-      print('   Body: ${notification.body}');
+      AppLogger.debug(
+        'Notification details',
+        data: {
+          'title': notification.title ?? '',
+          'body': notification.body ?? '',
+        },
+      );
     }
 
     // Track analytics
@@ -120,14 +137,17 @@ class NotificationService {
 
   /// Handle notification tap - Navigate to appropriate screen
   void _handleNotificationTap(RemoteMessage message) {
-    print('🔔 Notification tapped: ${message.data}');
+    AppLogger.debug(
+      'Notification tapped',
+      data: {'messageData': message.data},
+    );
 
     final data = message.data;
 
     // If callback not set, store for later
     if (_navigationCallback == null) {
       _pendingNavigationData = data;
-      print('   Navigation callback not set, storing for later');
+      AppLogger.debug('Navigation callback not set, storing for later');
       return;
     }
 
@@ -137,7 +157,7 @@ class NotificationService {
   /// Process notification navigation based on type
   void _processNotificationNavigation(Map<String, dynamic> data) {
     final type = data['type'] as String?;
-    print('   Processing navigation for type: $type');
+    AppLogger.debug('Processing navigation for type: $type');
 
     if (_navigationCallback == null) return;
 
@@ -194,7 +214,7 @@ class NotificationService {
 
       default:
         // Navigate to home
-        print('   Unknown notification type, navigating to home');
+        AppLogger.debug('Unknown notification type, navigating to home');
         _navigationCallback!('/home', {});
     }
 
@@ -211,18 +231,28 @@ class NotificationService {
           'fcmToken': token,
           'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
         });
-        print('✅ FCM token saved to Firestore for user: ${user.uid}');
+        AppLogger.info('FCM token saved to Firestore for user: ${user.uid}');
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       // Don't throw - token refresh will retry
-      print('⚠️ Failed to save FCM token: $e');
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to save FCM token',
+        screen: 'NotificationService',
+        operation: 'saveFcmTokenToFirestore',
+        collection: 'users',
+      );
     }
   }
 
   /// Track notification analytics
   void _trackNotificationEvent(String action, String type) {
     // TODO: Track with analytics service
-    print('📊 Notification event: $action - $type');
+    AppLogger.debug(
+      'Notification event',
+      data: {'action': action, 'type': type},
+    );
   }
 
   /// Manually refresh and save FCM token (call after user login)
@@ -237,9 +267,15 @@ class NotificationService {
       if (_fcmToken != null) {
         await _saveFcmTokenToFirestore(_fcmToken!);
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       // Silent failure - will retry on next token refresh
-      print('⚠️ Failed to refresh token: $e');
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to refresh token',
+        screen: 'NotificationService',
+        operation: 'refreshAndSaveToken',
+      );
     }
   }
 
@@ -247,8 +283,15 @@ class NotificationService {
   Future<void> subscribeToTopic(String topic) async {
     try {
       await _messaging.subscribeToTopic(topic);
-      print('✅ Subscribed to topic: $topic');
-    } catch (e) {
+      AppLogger.info('Subscribed to topic: $topic');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to subscribe to topic',
+        screen: 'NotificationService',
+        operation: 'subscribeToTopic',
+      );
       throw AppException('فشل في الاشتراك في الموضوع: $e');
     }
   }
@@ -257,8 +300,15 @@ class NotificationService {
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
       await _messaging.unsubscribeFromTopic(topic);
-      print('✅ Unsubscribed from topic: $topic');
-    } catch (e) {
+      AppLogger.info('Unsubscribed from topic: $topic');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to unsubscribe from topic',
+        screen: 'NotificationService',
+        operation: 'unsubscribeFromTopic',
+      );
       throw AppException('فشل في إلغاء الاشتراك من الموضوع: $e');
     }
   }
@@ -268,8 +318,15 @@ class NotificationService {
     try {
       await _messaging.deleteToken();
       _fcmToken = null;
-      print('✅ FCM token deleted');
-    } catch (e) {
+      AppLogger.info('FCM token deleted');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Failed to delete FCM token',
+        screen: 'NotificationService',
+        operation: 'deleteToken',
+      );
       throw AppException('فشل في حذف الرمز: $e');
     }
   }
@@ -284,8 +341,10 @@ class NotificationService {
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   // Initialize Firebase if needed
-  print('🔔 Background message received: ${message.notification?.title}');
-  print('   Data: ${message.data}');
+  AppLogger.debug(
+    'Background message received: ${message.notification?.title}',
+    data: {'messageData': message.data},
+  );
 
   // Handle background message
   // You can update local database, show notification, etc.

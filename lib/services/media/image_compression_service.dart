@@ -3,6 +3,7 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
+import '../monitoring/error_logging_service.dart';
 
 /// Provider for ImageCompressionService
 final imageCompressionServiceProvider = Provider<ImageCompressionService>((
@@ -53,9 +54,15 @@ class ImageCompressionService {
       } else {
         return file;
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       // If compression fails, return original file
-      print('Image compression failed: $e');
+      ErrorLoggingService.logGeneralError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Image compression failed',
+        screen: 'ImageCompressionService',
+        operation: 'compressImage',
+      );
       return file;
     }
   }

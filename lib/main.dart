@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +11,9 @@ import 'package:social_connect_app/core/navigation/app_router.dart';
 import 'package:social_connect_app/services/external/firebase_service.dart';
 import 'package:social_connect_app/services/monitoring/performance_service.dart';
 import 'package:social_connect_app/services/monitoring/crashlytics_service.dart';
+import 'package:social_connect_app/services/monitoring/error_logging_service.dart';
 import 'package:social_connect_app/services/external/notification_service.dart';
+import 'package:social_connect_app/core/widgets/error_boundary_widget.dart';
 
 // Global flag to track initialization status
 bool _isInitializationComplete = false;
@@ -112,7 +113,93 @@ void main() async {
         if (notificationService != null)
           notificationServiceProvider.overrideWithValue(notificationService),
       ],
-      child: const MyApp(),
+      child: ErrorBoundary(
+        onError: (error, stackTrace) {
+          // Log to Crashlytics
+          if (crashlytics != null) {
+            crashlytics.recordError(
+              error,
+              stackTrace,
+              reason: 'Uncaught error in widget tree',
+              fatal: false,
+            );
+          }
+          
+          // Log to ErrorLoggingService
+          ErrorLoggingService.logGeneralError(
+            error,
+            stackTrace: stackTrace,
+            context: 'Uncaught error in widget tree',
+            screen: 'App Root',
+            operation: 'Widget Build',
+          );
+        },
+        errorBuilder: (error, stackTrace) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            locale: const Locale('ar', 'SA'),
+            supportedLocales: const [Locale('ar', 'SA'), Locale('en', 'US')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: Scaffold(
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red,
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'حدث خطأ غير متوقع',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'نعتذر عن الإزعاج. يرجى إعادة تشغيل التطبيق.',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          // Restart the app by re-running main
+                          // Note: This is a simple restart mechanism
+                          // For production, consider using restart_app package
+                          main();
+                        },
+                        icon: const Icon(Icons.refresh),
+                        label: const Text('إعادة تشغيل التطبيق'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        child: const MyApp(),
+      ),
     ),
   );
 }

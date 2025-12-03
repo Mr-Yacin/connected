@@ -1,4 +1,6 @@
 import 'dart:async';
+import '../../../../services/monitoring/app_logger.dart';
+import '../../../../services/monitoring/error_logging_service.dart';
 import '../../domain/repositories/story_repository.dart';
 
 /// Service for managing story expiration
@@ -48,11 +50,18 @@ class StoryExpirationService {
     try {
       final deletedCount = await _storyRepository.deleteExpiredStories();
       if (deletedCount > 0) {
-        print('StoryExpirationService: Deleted $deletedCount expired stories');
+        AppLogger.info('StoryExpirationService: Deleted $deletedCount expired stories');
       }
       return deletedCount;
-    } catch (e) {
-      print('StoryExpirationService: Error cleaning up stories: $e');
+    } catch (e, stackTrace) {
+      ErrorLoggingService.logFirestoreError(
+        e,
+        stackTrace: stackTrace,
+        context: 'Error cleaning up expired stories',
+        screen: 'StoryExpirationService',
+        operation: 'cleanupExpiredStories',
+        collection: 'stories',
+      );
       return 0;
     }
   }

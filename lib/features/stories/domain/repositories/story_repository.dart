@@ -1,5 +1,4 @@
 import '../../../../core/models/story.dart';
-import '../../../../core/models/story_reply.dart';
 
 /// Repository interface for managing stories
 abstract class StoryRepository {
