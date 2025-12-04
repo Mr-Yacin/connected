@@ -371,3 +371,117 @@ exports.onUserCreated = functions.firestore
       return {success: false, error: error.message};
     }
   });
+
+/**
+ * Cloud Function: onProfileView
+ * Trigger: Firestore onCreate for profile_views/{viewId}
+ * Purpose: Send push notification when someone views a user's profile
+ *
+ * Flow:
+ * 1. Check if profile owner has notifications enabled
+ * 2. Get profile owner's FCM token
+ * 3. Get viewer's display name
+ * 4. Send notification via FCM
+ */
+exports.onProfileView = functions.firestore
+  .document("profile_views/{viewId}")
+  .onCreate(async (snap, context) => {
+    const viewData = snap.data();
+    const viewId = context.params.viewId;
+
+    try {
+      console.log(`Processing profile view ${viewId}`);
+
+      const viewerId = viewData.viewerId;
+      const profileUserId = viewData.profileUserId;
+
+      // Get profile owner's settings
+      const profileUserDoc = await db.collection("users")
+        .doc(profileUserId).get();
+
+      if (!profileUserDoc.exists) {
+        console.warn(`Profile user ${profileUserId} does not exist`);
+        return null;
+      }
+
+      const profileUserData = profileUserDoc.data();
+
+      // Check if notifications are enabled
+      const notifyOnProfileView =
+        profileUserData.settings?.notifyOnProfileView ?? false;
+
+      if (!notifyOnProfileView) {
+        console.info(
+          `Profile view notifications disabled for user ${profileUserId}`,
+        );
+        return null;
+      }
+
+      // Get FCM token
+      const fcmToken = profileUserData.fcmToken;
+
+      if (!fcmToken) {
+        console.info(`User ${profileUserId} has no FCM token`);
+        return null;
+      }
+
+      // Get viewer's display name
+      const viewerDoc = await db.collection("users").doc(viewerId).get();
+      const viewerName = viewerDoc.exists ?
+        viewerDoc.data().name || "مستخدم" :
+        "مستخدم";
+
+      // Prepare notification payload
+      const payload = {
+        notification: {
+          title: "زيارة جديدة",
+          body: `${viewerName} زار ملفك الشخصي`,
+        },
+        data: {
+          type: "profile_view",
+          viewerId: viewerId,
+          profileUserId: profileUserId,
+          viewId: viewId,
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+        },
+        token: fcmToken,
+        android: {
+          priority: "high",
+          notification: {
+            channelId: "profile_views_channel",
+            sound: "default",
+            priority: "high",
+            icon: "@mipmap/ic_launcher",
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: "default",
+              badge: 1,
+              alert: {
+                title: "زيارة جديدة",
+                body: `${viewerName} زار ملفك الشخصي`,
+              },
+            },
+          },
+        },
+      };
+
+      // Send notification
+      const response = await messaging.send(payload);
+      console.log(
+        `Profile view notification sent successfully: ${response}`,
+      );
+
+      // Update profile view count
+      await db.collection("users").doc(profileUserId).update({
+        profileViewCount: admin.firestore.FieldValue.increment(1),
+      });
+
+      return {success: true, messageId: response};
+    } catch (error) {
+      console.error("Error sending profile view notification:", error);
+      return {success: false, error: error.message};
+    }
+  });

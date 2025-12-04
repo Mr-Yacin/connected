@@ -131,6 +131,38 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "profile_views",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "viewerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "profileUserId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "viewedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "profile_views",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "profileUserId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "viewedAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

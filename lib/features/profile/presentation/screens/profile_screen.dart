@@ -18,7 +18,7 @@ import '../../../auth/presentation/widgets/guest_conversion_dialog.dart';
 import '../../../stories/presentation/screens/story_camera_screen.dart';
 import '../providers/profile_provider.dart';
 import '../providers/current_user_profile_provider.dart';
-import '../../../../services/analytics/profile_view_service.dart';
+import '../../../../services/providers/profile_view_service_provider.dart';
 
 /// Helper to get current user from auth state
 extension CurrentUserExtension on WidgetRef {
