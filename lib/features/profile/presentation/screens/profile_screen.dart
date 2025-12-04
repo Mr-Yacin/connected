@@ -18,6 +18,7 @@ import '../../../auth/presentation/widgets/guest_conversion_dialog.dart';
 import '../../../stories/presentation/screens/story_camera_screen.dart';
 import '../providers/profile_provider.dart';
 import '../providers/current_user_profile_provider.dart';
+import '../../../../services/analytics/profile_view_service.dart';
 
 /// Helper to get current user from auth state
 extension CurrentUserExtension on WidgetRef {
@@ -62,12 +63,29 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           .trackScreenView(
             isOwnProfile ? 'own_profile_screen' : 'user_profile_screen',
           );
+      
+      // Record profile view if viewing someone else's profile
+      if (!isOwnProfile && widget.viewedUserId != null) {
+        _recordProfileView(widget.viewedUserId!);
+      }
     });
 
     // Listen for user changes to load profile once user is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkAndLoadProfile(forceReload: true);
     });
+  }
+
+  /// Record profile view
+  Future<void> _recordProfileView(String profileUserId) async {
+    try {
+      await ref
+          .read(profileViewServiceProvider)
+          .recordProfileView(profileUserId);
+    } catch (e) {
+      // Silent fail - not critical
+      debugPrint('Failed to record profile view: $e');
+    }
   }
 
   @override
@@ -390,13 +408,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     background: _buildProfileHeader(profile),
                   ),
                   actions: [
-                    if (_isViewingOwnProfile)
+                    if (_isViewingOwnProfile) ...[
+                      // Profile Views Icon
+                      IconButton(
+                        icon: const Icon(Icons.visibility_outlined),
+                        onPressed: () => context.push('/profile-viewers'),
+                        tooltip: 'من شاهد ملفي',
+                      ),
                       IconButton(
                         icon: const Icon(Icons.settings_outlined),
                         onPressed: () => context.push('/settings'),
                         tooltip: 'الإعدادات',
-                      )
-                    else
+                      ),
+                    ] else
                       PopupMenuButton<String>(
                         onSelected: (value) {
                           if (value == 'block') {

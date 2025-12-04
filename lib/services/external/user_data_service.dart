@@ -202,4 +202,28 @@ class UserDataService {
       throw AppException('حدث خطأ أثناء تصدير البيانات: $e');
     }
   }
+
+  /// Update notification setting for current user
+  Future<void> updateNotificationSetting(String key, bool value) async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        throw AuthException('يجب تسجيل الدخول');
+      }
+
+      // Use set with merge to create settings field if it doesn't exist
+      await _firestore.collection('users').doc(currentUser.uid).set({
+        'settings': {
+          key: value,
+        },
+      }, SetOptions(merge: true));
+    } on FirebaseException catch (e) {
+      throw AppException(
+        'فشل تحديث إعدادات الإشعارات: ${e.message}',
+        code: e.code,
+      );
+    } catch (e) {
+      throw AppException('حدث خطأ أثناء تحديث الإعدادات: $e');
+    }
+  }
 }

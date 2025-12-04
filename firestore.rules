@@ -90,10 +90,8 @@ service cloud.firestore {
       // OPTIMIZED: Allow update if user is a participant (check both old and new data)
       allow update: if request.auth != null && 
                        request.auth.uid in resource.data.participants &&
-                       // Allow updating unreadCount specifically
-                       (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unreadCount']) ||
-                        // Ensure participants list doesn't change for other updates
-                        request.resource.data.participants == resource.data.participants);
+                       // Ensure participants list doesn't change
+                       request.resource.data.participants == resource.data.participants;
       
       // Only participants can delete chats
       allow delete: if request.auth != null && 
@@ -240,6 +238,23 @@ service cloud.firestore {
       // Users can delete their own follows (unfollow)
       allow delete: if request.auth != null && 
                        request.auth.uid == resource.data.followerId;
+    }
+    
+    // Profile Views collection
+    match /profile_views/{viewId} {
+      // Only profile owner can read their views
+      allow read: if request.auth != null && 
+                     request.auth.uid == resource.data.profileUserId;
+      
+      // Anyone authenticated can create profile views
+      allow create: if request.auth != null && 
+                       request.auth.uid == request.resource.data.viewerId &&
+                       // Prevent viewing own profile
+                       request.resource.data.viewerId != request.resource.data.profileUserId &&
+                       request.resource.data.keys().hasAll(['viewerId', 'profileUserId', 'viewedAt']);
+      
+      // Profile views cannot be updated or deleted
+      allow update, delete: if false;
     }
   }
 }

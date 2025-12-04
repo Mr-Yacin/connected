@@ -19,6 +19,7 @@ import '../../features/settings/presentation/screens/terms_of_service_screen.dar
 import '../../features/discovery/presentation/screens/users_list_screen.dart';
 import '../../features/discovery/presentation/screens/followers_list_screen.dart';
 import '../../features/discovery/presentation/screens/following_list_screen.dart';
+import '../../features/profile/presentation/screens/profile_viewers_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return AppRouter.createRouter(ref);
@@ -163,6 +164,12 @@ class AppRouter {
                 final userId = state.uri.queryParameters['userId'] ?? '';
                 return StoryCreationScreen(userId: userId);
               },
+            ),
+
+            // Profile Viewers route
+            GoRoute(
+              path: 'profile-viewers',
+              builder: (context, state) => const ProfileViewersScreen(),
             ),
 
             // Settings routes

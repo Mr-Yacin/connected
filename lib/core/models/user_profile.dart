@@ -18,6 +18,7 @@ class UserProfile {
   final int followingCount;
   final DateTime createdAt;
   final DateTime lastActive;
+  final Map<String, dynamic>? settings;
 
   UserProfile({
     required this.id,
@@ -36,6 +37,7 @@ class UserProfile {
     this.followingCount = 0,
     required this.createdAt,
     required this.lastActive,
+    this.settings,
   });
 
   /// Convert UserProfile to JSON for Firestore
@@ -57,6 +59,7 @@ class UserProfile {
       'followingCount': followingCount,
       'createdAt': createdAt.toIso8601String(),
       'lastActive': lastActive.toIso8601String(),
+      if (settings != null) 'settings': settings,
     };
   }
 
@@ -118,6 +121,7 @@ class UserProfile {
       followingCount: parseInt(json['followingCount']) ?? 0,
       createdAt: parseDate(json['createdAt'], fallback: now),
       lastActive: parseDate(json['lastActive'], fallback: now),
+      settings: json['settings'] as Map<String, dynamic>?,
     );
   }
 
@@ -139,6 +143,7 @@ class UserProfile {
     int? followingCount,
     DateTime? createdAt,
     DateTime? lastActive,
+    Map<String, dynamic>? settings,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -157,6 +162,7 @@ class UserProfile {
       followingCount: followingCount ?? this.followingCount,
       createdAt: createdAt ?? this.createdAt,
       lastActive: lastActive ?? this.lastActive,
+      settings: settings ?? this.settings,
     );
   }
 
@@ -180,7 +186,8 @@ class UserProfile {
         other.followerCount == followerCount &&
         other.followingCount == followingCount &&
         other.createdAt == createdAt &&
-        other.lastActive == lastActive;
+        other.lastActive == lastActive &&
+        _mapsEqual(other.settings, settings);
   }
 
   @override
@@ -202,6 +209,20 @@ class UserProfile {
       followingCount,
       createdAt,
       lastActive,
+      settings,
     );
   }
+
+  /// Helper method for comparing maps
+  static bool _mapsEqual(Map<String, dynamic>? a, Map<String, dynamic>? b) {
+    if (a == null) return b == null;
+    if (b == null || a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (!b.containsKey(key) || a[key] != b[key]) return false;
+    }
+    return true;
+  }
+
+  /// Helper getter for profile view notification setting
+  bool get notifyOnProfileView => settings?['notifyOnProfileView'] ?? false;
 }

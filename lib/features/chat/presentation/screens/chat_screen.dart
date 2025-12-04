@@ -60,8 +60,6 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
-    // Clear messages cache when leaving chat
-    ref.read(chatNotifierProvider.notifier).clearMessagesCache(widget.chatId);
     super.dispose();
   }
 

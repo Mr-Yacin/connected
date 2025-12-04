@@ -9,6 +9,11 @@ import '../providers/settings_provider.dart';
 import '../../../../core/theme/theme_provider.dart';
 import '../../../../core/theme/theme_option.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../profile/presentation/providers/current_user_profile_provider.dart';
+
+// Local state providers for notification settings
+final _notificationSettingProvider = StateProvider.family<bool, bool>((ref, initialValue) => initialValue);
+final _isUpdatingNotificationProvider = StateProvider<bool>((ref) => false);
 
 /// Settings screen for managing user preferences and account
 class SettingsScreen extends ConsumerWidget {
@@ -114,6 +119,17 @@ class SettingsScreen extends ConsumerWidget {
                             _buildSettingsCard(
                               context: context,
                               children: [_buildThemeSelector(context, ref)],
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            // Notifications Section
+                            _buildSectionHeader(context, 'الإشعارات'),
+                            _buildSettingsCard(
+                              context: context,
+                              children: [
+                                _buildNotificationSettings(context, ref),
+                              ],
                             ),
 
                             const SizedBox(height: 24),
@@ -224,6 +240,127 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
+  // Notification settings widget
+  Widget _buildNotificationSettings(BuildContext context, WidgetRef ref) {
+    final currentUserProfile = ref.watch(currentUserProfileProvider).profile;
+    
+    if (currentUserProfile == null) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    return Consumer(
+      builder: (context, ref, child) {
+        // Use local state for immediate UI update
+        final notifyOnProfileView = ref.watch(
+          _notificationSettingProvider(currentUserProfile.notifyOnProfileView),
+        );
+        final isUpdating = ref.watch(_isUpdatingNotificationProvider);
+
+        return Column(
+          children: [
+            SwitchListTile(
+              secondary: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.blue.withValues(alpha: 0.1),
+                ),
+                child: const Icon(
+                  Icons.visibility_outlined,
+                  color: Colors.blue,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                'إشعارات زيارة البروفايل',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              subtitle: Text(
+                'استلم إشعار عند زيارة شخص لملفك الشخصي',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              value: notifyOnProfileView,
+              onChanged: isUpdating
+                  ? null
+                  : (value) async {
+                      // Cache notifiers before async operations
+                      final notificationSettingNotifier = ref.read(
+                        _notificationSettingProvider(currentUserProfile.notifyOnProfileView).notifier,
+                      );
+                      final isUpdatingNotifier = ref.read(_isUpdatingNotificationProvider.notifier);
+                      final settingsNotifier = ref.read(settingsProvider.notifier);
+                      final profileNotifier = ref.read(currentUserProfileProvider.notifier);
+
+                      // Update UI immediately
+                      notificationSettingNotifier.state = value;
+                      isUpdatingNotifier.state = true;
+
+                      try {
+                        // Update Firestore
+                        await settingsNotifier.updateNotificationSetting('notifyOnProfileView', value);
+
+                        // Refresh profile
+                        await profileNotifier.loadCurrentUserProfile();
+
+                        if (context.mounted) {
+                          SnackbarHelper.showSuccess(
+                            context,
+                            value ? 'تم تفعيل الإشعارات' : 'تم تعطيل الإشعارات',
+                          );
+                        }
+                      } catch (e) {
+                        // Revert on error
+                        notificationSettingNotifier.state = !value;
+                        
+                        if (context.mounted) {
+                          SnackbarHelper.showError(
+                            context,
+                            'فشل في تحديث الإعدادات',
+                          );
+                        }
+                      } finally {
+                        isUpdatingNotifier.state = false;
+                      }
+                    },
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            Divider(
+              height: 1,
+              indent: 16,
+              endIndent: 16,
+              color: Theme.of(context).dividerColor,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'يمكنك التحكم في الإشعارات التي تستلمها من التطبيق',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).textTheme.bodyMedium?.color,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Theme selector widget
   Widget _buildThemeSelector(BuildContext context, WidgetRef ref) {
     final currentThemeOption = ref.watch(currentThemeOptionProvider);
@@ -277,7 +414,6 @@ class SettingsScreen extends ConsumerWidget {
               return Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    // Don't await to prevent navigation disruption
                     themeNotifier.setThemeOption(option);
                   },
                   child: AnimatedContainer(
@@ -516,7 +652,6 @@ class SettingsScreen extends ConsumerWidget {
               onPressed: () async {
                 Navigator.of(context).pop();
 
-                // Show loading dialog
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -547,20 +682,17 @@ class SettingsScreen extends ConsumerWidget {
                 );
 
                 try {
-                  // ✅ Use proper AuthNotifier signOut method
                   final authNotifier = ref.read(authNotifierProvider.notifier);
                   await authNotifier.signOut();
-
-                  // Add delay to ensure auth state is fully settled
                   await Future.delayed(const Duration(milliseconds: 300));
 
                   if (context.mounted) {
-                    Navigator.of(context).pop(); // Close loading dialog
+                    Navigator.of(context).pop();
                     context.go('/auth/phone');
                   }
                 } catch (e) {
                   if (context.mounted) {
-                    Navigator.of(context).pop(); // Close loading dialog
+                    Navigator.of(context).pop();
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('فشل تسجيل الخروج: $e'),
@@ -607,9 +739,8 @@ class SettingsScreen extends ConsumerWidget {
           ),
           ElevatedButton(
             onPressed: () async {
-              Navigator.of(context).pop(); // Close confirmation dialog
+              Navigator.of(context).pop();
 
-              // Show loading dialog
               showDialog(
                 context: context,
                 barrierDismissible: false,
@@ -643,12 +774,12 @@ class SettingsScreen extends ConsumerWidget {
                 await notifier.deleteAccount(userId);
 
                 if (context.mounted) {
-                  Navigator.of(context).pop(); // Close loading dialog
+                  Navigator.of(context).pop();
                   context.go('/auth/phone');
                 }
               } catch (e) {
                 if (context.mounted) {
-                  Navigator.of(context).pop(); // Close loading dialog
+                  Navigator.of(context).pop();
                   SnackbarHelper.showError(context, 'فشل حذف الحساب: $e');
                 }
               }

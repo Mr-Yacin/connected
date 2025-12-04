@@ -136,7 +136,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _notificationService.deleteToken();
 
       await _authRepository.signOut();
-      state = AuthState(); // Reset state
+      
+      // Reset state - this will trigger auth state change and clean up providers
+      state = AuthState();
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
       rethrow;

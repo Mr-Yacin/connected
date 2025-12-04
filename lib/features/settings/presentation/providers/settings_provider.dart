@@ -115,6 +115,24 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     }
   }
 
+  /// Update notification setting
+  Future<void> updateNotificationSetting(String key, bool value) async {
+    try {
+      state = state.copyWith(isLoading: true, error: null);
+      
+      // Update in Firestore
+      await _userDataService.updateNotificationSetting(key, value);
+      
+      state = state.copyWith(isLoading: false);
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'فشل تحديث إعدادات الإشعارات: $e',
+      );
+      rethrow;
+    }
+  }
+
   /// Clear error message
   void clearError() {
     state = state.copyWith(error: null);

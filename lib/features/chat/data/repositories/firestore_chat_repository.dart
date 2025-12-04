@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/models/message.dart';
@@ -13,14 +14,17 @@ import '../../../../services/monitoring/error_logging_service.dart';
 class FirestoreChatRepository extends BaseFirestoreRepository
     implements ChatRepository {
   final FirebaseFirestore _firestore;
+  final FirebaseAuth _firebaseAuth;
   final FirebaseStorage _storage;
   final Uuid _uuid;
 
   FirestoreChatRepository({
     FirebaseFirestore? firestore,
+    FirebaseAuth? firebaseAuth,
     FirebaseStorage? storage,
     Uuid? uuid,
   }) : _firestore = firestore ?? FirebaseFirestore.instance,
+       _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance,
        _storage = storage ?? FirebaseStorage.instance,
        _uuid = uuid ?? const Uuid();
 
@@ -637,6 +641,12 @@ class FirestoreChatRepository extends BaseFirestoreRepository
   }) async {
     return handleFirestoreVoidOperation(
       operation: () async {
+        // Verify current user is the sender (prevent stale operations after logout)
+        final currentUser = _firebaseAuth.currentUser;
+        if (currentUser == null || currentUser.uid != senderId) {
+          throw Exception('User mismatch: operation cancelled');
+        }
+        
         // Fetch participant profiles for denormalization
         final participantProfiles = await _batchFetchUserProfiles([senderId, receiverId]);
         
