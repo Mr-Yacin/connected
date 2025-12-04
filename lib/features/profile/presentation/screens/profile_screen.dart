@@ -18,7 +18,7 @@ import '../../../auth/presentation/widgets/guest_conversion_dialog.dart';
 import '../../../stories/presentation/screens/story_camera_screen.dart';
 import '../providers/profile_provider.dart';
 import '../providers/current_user_profile_provider.dart';
-import '../../../../services/providers/profile_view_service_provider.dart';
+import '../../../../services/analytics/profile_view_service.dart';
 
 /// Helper to get current user from auth state
 extension CurrentUserExtension on WidgetRef {
@@ -63,7 +63,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           .trackScreenView(
             isOwnProfile ? 'own_profile_screen' : 'user_profile_screen',
           );
-      
+
       // Record profile view if viewing someone else's profile
       if (!isOwnProfile && widget.viewedUserId != null) {
         _recordProfileView(widget.viewedUserId!);
@@ -626,15 +626,23 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.white,
-                      backgroundImage: profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty
+                      backgroundImage:
+                          profile.profileImageUrl != null &&
+                              profile.profileImageUrl!.isNotEmpty
                           ? NetworkImage(profile.profileImageUrl!)
                           : null,
-                      onBackgroundImageError: profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty
+                      onBackgroundImageError:
+                          profile.profileImageUrl != null &&
+                              profile.profileImageUrl!.isNotEmpty
                           ? (exception, stackTrace) {
-                              debugPrint('Failed to load profile image: ${profile.profileImageUrl}');
+                              debugPrint(
+                                'Failed to load profile image: ${profile.profileImageUrl}',
+                              );
                             }
                           : null,
-                      child: profile.profileImageUrl == null || profile.profileImageUrl!.isEmpty
+                      child:
+                          profile.profileImageUrl == null ||
+                              profile.profileImageUrl!.isEmpty
                           ? Icon(
                               Icons.person,
                               size: 38,
@@ -826,7 +834,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               onTap: () {
                 final otherUserId = profile.id;
                 // Generate deterministic chat ID to prevent duplicates
-                final chatId = ChatUtils.generateChatId(currentUserId, otherUserId);
+                final chatId = ChatUtils.generateChatId(
+                  currentUserId,
+                  otherUserId,
+                );
 
                 context.push(
                   '/chat/$chatId?currentUserId=$currentUserId&otherUserId=$otherUserId&otherUserName=${Uri.encodeComponent(profile.name ?? "")}&otherUserImageUrl=${Uri.encodeComponent(profile.profileImageUrl ?? "")}',
@@ -841,7 +852,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildQuickActions(dynamic profile) {
     final userId = ref.currentUserId;
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
