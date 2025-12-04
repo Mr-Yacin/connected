@@ -142,10 +142,15 @@ class _ChatListTile extends StatelessWidget {
         },
         child: CircleAvatar(
           radius: 28,
-          backgroundImage: chat.otherUserImageUrl != null
+          backgroundImage: chat.otherUserImageUrl != null && chat.otherUserImageUrl!.isNotEmpty
               ? NetworkImage(chat.otherUserImageUrl!)
               : null,
-          child: chat.otherUserImageUrl == null
+          onBackgroundImageError: chat.otherUserImageUrl != null && chat.otherUserImageUrl!.isNotEmpty
+              ? (exception, stackTrace) {
+                  debugPrint('Failed to load chat list image: ${chat.otherUserImageUrl}');
+                }
+              : null,
+          child: chat.otherUserImageUrl == null || chat.otherUserImageUrl!.isEmpty
               ? const Icon(Icons.person, size: 28)
               : null,
         ),

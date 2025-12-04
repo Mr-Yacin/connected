@@ -9,6 +9,7 @@ import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../stories/presentation/widgets/story_bar_widget.dart';
 import '../../../stories/presentation/widgets/stories_grid_widget.dart';
 import '../../../stories/presentation/widgets/story_filter_bottom_sheet.dart';
+import '../../../stories/presentation/screens/story_camera_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
 
 /// Main home screen with bottom navigation
@@ -116,14 +117,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return SafeArea(
       child: Column(
         children: [
-          // App bar with title and filter icon
+          // App bar with title and action buttons
           Container(
             padding: const EdgeInsets.all(16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Empty space for balance
-                const SizedBox(width: 48),
+                // Create story button on the left
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline, size: 28),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StoryCameraScreen(userId: userId),
+                      ),
+                    );
+                  },
+                  tooltip: 'إنشاء قصة',
+                ),
                 
                 // Title in the center
                 Text(

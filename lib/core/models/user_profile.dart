@@ -16,7 +16,6 @@ class UserProfile {
   final String? anonymousLink;
   final int followerCount;
   final int followingCount;
-  final int likesCount;
   final DateTime createdAt;
   final DateTime lastActive;
 
@@ -35,7 +34,6 @@ class UserProfile {
     this.anonymousLink,
     this.followerCount = 0,
     this.followingCount = 0,
-    this.likesCount = 0,
     required this.createdAt,
     required this.lastActive,
   });
@@ -57,7 +55,6 @@ class UserProfile {
       'anonymousLink': anonymousLink,
       'followerCount': followerCount,
       'followingCount': followingCount,
-      'likesCount': likesCount,
       'createdAt': createdAt.toIso8601String(),
       'lastActive': lastActive.toIso8601String(),
     };
@@ -119,7 +116,6 @@ class UserProfile {
       anonymousLink: json['anonymousLink'] as String?,
       followerCount: parseInt(json['followerCount']) ?? 0,
       followingCount: parseInt(json['followingCount']) ?? 0,
-      likesCount: parseInt(json['likesCount']) ?? 0,
       createdAt: parseDate(json['createdAt'], fallback: now),
       lastActive: parseDate(json['lastActive'], fallback: now),
     );
@@ -141,7 +137,6 @@ class UserProfile {
     String? anonymousLink,
     int? followerCount,
     int? followingCount,
-    int? likesCount,
     DateTime? createdAt,
     DateTime? lastActive,
   }) {
@@ -160,7 +155,6 @@ class UserProfile {
       anonymousLink: anonymousLink ?? this.anonymousLink,
       followerCount: followerCount ?? this.followerCount,
       followingCount: followingCount ?? this.followingCount,
-      likesCount: likesCount ?? this.likesCount,
       createdAt: createdAt ?? this.createdAt,
       lastActive: lastActive ?? this.lastActive,
     );
@@ -185,7 +179,6 @@ class UserProfile {
         other.anonymousLink == anonymousLink &&
         other.followerCount == followerCount &&
         other.followingCount == followingCount &&
-        other.likesCount == likesCount &&
         other.createdAt == createdAt &&
         other.lastActive == lastActive;
   }
@@ -207,7 +200,6 @@ class UserProfile {
       anonymousLink,
       followerCount,
       followingCount,
-      likesCount,
       createdAt,
       lastActive,
     );

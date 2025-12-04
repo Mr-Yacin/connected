@@ -63,6 +63,7 @@ class StoryBarWidget extends ConsumerWidget {
                   hasUnviewed: hasUnviewed,
                   isOwnStory: true,
                   hasStories: ownStories != null && ownStories.isNotEmpty,
+                  // Tap on avatar: view stories if exist, otherwise create
                   onTap: () {
                     if (ownStories != null && ownStories.isNotEmpty) {
                       // View own stories
@@ -78,7 +79,7 @@ class StoryBarWidget extends ConsumerWidget {
                         ),
                       );
                     } else {
-                      // Create new story
+                      // Create new story (fallback if no stories)
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -89,11 +90,28 @@ class StoryBarWidget extends ConsumerWidget {
                       );
                     }
                   },
+                  // Tap on + icon: always create new story
+                  onPlusTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => StoryCameraScreen(
+                          userId: currentUserId,
+                        ),
+                      ),
+                    );
+                  },
                 );
               }
 
               // Following stories
               final followingIndex = index - 1; // Always subtract 1 since own profile is always first
+              
+              // ✅ FIX: Add bounds check to prevent crash
+              if (followingIndex < 0 || followingIndex >= followingStoriesMap.length) {
+                return const SizedBox.shrink();
+              }
+              
               final userId = followingStoriesMap.keys.elementAt(followingIndex);
               final userStories = followingStoriesMap[userId]!;
               final hasUnviewed = userStories.any(
@@ -192,6 +210,7 @@ class _StoryAvatar extends ConsumerWidget {
   final bool isOwnStory;
   final bool hasStories;
   final VoidCallback onTap;
+  final VoidCallback? onPlusTap; // New: separate tap for + icon
 
   const _StoryAvatar({
     required this.userId,
@@ -200,6 +219,7 @@ class _StoryAvatar extends ConsumerWidget {
     required this.isOwnStory,
     required this.hasStories,
     required this.onTap,
+    this.onPlusTap, // Optional: only for own story
   });
 
   @override
@@ -256,26 +276,29 @@ class _StoryAvatar extends ConsumerWidget {
                         : null,
                   ),
                 ),
-                // Show "+" icon for own story when no stories exist
-                if (isOwnStory && !hasStories)
+                // Show "+" icon for own story (always visible, separately tappable)
+                if (isOwnStory)
                   Positioned(
                     bottom: 0,
                     left: 0,
-                    child: Container(
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Theme.of(context).primaryColor,
-                        border: Border.all(
-                          color: Theme.of(context).scaffoldBackgroundColor,
-                          width: 2,
+                    child: GestureDetector(
+                      onTap: onPlusTap ?? onTap, // Use separate handler if provided
+                      child: Container(
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Theme.of(context).primaryColor,
+                          border: Border.all(
+                            color: Theme.of(context).scaffoldBackgroundColor,
+                            width: 2,
+                          ),
                         ),
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: 12,
+                        child: const Icon(
+                          Icons.add,
+                          color: Colors.white,
+                          size: 12,
+                        ),
                       ),
                     ),
                   ),

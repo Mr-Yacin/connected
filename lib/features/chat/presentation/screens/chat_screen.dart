@@ -261,10 +261,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   CircleAvatar(
                     radius: 20,
                     backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                    backgroundImage: widget.otherUserImageUrl != null
+                    backgroundImage: widget.otherUserImageUrl != null && widget.otherUserImageUrl!.isNotEmpty
                         ? NetworkImage(widget.otherUserImageUrl!)
                         : null,
-                    child: widget.otherUserImageUrl == null
+                    onBackgroundImageError: widget.otherUserImageUrl != null && widget.otherUserImageUrl!.isNotEmpty
+                        ? (exception, stackTrace) {
+                            debugPrint('Failed to load profile image: ${widget.otherUserImageUrl}');
+                          }
+                        : null,
+                    child: widget.otherUserImageUrl == null || widget.otherUserImageUrl!.isEmpty
                         ? Icon(Icons.person, color: AppColors.primary)
                         : null,
                   ),

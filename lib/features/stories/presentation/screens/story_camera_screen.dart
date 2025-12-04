@@ -135,6 +135,11 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
         return;
       }
 
+      // ✅ FIX: Add bounds check to prevent crash
+      if (_currentCameraIndex >= _cameras!.length) {
+        _currentCameraIndex = 0;
+      }
+
       _cameraController = CameraController(
         _cameras![_currentCameraIndex],
         ResolutionPreset.veryHigh,
@@ -281,8 +286,11 @@ class _StoryCameraScreenState extends ConsumerState<StoryCameraScreen>
         ..initialize().then((_) {
           if (mounted) {
             setState(() {});
-            _videoController!.play();
-            _videoController!.setLooping(true);
+            // ✅ FIX: Add null check before using video controller
+            if (_videoController != null && _videoController!.value.isInitialized) {
+              _videoController!.play();
+              _videoController!.setLooping(true);
+            }
           }
         });
 

@@ -92,10 +92,15 @@ class _BlockedUserTile extends ConsumerWidget {
 
         return ListTile(
           leading: CircleAvatar(
-            backgroundImage: profile.profileImageUrl != null
+            backgroundImage: profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty
                 ? NetworkImage(profile.profileImageUrl!)
                 : null,
-            child: profile.profileImageUrl == null
+            onBackgroundImageError: profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty
+                ? (exception, stackTrace) {
+                    debugPrint('Failed to load blocked user image: ${profile.profileImageUrl}');
+                  }
+                : null,
+            child: profile.profileImageUrl == null || profile.profileImageUrl!.isEmpty
                 ? const Icon(Icons.person)
                 : null,
           ),

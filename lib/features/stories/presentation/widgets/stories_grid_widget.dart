@@ -309,6 +309,11 @@ class _StoriesGridWidgetState extends ConsumerState<StoriesGridWidget>
         final userId = _shuffledUserIds[index];
         final userStories = storiesByUser[userId]!;
         
+        // ✅ FIX: Check if list is empty before accessing
+        if (userStories.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        
         // Use the first (most recent) story as preview
         final previewStory = userStories.first;
         

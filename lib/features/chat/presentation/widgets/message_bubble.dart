@@ -113,7 +113,7 @@ class MessageBubble extends StatelessWidget {
             child: Row(
               children: [
                 // Story thumbnail (smaller and more compact)
-                if (message.storyMediaUrl != null)
+                if (message.storyMediaUrl != null && message.storyMediaUrl!.isNotEmpty)
                   ClipRRect(
                     borderRadius: const BorderRadius.only(
                       topRight: Radius.circular(8),
@@ -124,7 +124,28 @@ class MessageBubble extends StatelessWidget {
                       width: 40,
                       height: 56,
                       fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          width: 40,
+                          height: 56,
+                          color: isMe 
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.grey[200],
+                          child: Center(
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: isMe ? Colors.white.withValues(alpha: 0.5) : Colors.grey[400],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                       errorBuilder: (context, error, stackTrace) {
+                        debugPrint('Failed to load story image: ${message.storyMediaUrl}');
                         return Container(
                           width: 40,
                           height: 56,

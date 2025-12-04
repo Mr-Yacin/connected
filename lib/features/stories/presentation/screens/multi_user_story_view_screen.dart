@@ -14,6 +14,8 @@ import '../providers/story_user_provider.dart';
 import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
 import '../../../chat/presentation/providers/chat_provider.dart';
+import '../../../discovery/presentation/providers/follow_provider.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
 import '../widgets/story_management_sheet.dart';
 import '../../utils/story_time_formatter.dart';
 import '../widgets/common/story_profile_avatar.dart';
@@ -55,6 +57,7 @@ class _MultiUserStoryViewScreenState
   final TextEditingController _messageController = TextEditingController();
   final FocusNode _messageFocusNode = FocusNode();
   bool _isTyping = false;
+  bool _isPaused = false; // Track if story is manually paused
   
   // Track precached images for cleanup
   final Set<String> _precachedImageUrls = {};
@@ -92,7 +95,8 @@ class _MultiUserStoryViewScreenState
       }
     });
 
-    _loadAllUserStories();
+    // Delay provider modification until after build completes
+    Future.microtask(() => _loadAllUserStories());
   }
 
   @override
@@ -116,9 +120,6 @@ class _MultiUserStoryViewScreenState
       imageCache.evict(CachedNetworkImageProvider(url));
     }
     _precachedImageUrls.clear();
-    
-    // Invalidate providers to refresh data for next view
-    ref.invalidate(activeStoriesProvider);
     
     super.dispose();
   }
@@ -213,11 +214,13 @@ class _MultiUserStoryViewScreenState
   }
 
   void _pauseStory() {
+    _isPaused = true;
     _storyProgressController.stop();
     _storyTimer?.cancel();
   }
 
   void _resumeStory() {
+    _isPaused = false;
     _storyProgressController.forward();
     final remainingTime = _storyDuration * (1 - _storyProgressController.value);
     _storyTimer?.cancel();
@@ -317,8 +320,14 @@ class _MultiUserStoryViewScreenState
     } else if (details.globalPosition.dx > screenWidth * 2 / 3) {
       // Right third - PREVIOUS story/user
       _previousStory();
+    } else {
+      // Middle third - toggle pause/play
+      if (_isPaused) {
+        _resumeStory();
+      } else {
+        _pauseStory();
+      }
     }
-    // Middle third - pause/resume handled by gesture detectors
   }
 
 
@@ -408,18 +417,12 @@ class _MultiUserStoryViewScreenState
   Widget _buildFullStoryScreen(Story story, List<Story> stories, bool isOwnStory) {
     return GestureDetector(
       behavior: HitTestBehavior.deferToChild,
-      onTapDown: (_) {
-        if (!_isTyping) _pauseStory();
-      },
       onTapUp: _onTap,
-      onTapCancel: () {
-        if (!_isTyping) _resumeStory();
-      },
       onLongPressStart: (_) {
         if (!_isTyping) _pauseStory();
       },
       onLongPressEnd: (_) {
-        if (!_isTyping) _resumeStory();
+        if (!_isTyping && !_isPaused) _resumeStory();
       },
       onVerticalDragEnd: (details) {
         if (details.primaryVelocity != null &&
@@ -522,37 +525,114 @@ class _MultiUserStoryViewScreenState
 
             return Row(
               children: [
-                StoryProfileAvatar(
-                  profileImageUrl: profileImageUrl,
-                  size: 40,
-                  borderWidth: 2,
-                ),
-                const SizedBox(width: 8),
+                // Tappable profile area (avatar + name)
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ProfileScreen(
+                            viewedUserId: story.userId,
+                          ),
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        StoryTimeFormatter.getTimeAgo(story.createdAt),
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 10,
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        StoryProfileAvatar(
+                          profileImageUrl: profileImageUrl,
+                          size: 40,
+                          borderWidth: 2,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                StoryTimeFormatter.getTimeAgo(story.createdAt),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                // Follow button for other users' stories
+                if (!isOwnStory)
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final followState = ref.watch(followProvider);
+                      final isFollowing = followState.followingStatus[story.userId] ?? false;
+                      
+                      // Load follow status if not cached
+                      if (followState.followingStatus[story.userId] == null) {
+                        Future.microtask(() {
+                          ref.read(followProvider.notifier).checkFollowStatus(
+                            widget.currentUserId,
+                            story.userId,
+                          );
+                        });
+                      }
+                      
+                      return TextButton(
+                        onPressed: () async {
+                          try {
+                            await ref.read(followProvider.notifier).toggleFollow(
+                              widget.currentUserId,
+                              story.userId,
+                            );
+                            
+                            final newStatus = ref.read(followProvider).followingStatus[story.userId] ?? false;
+                            if (mounted) {
+                              SnackbarHelper.showSuccess(
+                                context,
+                                newStatus ? 'تمت المتابعة!' : 'تم إلغاء المتابعة',
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              SnackbarHelper.showError(context, 'فشل في المتابعة');
+                            }
+                          }
+                        },
+                        style: TextButton.styleFrom(
+                          backgroundColor: isFollowing 
+                              ? Colors.white.withOpacity(0.2)
+                              : Colors.blue,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(
+                          isFollowing ? 'متابَع' : 'متابعة',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                const SizedBox(width: 4),
                 // Three-dot menu for both own and other users' stories
                 IconButton(
                   icon: const Icon(Icons.more_vert, color: Colors.white),

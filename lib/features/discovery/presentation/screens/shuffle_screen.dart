@@ -9,7 +9,6 @@ import '../../../../services/monitoring/crashlytics_service.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../providers/discovery_provider.dart';
 import '../providers/follow_provider.dart';
-import '../providers/like_provider.dart';
 import '../widgets/user_card.dart';
 import '../widgets/filter_bottom_sheet.dart';
 
@@ -56,58 +55,6 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
         },
       ),
     );
-  }
-
-  Future<void> _handleLike() async {
-    final currentUser = ref.read(discoveryProvider).currentUser;
-    final loggedInUser = ref.read(currentUserProvider).value;
-
-    if (currentUser != null && loggedInUser != null) {
-      try {
-        await ref
-            .read(likeProvider.notifier)
-            .toggleLike(loggedInUser.uid, currentUser.id);
-
-        final isLiked = ref.read(likeProvider).likedUsers[currentUser.id] ?? false;
-
-        // Track like event using existing method
-        if (isLiked) {
-          await ref.read(analyticsEventsProvider).trackPostLiked(
-            postId: currentUser.id,
-            authorId: currentUser.id,
-          );
-        }
-
-        if (mounted) {
-          final message = isLiked ? 'تم الإعجاب!' : 'تم إلغاء الإعجاب';
-          if (isLiked) {
-            SnackbarHelper.showSuccess(context, message);
-          } else {
-            SnackbarHelper.showInfo(context, message);
-          }
-        }
-
-        // Auto-shuffle to next user only if liked
-        if (isLiked) {
-          _loadNextUser();
-        }
-      } catch (e, stackTrace) {
-        await ref.read(crashlyticsServiceProvider).logError(
-          e,
-          stackTrace,
-          reason: 'Failed to like profile',
-          information: [
-            'screen: shuffle_screen',
-            'userId: ${loggedInUser.uid}',
-            'likedUserId: ${currentUser.id}',
-          ],
-        );
-        
-        if (mounted) {
-          SnackbarHelper.showError(context, 'فشل في الإعجاب: $e');
-        }
-      }
-    }
   }
 
   Future<void> _handleFollow() async {
@@ -196,18 +143,16 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
   @override
   Widget build(BuildContext context) {
     final discoveryState = ref.watch(discoveryProvider);
-    final likeState = ref.watch(likeProvider);
     final followState = ref.watch(followProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final loggedInUser = ref.watch(currentUserProvider).value;
     
-    // Check if current user is liked/followed
+    // Check if current user is followed
     final currentUser = discoveryState.currentUser;
     
-    // Load follow and like status if we have a current user and they're not cached
+    // Load follow status if we have a current user and it's not cached
     if (currentUser != null && loggedInUser != null) {
       final isFollowingCached = followState.followingStatus[currentUser.id];
-      final isLikedCached = likeState.likedUsers[currentUser.id];
       
       if (isFollowingCached == null) {
         Future.microtask(() {
@@ -217,20 +162,8 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
           );
         });
       }
-      
-      if (isLikedCached == null) {
-        Future.microtask(() {
-          ref.read(likeProvider.notifier).checkIfLiked(
-            loggedInUser.uid,
-            currentUser.id,
-          );
-        });
-      }
     }
     
-    final isLiked = currentUser != null 
-        ? (likeState.likedUsers[currentUser.id] ?? false)
-        : false;
     final isFollowing = currentUser != null
         ? (followState.followingStatus[currentUser.id] ?? false)
         : false;
@@ -332,7 +265,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
               const SizedBox(height: 16),
 
               // Main content
-              Expanded(child: _buildContent(discoveryState, isDark, isLiked, isFollowing)),
+              Expanded(child: _buildContent(discoveryState, isDark, isFollowing)),
             ],
           ),
         ),
@@ -349,7 +282,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
     );
   }
 
-  Widget _buildContent(DiscoveryState state, bool isDark, bool isLiked, bool isFollowing) {
+  Widget _buildContent(DiscoveryState state, bool isDark, bool isFollowing) {
     if (state.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -423,9 +356,7 @@ class _ShuffleScreenState extends ConsumerState<ShuffleScreen> {
       child: SingleChildScrollView(
         child: UserCard(
           user: state.currentUser!,
-          isLiked: isLiked,
           isFollowing: isFollowing,
-          onLike: _handleLike,
           onFollow: _handleFollow,
           onChat: _handleChat,
           onViewProfile: _handleViewProfile,

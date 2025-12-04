@@ -24,11 +24,11 @@ service cloud.firestore {
       // Users can update their own profile with any changes
       allow update: if request.auth != null && request.auth.uid == userId;
       
-      // Allow any authenticated user to update ONLY likesCount, followerCount, or followingCount
-      // This is needed for likes and follows from other users
+      // Allow any authenticated user to update ONLY followerCount or followingCount
+      // This is needed for follows from other users
       allow update: if request.auth != null && 
                        request.resource.data.diff(resource.data).affectedKeys()
-                         .hasOnly(['likesCount', 'followerCount', 'followingCount']);
+                         .hasOnly(['followerCount', 'followingCount']);
       
       // Following subcollection (users this user is following)
       match /following/{followingUserId} {
@@ -218,31 +218,6 @@ service cloud.firestore {
       
       // Anonymous links cannot be updated or deleted
       allow update, delete: if false;
-    }
-    
-    // Likes collection
-    match /likes/{likeId} {
-      // Anyone authenticated can read likes
-      allow read: if request.auth != null;
-      
-      // Users can create likes if they are the one giving the like
-      // Like ID format: {fromUserId}_{toUserId}
-      allow create: if request.auth != null && 
-                       request.auth.uid == request.resource.data.fromUserId &&
-                       likeId == request.resource.data.fromUserId + '_' + request.resource.data.toUserId &&
-                       // Prevent self-liking
-                       request.resource.data.fromUserId != request.resource.data.toUserId &&
-                       request.resource.data.keys().hasAll(['fromUserId', 'toUserId', 'createdAt', 'isActive']);
-      
-      // Users can update (reactivate or deactivate) their own likes
-      allow update: if request.auth != null && 
-                       request.auth.uid == resource.data.fromUserId &&
-                       // Only allow updating isActive and createdAt fields
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isActive', 'createdAt']);
-      
-      // Users can delete their own likes
-      allow delete: if request.auth != null && 
-                       request.auth.uid == resource.data.fromUserId;
     }
     
     // Follows collection

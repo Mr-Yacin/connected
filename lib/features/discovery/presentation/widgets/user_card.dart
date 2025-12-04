@@ -5,21 +5,17 @@ import '../../../../core/theme/app_colors.dart';
 /// Widget to display a user profile card in discovery
 class UserCard extends StatelessWidget {
   final UserProfile user;
-  final VoidCallback? onLike;
   final VoidCallback? onFollow;
   final VoidCallback? onChat;
   final VoidCallback? onViewProfile;
-  final bool isLiked;
   final bool isFollowing;
 
   const UserCard({
     super.key,
     required this.user,
-    this.onLike,
     this.onFollow,
     this.onChat,
     this.onViewProfile,
-    this.isLiked = false,
     this.isFollowing = false,
   });
 
@@ -45,10 +41,15 @@ class UserCard extends StatelessWidget {
               CircleAvatar(
                 radius: 80,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                backgroundImage: user.profileImageUrl != null
+                backgroundImage: user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
                     ? NetworkImage(user.profileImageUrl!)
                     : null,
-                child: user.profileImageUrl == null
+                onBackgroundImageError: user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
+                    ? (exception, stackTrace) {
+                        debugPrint('Failed to load user card image: ${user.profileImageUrl}');
+                      }
+                    : null,
+                child: user.profileImageUrl == null || user.profileImageUrl!.isEmpty
                     ? Icon(
                         Icons.person,
                         size: 80,
@@ -108,18 +109,6 @@ class UserCard extends StatelessWidget {
                     '${user.followerCount}',
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  const SizedBox(width: 16),
-                  // Likes count
-                  Icon(
-                    Icons.favorite,
-                    size: 20,
-                    color: Colors.red,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${user.likesCount}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
                 ],
               ),
               const SizedBox(height: 32),
@@ -135,15 +124,6 @@ class UserCard extends StatelessWidget {
                     label: isFollowing ? 'متابع' : 'متابعة',
                     onPressed: onFollow,
                     isFilled: isFollowing,
-                  ),
-                  
-                  // Like Button
-                  _ActionButton(
-                    icon: isLiked ? Icons.favorite : Icons.favorite_border,
-                    color: isLiked ? Colors.red : AppColors.secondary,
-                    label: isLiked ? 'ملعجب' : 'إعجاب',
-                    onPressed: onLike,
-                    isFilled: isLiked,
                   ),
                   
                   // Chat Button

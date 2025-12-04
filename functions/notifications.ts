@@ -199,45 +199,50 @@ export const onStoryReply = functions.firestore
   });
 
 /**
- * Send notification when someone likes a post
+ * Send notification when someone likes your story
  */
-export const onNewLike = functions.firestore
-  .document("likes/{likeId}")
-  .onCreate(async (snapshot, context) => {
-    const like = snapshot.data();
+export const onStoryLike = functions.firestore
+  .document("stories/{storyId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    const { storyId } = context.params;
 
     try {
-      // Get post to find owner
-      const postDoc = await admin
-        .firestore()
-        .collection("posts")
-        .doc(like.postId)
-        .get();
+      // Check if likedBy array was updated
+      const beforeLikes = before.likedBy || [];
+      const afterLikes = after.likedBy || [];
 
-      if (!postDoc.exists) {
-        console.log("Post not found:", like.postId);
+      // Find new likes (users who weren't in before but are in after)
+      const newLikes = afterLikes.filter(
+        (userId: string) => !beforeLikes.includes(userId)
+      );
+
+      if (newLikes.length === 0) {
+        // No new likes, skip notification
         return null;
       }
 
-      const post = postDoc.data();
+      // Get the first new liker (most recent)
+      const likerId = newLikes[0];
 
-      // Don't notify if liking own post
-      if (post?.userId === like.userId) {
-        console.log("User liked own post, no notification");
+      // Don't notify if liking own story
+      if (after.userId === likerId) {
+        console.log("User liked own story, no notification");
         return null;
       }
 
       // Get liker and owner details
       const [likerDoc, ownerDoc] = await Promise.all([
-        admin.firestore().collection("users").doc(like.userId).get(),
-        admin.firestore().collection("users").doc(post.userId).get(),
+        admin.firestore().collection("users").doc(likerId).get(),
+        admin.firestore().collection("users").doc(after.userId).get(),
       ]);
 
       const liker = likerDoc.data();
       const owner = ownerDoc.data();
 
       if (!owner?.fcmToken) {
-        console.log("Post owner has no FCM token");
+        console.log("Story owner has no FCM token");
         return null;
       }
 
@@ -245,26 +250,178 @@ export const onNewLike = functions.firestore
       await admin.messaging().send({
         token: owner.fcmToken,
         notification: {
-          title: "❤️ إعجاب جديد",
-          body: `أعجب ${liker?.name || "شخص ما"} بمنشورك`,
+          title: "❤️ إعجاب بقصتك",
+          body: `أعجب ${liker?.name || "شخص ما"} بقصتك`,
         },
         data: {
-          type: "new_like",
-          postId: like.postId,
-          likerId: like.userId,
+          type: "story_like",
+          storyId: storyId,
+          userId: after.userId,
+          likerId: likerId,
           click_action: "FLUTTER_NOTIFICATION_CLICK",
         },
         android: {
+          priority: "high" as const,
           notification: {
-            channelId: "likes",
+            channelId: "stories",
           },
         },
       });
 
-      console.log("✅ Like notification sent to:", post.userId);
+      console.log("✅ Story like notification sent to:", after.userId);
       return null;
     } catch (error) {
-      console.error("Error sending like notification:", error);
+      console.error("Error sending story like notification:", error);
+      return null;
+    }
+  });
+
+/**
+ * Send notification when someone follows you
+ */
+export const onNewFollower = functions.firestore
+  .document("users/{userId}/followers/{followerId}")
+  .onCreate(async (snapshot, context) => {
+    const { userId, followerId } = context.params;
+
+    try {
+      // Don't notify if following yourself (shouldn't happen but just in case)
+      if (userId === followerId) {
+        console.log("User followed themselves, no notification");
+        return null;
+      }
+
+      // Get follower and user details
+      const [followerDoc, userDoc] = await Promise.all([
+        admin.firestore().collection("users").doc(followerId).get(),
+        admin.firestore().collection("users").doc(userId).get(),
+      ]);
+
+      const follower = followerDoc.data();
+      const user = userDoc.data();
+
+      if (!user?.fcmToken) {
+        console.log("User has no FCM token");
+        return null;
+      }
+
+      // Send notification
+      await admin.messaging().send({
+        token: user.fcmToken,
+        notification: {
+          title: "👤 متابع جديد",
+          body: `${follower?.name || "شخص ما"} بدأ بمتابعتك`,
+        },
+        data: {
+          type: "new_follower",
+          followerId: followerId,
+          userId: userId,
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+        },
+        android: {
+          priority: "high" as const,
+          notification: {
+            channelId: "social",
+          },
+        },
+      });
+
+      console.log("✅ New follower notification sent to:", userId);
+      return null;
+    } catch (error) {
+      console.error("Error sending new follower notification:", error);
+      return null;
+    }
+  });
+
+/**
+ * Send notification when someone you follow posts a new story
+ */
+export const onNewStoryFromFollowing = functions.firestore
+  .document("stories/{storyId}")
+  .onCreate(async (snapshot, context) => {
+    const story = snapshot.data();
+    const { storyId } = context.params;
+
+    try {
+      // Get all followers of the story creator
+      const followersSnapshot = await admin
+        .firestore()
+        .collection("users")
+        .doc(story.userId)
+        .collection("followers")
+        .get();
+
+      if (followersSnapshot.empty) {
+        console.log("Story creator has no followers");
+        return null;
+      }
+
+      // Get story creator details
+      const creatorDoc = await admin
+        .firestore()
+        .collection("users")
+        .doc(story.userId)
+        .get();
+
+      const creator = creatorDoc.data();
+
+      // Prepare notification payload
+      const notificationPayload = {
+        notification: {
+          title: "📸 قصة جديدة",
+          body: `${creator?.name || "شخص ما"} نشر قصة جديدة`,
+        },
+        data: {
+          type: "new_story",
+          storyId: storyId,
+          userId: story.userId,
+          creatorName: creator?.name || "",
+          click_action: "FLUTTER_NOTIFICATION_CLICK",
+        },
+        android: {
+          priority: "high" as const,
+          notification: {
+            channelId: "stories",
+          },
+        },
+      };
+
+      // Send notification to each follower
+      const notifications: Promise<string>[] = [];
+      
+      for (const followerDoc of followersSnapshot.docs) {
+        const followerId = followerDoc.id;
+
+        // Get follower's FCM token
+        const followerUserDoc = await admin
+          .firestore()
+          .collection("users")
+          .doc(followerId)
+          .get();
+
+        const followerUser = followerUserDoc.data();
+
+        if (followerUser?.fcmToken) {
+          notifications.push(
+            admin.messaging().send({
+              ...notificationPayload,
+              token: followerUser.fcmToken,
+            })
+          );
+        }
+      }
+
+      // Send all notifications in parallel
+      const results = await Promise.allSettled(notifications);
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+
+      console.log(
+        `✅ New story notifications sent: ${successCount}/${notifications.length}`
+      );
+      return null;
+    } catch (error) {
+      console.error("Error sending new story notifications:", error);
       return null;
     }
   });

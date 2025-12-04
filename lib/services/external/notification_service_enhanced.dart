@@ -5,10 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/exceptions/app_exceptions.dart';
 import '../monitoring/app_logger.dart';
 import '../monitoring/error_logging_service.dart';
+import 'local_notification_service.dart';
 
 // Provider for NotificationService
 final notificationServiceProvider = Provider<NotificationService>((ref) {
-  return NotificationService();
+  final localNotificationService = ref.watch(localNotificationServiceProvider);
+  return NotificationService(
+    localNotificationService: localNotificationService,
+  );
 });
 
 /// Callback for handling notification navigation
@@ -20,6 +24,7 @@ class NotificationService {
   final FirebaseMessaging _messaging;
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
+  final LocalNotificationService? _localNotificationService;
 
   String? _fcmToken;
   NotificationNavigationCallback? _navigationCallback;
@@ -31,9 +36,11 @@ class NotificationService {
     FirebaseMessaging? messaging,
     FirebaseFirestore? firestore,
     FirebaseAuth? auth,
+    LocalNotificationService? localNotificationService,
   }) : _messaging = messaging ?? FirebaseMessaging.instance,
        _firestore = firestore ?? FirebaseFirestore.instance,
-       _auth = auth ?? FirebaseAuth.instance;
+       _auth = auth ?? FirebaseAuth.instance,
+       _localNotificationService = localNotificationService;
 
   /// Get the current FCM token
   String? get fcmToken => _fcmToken;
@@ -52,6 +59,12 @@ class NotificationService {
   /// Initialize notification service
   Future<void> initialize() async {
     try {
+      // Initialize local notifications first
+      if (_localNotificationService != null) {
+        await _localNotificationService!.initialize();
+        AppLogger.info('Local notification service initialized');
+      }
+
       // Request permission for notifications
       final settings = await _messaging.requestPermission(
         alert: true,
@@ -119,20 +132,48 @@ class NotificationService {
     );
 
     final notification = message.notification;
-    if (notification != null) {
-      // TODO: Show local notification using flutter_local_notifications
-      // For now, just log
+    if (notification != null && _localNotificationService != null) {
+      // Show local notification in foreground
+      final notificationType = message.data['type'] ?? 'general';
+      final channelId = _getChannelIdForType(notificationType);
+
+      _localNotificationService!.showNotification(
+        id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+        title: notification.title ?? 'إشعار جديد',
+        body: notification.body ?? '',
+        channelId: channelId,
+        payload: notificationType,
+      );
+
       AppLogger.debug(
-        'Notification details',
+        'Local notification shown',
         data: {
           'title': notification.title ?? '',
           'body': notification.body ?? '',
+          'channel': channelId,
         },
       );
     }
 
     // Track analytics
     _trackNotificationEvent('received', message.data['type'] ?? 'unknown');
+  }
+
+  /// Get channel ID based on notification type
+  String _getChannelIdForType(String type) {
+    switch (type) {
+      case 'new_message':
+        return 'messages';
+      case 'story_reply':
+      case 'story_like':
+      case 'new_story':
+        return 'stories';
+      case 'new_follower':
+        return 'social';
+      case 'profile_view':
+      default:
+        return 'general';
+    }
   }
 
   /// Handle notification tap - Navigate to appropriate screen
@@ -189,11 +230,26 @@ class NotificationService {
         });
         break;
 
-      case 'new_like':
-        // Navigate to post
-        final postId = data['postId'] ?? '';
+      case 'story_like':
+        // Navigate to story view
+        final storyId = data['storyId'] ?? '';
+        final userId = data['userId'] ?? '';
 
-        _navigationCallback!('/post/$postId', {'postId': postId});
+        _navigationCallback!('/stories', {
+          'storyId': storyId,
+          'userId': userId,
+        });
+        break;
+
+      case 'new_story':
+        // Navigate to story view
+        final storyId = data['storyId'] ?? '';
+        final userId = data['userId'] ?? '';
+
+        _navigationCallback!('/stories', {
+          'storyId': storyId,
+          'userId': userId,
+        });
         break;
 
       case 'profile_view':

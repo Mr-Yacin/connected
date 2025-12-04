@@ -15,6 +15,7 @@ import '../../../moderation/presentation/providers/moderation_provider.dart';
 import '../../../moderation/presentation/widgets/report_bottom_sheet.dart';
 import '../../../discovery/presentation/providers/follow_provider.dart';
 import '../../../auth/presentation/widgets/guest_conversion_dialog.dart';
+import '../../../stories/presentation/screens/story_camera_screen.dart';
 import '../providers/profile_provider.dart';
 import '../providers/current_user_profile_provider.dart';
 
@@ -540,13 +541,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                       const SizedBox(height: 24),
 
-                      // View Likes Button (only for own profile)
-                      if (_isViewingOwnProfile && profile.likesCount > 0)
-                        _buildViewLikesButton(profile),
-
-                      if (_isViewingOwnProfile && profile.likesCount > 0)
-                        const SizedBox(height: 24),
-
                       // Anonymous Link Card
                       if (_isViewingOwnProfile && profile.anonymousLink != null)
                         _buildAnonymousLinkCard(profile),
@@ -608,10 +602,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     CircleAvatar(
                       radius: 40,
                       backgroundColor: Colors.white,
-                      backgroundImage: profile.profileImageUrl != null
+                      backgroundImage: profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty
                           ? NetworkImage(profile.profileImageUrl!)
                           : null,
-                      child: profile.profileImageUrl == null
+                      onBackgroundImageError: profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty
+                          ? (exception, stackTrace) {
+                              debugPrint('Failed to load profile image: ${profile.profileImageUrl}');
+                            }
+                          : null,
+                      child: profile.profileImageUrl == null || profile.profileImageUrl!.isEmpty
                           ? Icon(
                               Icons.person,
                               size: 38,
@@ -817,6 +816,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   }
 
   Widget _buildQuickActions(dynamic profile) {
+    final userId = ref.currentUserId;
+    
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
@@ -827,6 +828,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               label: 'تعديل',
               gradient: AppColors.primaryGradient,
               onTap: () => context.push('/profile/edit'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildActionButton(
+              icon: Icons.add_circle_outline,
+              label: 'قصة',
+              gradient: LinearGradient(
+                colors: [Colors.purple.shade400, Colors.pink.shade400],
+              ),
+              onTap: () {
+                if (userId != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StoryCameraScreen(userId: userId),
+                    ),
+                  );
+                }
+              },
             ),
           ),
           const SizedBox(width: 12),
@@ -918,15 +939,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildStatItem(
-              icon: Icons.favorite,
-              value: '${profile.likesCount ?? 0}',
-              color: Colors.red.shade400,
-              onTap: _isViewingOwnProfile && (profile.likesCount ?? 0) > 0
-                  ? () => context.push('/likes')
-                  : null,
-            ),
-            Container(width: 1, height: 40, color: Colors.grey.shade200),
             _buildStatItem(
               icon: Icons.people,
               value: '${profile.followerCount ?? 0}',
@@ -1039,49 +1051,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildViewLikesButton(dynamic profile) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: InkWell(
-        onTap: () => context.push('/likes'),
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.pink.shade400, Colors.red.shade400],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.red.withValues(alpha: 0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.favorite, color: Colors.white, size: 24),
-              const SizedBox(width: 12),
-              Text(
-                'عرض الإعجابات (${profile.likesCount})',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-            ],
-          ),
         ),
       ),
     );

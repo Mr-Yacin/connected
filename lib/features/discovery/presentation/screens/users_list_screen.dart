@@ -249,10 +249,15 @@ class _UsersListScreenState extends ConsumerState<UsersListScreen> {
               contentPadding: const EdgeInsets.all(12.0),
               leading: CircleAvatar(
                 radius: 30,
-                backgroundImage: user.profileImageUrl != null
+                backgroundImage: user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
                     ? NetworkImage(user.profileImageUrl!)
                     : null,
-                child: user.profileImageUrl == null
+                onBackgroundImageError: user.profileImageUrl != null && user.profileImageUrl!.isNotEmpty
+                    ? (exception, stackTrace) {
+                        debugPrint('Failed to load user image: ${user.profileImageUrl}');
+                      }
+                    : null,
+                child: user.profileImageUrl == null || user.profileImageUrl!.isEmpty
                     ? Text(
                         user.name?.substring(0, 1).toUpperCase() ?? '?',
                         style: const TextStyle(fontSize: 24),

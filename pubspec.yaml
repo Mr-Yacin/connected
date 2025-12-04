@@ -88,6 +88,7 @@ dependencies:
   
   # 3D Transitions
   cube_transition_plus: ^2.0.1
+  flutter_local_notifications: ^19.5.0
 
 dev_dependencies:
   flutter_test:
